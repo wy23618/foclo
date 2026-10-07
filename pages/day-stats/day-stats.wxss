@@ -1,0 +1,10 @@
+@import "../stats/stats.wxss";
+.day-summary-card{padding:26rpx 28rpx 24rpx;border-radius:34rpx;box-shadow:0 10rpx 30rpx rgba(32,48,71,.05)}
+.day-date-nav { display: flex; align-items: center; gap: 6rpx; flex-shrink:0; }
+.day-date-arrow { width: 34rpx; height: 48rpx; flex-shrink: 0; display: flex; align-items: center; justify-content: center; border-radius: 14rpx; background: var(--bg-control-soft); color: var(--accent); font-size: 31rpx; }
+.day-date-arrow.disabled { opacity: .35; }
+.day-date-picker { min-width: 0; }
+.day-date-picker .summary-period { white-space: nowrap; }
+.day-date-caret { margin-left: 3rpx; color: var(--text-muted); font-size: 19rpx; }
+.day-distribution { padding-bottom: 18rpx; }
+.day-records { margin-bottom: 20rpx; }

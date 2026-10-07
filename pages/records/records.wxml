@@ -1,0 +1,48 @@
+<page-meta page-style="{{themePageStyle}}"/>
+<view class="container theme-{{themeClass}}">
+  <!-- 日期导航 -->
+  <view class="card">
+    <view class="date-nav">
+      <view class="date-arrow" hover-class="date-arrow-hover" bindtap="prevDay">‹</view>
+      <picker mode="date" value="{{date}}" bindchange="pickDate" class="flex-1">
+        <view class="date-center">
+          <view class="date-main num">{{dateLabel}}</view>
+          <view class="date-week">{{weekday}}<text wx:if="{{isToday}}"> · 今天</text></view>
+        </view>
+      </picker>
+      <view class="date-arrow {{canGoNext ? '' : 'date-arrow-off'}}" bindtap="nextDay">›</view>
+    </view>
+    <view class="date-foot">
+      <view class="day-total num">{{totalText}}</view>
+      
+    </view>
+    <view class="faint tiny">{{countText}}</view>
+  </view>
+
+  <!-- 时间线 -->
+  <view wx:if="{{loaded && rows.length}}" class="card rec-list-card">
+    <view wx:for="{{rows}}" wx:key="sessionId" class="rec-row {{index === rows.length - 1 ? 'rec-row-last' : ''}}">
+      <view class="row-between">
+        <view class="row rec-name-line">
+          <view class="rec-dot-color" style="background: {{item.color}};"></view>
+          <view class="ellipsis rec-name" data-id="{{item.projectId}}" bindtap="goProject">{{item.name}}</view>
+        </view>
+        <view class="rec-dur num">{{item.durationText}}</view>
+      </view>
+      <view class="row-between rec-sub">
+        <view class="ellipsis faint tiny rec-path">
+          <text wx:if="{{item.pathText}}">{{item.pathText}} · </text>{{item.timeRange}}
+        </view>
+        <text wx:if="{{item.status === 'ACTIVE'}}" class="tag tag-live">
+          <text wx:if="{{item.paused}}">暂停中</text>
+          <text wx:else>进行中</text>
+        </text>
+      </view>
+    </view>
+    <view wx:if="{{hasMore}}" class="more" hover-class="more-hover" bindtap="loadMore">加载更多（共{{totalCount}}条）</view>
+  </view>
+
+  <view wx:elif="{{loaded}}" class="card">
+    <empty-state icon="clock" text="这一天还没有专注记录" hint="切换日期，或回到专注页开始一轮吧" />
+  </view>
+</view>

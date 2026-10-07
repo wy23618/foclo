@@ -1,0 +1,18 @@
+BEGIN;
+CREATE TABLE schema_migrations(version integer PRIMARY KEY, applied_at timestamptz NOT NULL DEFAULT now());
+CREATE TABLE users(id uuid PRIMARY KEY, status text NOT NULL DEFAULT 'active' CHECK(status IN ('active','deleted')), created_at timestamptz NOT NULL DEFAULT now());
+CREATE TABLE auth_identities(provider text NOT NULL, app_id text NOT NULL, subject text NOT NULL, user_id uuid NOT NULL REFERENCES users(id), PRIMARY KEY(provider,app_id,subject));
+CREATE TABLE spaces(id uuid PRIMARY KEY, user_id uuid NOT NULL UNIQUE REFERENCES users(id), generation bigint NOT NULL DEFAULT 1 CHECK(generation>0), change_seq bigint NOT NULL DEFAULT 0, next_order bigint NOT NULL DEFAULT 1, restore_epoch uuid NOT NULL DEFAULT gen_random_uuid());
+CREATE TABLE projects(space_id uuid NOT NULL REFERENCES spaces(id), id uuid NOT NULL, generation bigint NOT NULL, name text NOT NULL, parent_id uuid, order_key bigint NOT NULL, server_version bigint NOT NULL CHECK(server_version>0), data jsonb NOT NULL, deleted_at timestamptz, PRIMARY KEY(space_id,id), FOREIGN KEY(space_id,parent_id) REFERENCES projects(space_id,id) DEFERRABLE INITIALLY DEFERRED);
+CREATE UNIQUE INDEX project_live_name ON projects(space_id,name COLLATE "C") WHERE deleted_at IS NULL;
+CREATE TABLE study_sessions(space_id uuid NOT NULL REFERENCES spaces(id), id uuid NOT NULL, generation bigint NOT NULL, project_id uuid NOT NULL, origin_device_id uuid NOT NULL, server_version bigint NOT NULL, data jsonb NOT NULL, deleted_at timestamptz, received_at timestamptz NOT NULL DEFAULT now(), PRIMARY KEY(space_id,id), FOREIGN KEY(space_id,project_id) REFERENCES projects(space_id,id));
+CREATE TABLE pauses(space_id uuid NOT NULL, id uuid NOT NULL, session_id uuid NOT NULL, data jsonb NOT NULL, PRIMARY KEY(space_id,id), FOREIGN KEY(space_id,session_id) REFERENCES study_sessions(space_id,id));
+CREATE TABLE account_preferences(space_id uuid PRIMARY KEY REFERENCES spaces(id), generation bigint NOT NULL, server_version bigint NOT NULL, data jsonb NOT NULL);
+CREATE TABLE sync_operations(space_id uuid NOT NULL REFERENCES spaces(id), generation bigint NOT NULL, operation_id uuid NOT NULL, request_hash text NOT NULL, result jsonb NOT NULL, created_at timestamptz NOT NULL DEFAULT now(), PRIMARY KEY(space_id,generation,operation_id));
+CREATE TABLE sync_changes(space_id uuid NOT NULL REFERENCES spaces(id), generation bigint NOT NULL, seq bigint NOT NULL, entity_type text NOT NULL, entity_id text NOT NULL, server_version bigint NOT NULL, data jsonb, deleted boolean NOT NULL DEFAULT false, PRIMARY KEY(space_id,generation,seq));
+CREATE TABLE sync_snapshots(id uuid PRIMARY KEY, space_id uuid NOT NULL REFERENCES spaces(id), generation bigint NOT NULL, upper_seq bigint NOT NULL, restore_epoch uuid NOT NULL, expires_at timestamptz NOT NULL, kind text NOT NULL CHECK(kind IN ('snapshot','export')));
+CREATE TABLE snapshot_items(snapshot_id uuid NOT NULL REFERENCES sync_snapshots(id) ON DELETE CASCADE, ordinal integer NOT NULL, data jsonb NOT NULL, PRIMARY KEY(snapshot_id,ordinal));
+CREATE TABLE import_jobs(id uuid PRIMARY KEY, space_id uuid NOT NULL REFERENCES spaces(id), generation bigint NOT NULL, source_id text NOT NULL, chunk_count integer NOT NULL CHECK(chunk_count BETWEEN 1 AND 1000), status text NOT NULL DEFAULT 'uploading', mapping jsonb NOT NULL DEFAULT '{}', result jsonb, created_at timestamptz NOT NULL DEFAULT now(), expires_at timestamptz NOT NULL DEFAULT now()+interval '7 days');
+CREATE TABLE import_items(job_id uuid NOT NULL REFERENCES import_jobs(id), chunk_index integer NOT NULL, digest text NOT NULL, data jsonb NOT NULL, PRIMARY KEY(job_id,chunk_index));
+INSERT INTO schema_migrations(version) VALUES(1);
+COMMIT;

@@ -1,0 +1,900 @@
+openapi: 3.1.0
+info:
+  title: YoTick Account and Sync API
+  version: 1.0.0
+  description: >-
+    Protocol version 1. All API routes use HTTPS in deployed environments.
+    Send access tokens as Bearer credentials. Do not send a client-supplied
+    userId or use spaceId as authorization.
+servers:
+  - url: https://{host}
+    description: HTTPS deployment
+    variables:
+      host:
+        default: api.example.invalid
+tags:
+  - name: Auth
+  - name: Sync
+  - name: Imports
+  - name: Exports
+  - name: Health
+paths:
+  /api/v1/auth/wechat-mini:
+    post:
+      tags: [Auth]
+      operationId: loginWithWechatMini
+      summary: Exchange a one-time WeChat mini-program login code
+      description: The server validates the code with WeChat over HTTPS and creates or finds the YoTick user and their single account space.
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: false
+              required: [code]
+              properties:
+                code:
+                  type: string
+                  minLength: 1
+                  maxLength: 256
+                deviceId:
+                  type: string
+                  format: uuid
+                  description: Optional client device UUID, stored on the created auth session when supplied.
+      responses:
+        '200':
+          description: Business session created
+          content:
+            application/json:
+              schema: {$ref: '#/components/schemas/TokenPair'}
+        '400': {$ref: '#/components/responses/InvalidPayload'}
+        '401': {$ref: '#/components/responses/AuthRequired'}
+        '429': {$ref: '#/components/responses/RateLimited'}
+        '503':
+          description: WeChat identity service unavailable
+          content:
+            application/json:
+              schema: {$ref: '#/components/schemas/ErrorEnvelope'}
+  /api/v1/auth/refresh:
+    post:
+      tags: [Auth]
+      operationId: refreshSession
+      summary: Rotate the refresh token
+      description: >-
+        A prior refresh request may be repeated during the 30-second grace
+        period and returns the same encrypted, stored successor response.
+        Reuse after that period revokes the session family.
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: false
+              required: [refreshToken]
+              properties:
+                refreshToken: {$ref: '#/components/schemas/OpaqueToken'}
+      responses:
+        '200':
+          description: Rotated session credentials
+          content:
+            application/json:
+              schema: {$ref: '#/components/schemas/TokenPair'}
+        '401': {$ref: '#/components/responses/AuthRequired'}
+        '429': {$ref: '#/components/responses/RateLimited'}
+  /api/v1/auth/logout:
+    post:
+      tags: [Auth]
+      operationId: logout
+      summary: Revoke the current session
+      security: [bearerAuth: []]
+      responses:
+        '204': {description: Current session revoked}
+        '401': {$ref: '#/components/responses/AuthRequired'}
+  /api/v1/me:
+    get:
+      tags: [Auth]
+      operationId: getCurrentAccount
+      summary: Read the authenticated account and active space
+      security: [bearerAuth: []]
+      responses:
+        '200':
+          description: Current authenticated account
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [userId, spaceId, generation, protocolVersion]
+                properties:
+                  userId: {$ref: '#/components/schemas/Uuid'}
+                  spaceId: {$ref: '#/components/schemas/Uuid'}
+                  generation: {$ref: '#/components/schemas/DecimalString'}
+                  protocolVersion: {const: 1}
+        '401': {$ref: '#/components/responses/AuthRequired'}
+  /api/v1/sync/push:
+    post:
+      tags: [Sync]
+      operationId: pushOperations
+      summary: Submit an ordered batch of sync operations
+      description: >-
+        At most 50 operations and 256 KiB JSON per request. The authenticated
+        session determines ownership. Items execute in order within one
+        space-locked transaction; individual business conflicts are returned
+        as uncommitted results so later independent items can still be handled.
+        Wire receipts bound the combined operation changes to 220 KiB divided
+        across result items. Full receipts remain stored in PostgreSQL. When a
+        result has hasMoreChanges=true, acknowledge that operation, pull
+        authoritative changes through this response's upperSeq, then upload
+        the next queued operation.
+      security: [bearerAuth: []]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: false
+              required: [protocolVersion, spaceId, generation, deviceId, operations]
+              properties:
+                protocolVersion: {const: 1}
+                spaceId: {$ref: '#/components/schemas/Uuid'}
+                generation: {$ref: '#/components/schemas/DecimalString'}
+                deviceId: {$ref: '#/components/schemas/Uuid'}
+                operations:
+                  type: array
+                  maxItems: 50
+                  items: {$ref: '#/components/schemas/SyncOperation'}
+      responses:
+        '200':
+          description: Per-operation outcomes
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [results, upperSeq, generation]
+                properties:
+                  results:
+                    type: array
+                    items: {$ref: '#/components/schemas/OperationResult'}
+                  upperSeq: {$ref: '#/components/schemas/DecimalString'}
+                  generation: {$ref: '#/components/schemas/DecimalString'}
+        '401': {$ref: '#/components/responses/AuthRequired'}
+        '403': {$ref: '#/components/responses/Forbidden'}
+        '409': {$ref: '#/components/responses/ProtocolConflict'}
+        '413': {$ref: '#/components/responses/PayloadTooLarge'}
+  /api/v1/sync/pull:
+    get:
+      tags: [Sync]
+      operationId: pullChanges
+      summary: Read changes after a signed cursor
+      description: >-
+        A first page fixes an upper sequence boundary. Its signed cursor binds
+        the account space, generation, protocol version, restore epoch, lower
+        position, and upper boundary. Continue with the returned cursor until
+        hasMore is false; the client must keep the returned cursor unchanged
+        when retrying a page. The result is limited by both the requested item
+        count and a 240 KiB serialized-page cap; an individual item larger than
+        that cap is rejected. A completed-session payload is limited to 220 KiB.
+      security: [bearerAuth: []]
+      parameters:
+        - name: generation
+          in: query
+          required: true
+          schema: {$ref: '#/components/schemas/DecimalString'}
+        - name: cursor
+          in: query
+          required: false
+          schema: {type: string, minLength: 1}
+        - name: limit
+          in: query
+          required: false
+          schema: {type: integer, minimum: 1, maximum: 100, default: 50}
+      responses:
+        '200':
+          description: Ordered page of committed changes
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [changes, snapshotUpperSeq, cursor, hasMore, generation]
+                properties:
+                  changes:
+                    type: array
+                    items: {$ref: '#/components/schemas/Change'}
+                  snapshotUpperSeq: {$ref: '#/components/schemas/DecimalString'}
+                  cursor: {type: string, description: Signed opaque continuation cursor}
+                  hasMore: {type: boolean}
+                  generation: {$ref: '#/components/schemas/DecimalString'}
+        '401': {$ref: '#/components/responses/AuthRequired'}
+        '409': {$ref: '#/components/responses/ProtocolConflict'}
+  /api/v1/sync/snapshots:
+    post:
+      tags: [Sync]
+      operationId: createSnapshot
+      summary: Materialize a consistent snapshot
+      description: Snapshot pages are immutable and expire after one day. Snapshot membership and upperSeq are fixed at creation. At most 10 unexpired snapshots and exports may exist per space.
+      security: [bearerAuth: []]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: false
+              required: [generation]
+              properties:
+                generation: {$ref: '#/components/schemas/DecimalString'}
+      responses:
+        '200':
+          description: Snapshot identity and fixed change boundary
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [id, upperSeq, generation]
+                properties:
+                  id: {$ref: '#/components/schemas/Uuid'}
+                  upperSeq: {$ref: '#/components/schemas/DecimalString'}
+                  generation: {$ref: '#/components/schemas/DecimalString'}
+        '401': {$ref: '#/components/responses/AuthRequired'}
+        '409': {$ref: '#/components/responses/ProtocolConflict'}
+  /api/v1/sync/snapshots/{id}:
+    get:
+      tags: [Sync]
+      operationId: readSnapshotPage
+      summary: Read a page from a materialized snapshot
+      security: [bearerAuth: []]
+      parameters:
+        - $ref: '#/components/parameters/SnapshotId'
+        - name: offset
+          in: query
+          required: false
+          schema: {type: integer, minimum: 0, default: 0}
+      responses:
+        '200':
+          description: Up to 50 immutable entries, additionally limited to 240 KiB serialized JSON. One entry larger than 240 KiB is rejected.
+          content:
+            application/json:
+              schema: {$ref: '#/components/schemas/SnapshotPage'}
+        '401': {$ref: '#/components/responses/AuthRequired'}
+        '409': {$ref: '#/components/responses/ProtocolConflict'}
+  /api/v1/imports:
+    post:
+      tags: [Imports]
+      operationId: createImport
+      summary: Create a chunked guest-data import job
+      description: At most five unexpired uploading jobs may exist per space. A job expires after seven days.
+      security: [bearerAuth: []]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: false
+              required: [jobId, sourceId, chunkCount, generation]
+              properties:
+                jobId: {$ref: '#/components/schemas/Uuid'}
+                sourceId: {type: string, maxLength: 200}
+                chunkCount: {type: integer, minimum: 1, maximum: 1000}
+                generation: {$ref: '#/components/schemas/DecimalString'}
+      responses:
+        '200':
+          description: New or idempotently recovered import job
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [id, status]
+                properties:
+                  id: {$ref: '#/components/schemas/Uuid'}
+                  status: {type: string, enum: [uploading, committed]}
+        '401': {$ref: '#/components/responses/AuthRequired'}
+        '409': {$ref: '#/components/responses/ProtocolConflict'}
+  /api/v1/imports/{id}/chunks/{index}:
+    put:
+      tags: [Imports]
+      operationId: putImportChunk
+      summary: Upload one immutable chunk
+      description: >-
+        A chunk is at most 256 KiB JSON and an import job accepts at most
+        8 MiB total. Across the completed source, there may be at most 500
+        projects and 10,000 sessions. Repeating identical content at an index
+        is safe; changed content at that index returns CHUNK_REUSED. Each
+        completed-session entity including pauses is limited to 220 KiB.
+      security: [bearerAuth: []]
+      parameters:
+        - $ref: '#/components/parameters/ImportId'
+        - name: index
+          in: path
+          required: true
+          schema: {type: integer, minimum: 0}
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: false
+              required: [projects, sessions]
+              properties:
+                projects:
+                  type: array
+                  items: {$ref: '#/components/schemas/Project'}
+                sessions:
+                  type: array
+                  items: {$ref: '#/components/schemas/CompletedSession'}
+      responses:
+        '200':
+          description: Chunk stored or matched the prior upload
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [index, digest, received]
+                properties:
+                  index: {type: integer}
+                  digest: {type: string, pattern: '^[0-9a-f]{64}$'}
+                  received: {const: true}
+        '401': {$ref: '#/components/responses/AuthRequired'}
+        '409': {$ref: '#/components/responses/ProtocolConflict'}
+        '413': {$ref: '#/components/responses/PayloadTooLarge'}
+  /api/v1/imports/preview:
+    post:
+      tags: [Imports]
+      operationId: previewImport
+      summary: Validate uploaded chunks and report merge conflicts
+      security: [bearerAuth: []]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: false
+              required: [jobId]
+              properties:
+                jobId: {$ref: '#/components/schemas/Uuid'}
+      responses:
+        '200':
+          description: Source digest and currently detected conflicts
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [projectCount, sessionCount, pauseCount, digest, conflicts]
+                properties:
+                  projectCount: {type: integer, minimum: 0, maximum: 500}
+                  sessionCount: {type: integer, minimum: 0, maximum: 10000}
+                  pauseCount: {type: integer, minimum: 0}
+                  digest: {type: string, pattern: '^[0-9a-f]{64}$'}
+                  conflicts:
+                    type: array
+                    items:
+                      type: object
+                      required: [type, sourceId]
+                      properties:
+                        type: {type: string, enum: [ENTITY_DELETED, PROJECT_ID_EXISTS, NAME_CONFLICT, SESSION_ID_EXISTS]}
+                        sourceId: {type: string}
+                        cloud: {type: object, additionalProperties: true}
+        '401': {$ref: '#/components/responses/AuthRequired'}
+        '409': {$ref: '#/components/responses/ProtocolConflict'}
+  /api/v1/imports/{id}:
+    get:
+      tags: [Imports]
+      operationId: getImport
+      summary: Get import progress
+      security: [bearerAuth: []]
+      parameters:
+        - $ref: '#/components/parameters/ImportId'
+      responses:
+        '200':
+          description: Current upload state and uploaded chunk digests
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [id, status, chunkCount, received, result]
+                properties:
+                  id: {$ref: '#/components/schemas/Uuid'}
+                  status: {type: string, enum: [uploading, committed]}
+                  chunkCount: {type: integer}
+                  received:
+                    type: array
+                    items:
+                      type: object
+                      required: [chunk_index, digest]
+                      properties:
+                        chunk_index: {type: integer}
+                        digest: {type: string, pattern: '^[0-9a-f]{64}$'}
+                  result: {oneOf: [{$ref: '#/components/schemas/ImportCommitResult'}, {type: 'null'}]}
+        '401': {$ref: '#/components/responses/AuthRequired'}
+        '409': {$ref: '#/components/responses/ProtocolConflict'}
+  /api/v1/imports/{id}/commit:
+    post:
+      tags: [Imports]
+      operationId: commitImport
+      summary: Merge a validated guest-data import
+      description: Commit is idempotent after success. The caller confirms the merge and supplies the digest returned by preview.
+      security: [bearerAuth: []]
+      parameters:
+        - $ref: '#/components/parameters/ImportId'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: false
+              required: [confirmation, deviceId, sourceDigest]
+              properties:
+                confirmation: {const: MERGE_GUEST_DATA}
+                deviceId: {$ref: '#/components/schemas/Uuid'}
+                sourceDigest: {type: string, pattern: '^[0-9a-f]{64}$'}
+                mapping:
+                  type: object
+                  description: Map source project UUIDs to existing cloud project UUIDs when resolving a project collision.
+                  additionalProperties: {$ref: '#/components/schemas/Uuid'}
+                sessionMapping:
+                  type: object
+                  description: Map a source session UUID to a new destination UUID, or to skip that session.
+                  additionalProperties:
+                    oneOf:
+                      - {$ref: '#/components/schemas/Uuid'}
+                      - {const: skip}
+      responses:
+        '200':
+          description: Import committed or prior commit result returned
+          content:
+            application/json:
+              schema: {$ref: '#/components/schemas/ImportCommitResult'}
+        '401': {$ref: '#/components/responses/AuthRequired'}
+        '409': {$ref: '#/components/responses/ProtocolConflict'}
+  /api/v1/data/clear:
+    post:
+      tags: [Sync]
+      operationId: clearAccountData
+      summary: Clear account facts and advance the generation
+      description: >-
+        Requires an explicit confirmation phrase. Successful identical retries
+        with the same operationId return the stored result. Old devices are
+        rejected after the generation changes.
+      security: [bearerAuth: []]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: false
+              required: [confirmation, operationId, generation]
+              properties:
+                confirmation: {const: DELETE_ALL_ACCOUNT_DATA}
+                operationId: {$ref: '#/components/schemas/Uuid'}
+                generation: {$ref: '#/components/schemas/DecimalString'}
+      responses:
+        '200':
+          description: Data cleared and generation advanced
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [kind, generation, committed]
+                properties:
+                  kind: {const: clear}
+                  generation: {$ref: '#/components/schemas/DecimalString'}
+                  committed: {const: true}
+        '401': {$ref: '#/components/responses/AuthRequired'}
+        '409': {$ref: '#/components/responses/ProtocolConflict'}
+  /api/v1/account/deletion-requests:
+    post:
+      tags: [Auth]
+      operationId: requestAccountDeletion
+      summary: Submit a request for account deletion
+      description: >-
+        Records a request for policy review. It does not delete the account,
+        revoke sessions, or purge data. Retention and fulfillment policy must
+        be approved before this endpoint can be treated as a complete deletion
+        workflow or released as one.
+      security: [bearerAuth: []]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: false
+              required: [confirmation]
+              properties:
+                confirmation: {const: REQUEST_ACCOUNT_DELETION}
+      responses:
+        '200':
+          description: Request recorded or existing pending request returned
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [id, status, requestedAt]
+                properties:
+                  id: {$ref: '#/components/schemas/Uuid'}
+                  status: {const: pending_policy_review}
+                  requestedAt: {type: string, format: date-time}
+        '401': {$ref: '#/components/responses/AuthRequired'}
+        '409': {$ref: '#/components/responses/ProtocolConflict'}
+  /api/v1/exports:
+    post:
+      tags: [Exports]
+      operationId: createExport
+      summary: Create an account export snapshot
+      description: Creates a one-day immutable snapshot using the same paging format as sync snapshots. Snapshot/export counts share the per-space limit of 10 unexpired snapshots and exports.
+      security: [bearerAuth: []]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: false
+              required: [generation]
+              properties:
+                generation: {$ref: '#/components/schemas/DecimalString'}
+      responses:
+        '200':
+          description: Export snapshot identity and upper sequence
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [id, upperSeq, generation]
+                properties:
+                  id: {$ref: '#/components/schemas/Uuid'}
+                  upperSeq: {$ref: '#/components/schemas/DecimalString'}
+                  generation: {$ref: '#/components/schemas/DecimalString'}
+        '401': {$ref: '#/components/responses/AuthRequired'}
+        '409': {$ref: '#/components/responses/ProtocolConflict'}
+  /api/v1/exports/{id}:
+    get:
+      tags: [Exports]
+      operationId: readExportPage
+      summary: Read an export page
+      security: [bearerAuth: []]
+      parameters:
+        - $ref: '#/components/parameters/SnapshotId'
+        - name: offset
+          in: query
+          required: false
+          schema: {type: integer, minimum: 0, default: 0}
+      responses:
+        '200':
+          description: Up to 50 immutable entries, additionally limited to 240 KiB serialized JSON. One entry larger than 240 KiB is rejected.
+          content:
+            application/json:
+              schema: {$ref: '#/components/schemas/SnapshotPage'}
+        '401': {$ref: '#/components/responses/AuthRequired'}
+        '409': {$ref: '#/components/responses/ProtocolConflict'}
+  /health/live:
+    get:
+      tags: [Health]
+      operationId: liveness
+      summary: Check that the process is running
+      security: []
+      responses:
+        '200':
+          description: Process is alive
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [status]
+                properties: {status: {const: ok}}
+  /health/ready:
+    get:
+      tags: [Health]
+      operationId: readiness
+      summary: Check database connectivity and migration readiness
+      security: []
+      responses:
+        '200':
+          description: Database query succeeded and applied migration version is at least 5
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [status]
+                properties: {status: {const: ok}}
+        '503':
+          description: Database unavailable or schema migration version is older than 5
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [status]
+                properties: {status: {const: unavailable}}
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: opaque
+  parameters:
+    SnapshotId:
+      name: id
+      in: path
+      required: true
+      schema: {$ref: '#/components/schemas/Uuid'}
+    ImportId:
+      name: id
+      in: path
+      required: true
+      schema: {$ref: '#/components/schemas/Uuid'}
+  responses:
+    AuthRequired:
+      description: Missing, expired, revoked, or invalid credentials
+      content:
+        application/json:
+          schema: {$ref: '#/components/schemas/ErrorEnvelope'}
+    Forbidden:
+      description: Requested account space does not match the authenticated account
+      content:
+        application/json:
+          schema: {$ref: '#/components/schemas/ErrorEnvelope'}
+    InvalidPayload:
+      description: Request body is invalid
+      content:
+        application/json:
+          schema: {$ref: '#/components/schemas/ErrorEnvelope'}
+    ProtocolConflict:
+      description: Generation, version, state, idempotency, or cursor conflict
+      content:
+        application/json:
+          schema: {$ref: '#/components/schemas/ErrorEnvelope'}
+    PayloadTooLarge:
+      description: Request exceeds the JSON size limit
+      content:
+        application/json:
+          schema: {$ref: '#/components/schemas/ErrorEnvelope'}
+    RateLimited:
+      description: Route rate limit exceeded; limits are process-local
+      content:
+        application/json:
+          schema: {$ref: '#/components/schemas/ErrorEnvelope'}
+  schemas:
+    Uuid:
+      type: string
+      format: uuid
+    DecimalString:
+      type: string
+      pattern: '^(0|[1-9][0-9]*)$'
+      description: Bigint protocol value encoded as a base-10 string.
+    OpaqueToken:
+      type: string
+      minLength: 43
+      maxLength: 128
+      description: Secure opaque credential. Keep private and send only over HTTPS.
+    TokenPair:
+      type: object
+      required: [accessToken, refreshToken, tokenType, expiresIn, refreshExpiresIn, account]
+      properties:
+        accessToken: {$ref: '#/components/schemas/OpaqueToken'}
+        refreshToken: {$ref: '#/components/schemas/OpaqueToken'}
+        tokenType: {const: Bearer}
+        expiresIn: {type: integer, minimum: 60, description: Access-token lifetime in seconds; default is 900.}
+        refreshExpiresIn: {type: integer, minimum: 3600, description: Refresh-token lifetime in seconds; default is 2592000.}
+        account:
+          type: object
+          required: [userId, spaceId, generation]
+          properties:
+            userId: {$ref: '#/components/schemas/Uuid'}
+            spaceId: {$ref: '#/components/schemas/Uuid'}
+            generation: {$ref: '#/components/schemas/DecimalString'}
+    ErrorEnvelope:
+      type: object
+      required: [error]
+      properties:
+        error:
+          type: object
+          required: [code, message]
+          properties:
+            code:
+              type: string
+              description: Error code; operation-level push conflicts also include the code in their result item.
+              enum:
+                - AUTH_REQUIRED
+                - FORBIDDEN
+                - INVALID_PAYLOAD
+                - UPGRADE_REQUIRED
+                - GENERATION_MISMATCH
+                - VERSION_CONFLICT
+                - NAME_CONFLICT
+                - ENTITY_DELETED
+                - OPERATION_ID_REUSED
+                - DEPENDENCY_PENDING
+                - INVALID_PARENT
+                - INVALID_COLOR
+                - INVALID_NAME
+                - INVALID_DURATION
+                - INVALID_REFERENCE
+                - INVALID_CURSOR
+                - CURSOR_EXPIRED
+                - SNAPSHOT_EXPIRED
+                - IMPORT_NOT_FOUND
+                - IMPORT_INCOMPLETE
+                - IMPORT_STATE
+                - IMPORT_EXPIRED
+                - IMPORT_JOB_LIMIT
+                - IMPORT_TOO_LARGE
+                - SOURCE_CHANGED
+                - INVALID_MAPPING
+                - CONFIRMATION_REQUIRED
+                - CHUNK_REUSED
+                - SNAPSHOT_LIMIT
+                - PAYLOAD_TOO_LARGE
+                - RATE_LIMITED
+                - IDENTITY_PROVIDER_UNAVAILABLE
+                - RETRYABLE_ERROR
+            message: {type: string}
+    SyncOperation:
+      type: object
+      required: [operationId, kind, entityId]
+      properties:
+        operationId: {$ref: '#/components/schemas/Uuid'}
+        kind:
+          type: string
+          enum: [project.create, project.patch, project.reorder, project.archive, project.restore, project.deleteSubtree, session.createCompleted, session.delete, prefs.patch]
+        entityId:
+          type: string
+          description: UUID for an entity; literal account for prefs.patch.
+        baseServerVersion:
+          {$ref: '#/components/schemas/DecimalString'}
+        dependsOn:
+          {$ref: '#/components/schemas/Uuid'}
+        payload:
+          type: object
+          description: >-
+            Operation-specific object. Project group operations require
+            expectedVersions; project.reorder also requires the complete
+            orderedIds sibling array. project.patch accepts name, color, and
+            shortName only. session.delete does not require a payload.
+          properties:
+            expectedVersions:
+              type: object
+              additionalProperties: {$ref: '#/components/schemas/DecimalString'}
+            orderedIds:
+              type: array
+              items: {$ref: '#/components/schemas/Uuid'}
+          additionalProperties: true
+      description: >-
+        Reusing operationId with the same canonical JSON returns the stored
+        receipt. Reusing it with different JSON conflicts. dependsOn must name
+        an earlier applied operation in this generation. All compare-and-swap
+        operations require baseServerVersion; project group changes also
+        compare every affected entity through expectedVersions.
+    OperationResult:
+      type: object
+      required: [operationId, status, committed]
+      properties:
+        operationId: {$ref: '#/components/schemas/Uuid'}
+        status: {type: string, enum: [applied, conflict]}
+        committed: {type: boolean}
+        code: {type: string}
+        detail: {}
+        changes:
+          type: array
+          description: Bounded wire subset of the full persisted receipt.
+          items:
+            type: object
+            required: [entityType, entityId, serverVersion, data]
+            properties:
+              entityType: {type: string, enum: [project, session, prefs]}
+              entityId: {type: string}
+              serverVersion: {$ref: '#/components/schemas/DecimalString'}
+              data: {type: object, additionalProperties: true}
+              deleted: {type: boolean}
+        hasMoreChanges:
+          type: boolean
+          description: True when this wire result omits additional changes retained in the PostgreSQL idempotency receipt; pull through the push response upperSeq before uploading the next operation.
+    Change:
+      type: object
+      required: [seq, entityType, entityId, serverVersion, data, deleted]
+      properties:
+        seq: {$ref: '#/components/schemas/DecimalString'}
+        entityType: {type: string, enum: [project, session, prefs]}
+        entityId: {type: string}
+        serverVersion: {$ref: '#/components/schemas/DecimalString'}
+        data: {oneOf: [{type: object, additionalProperties: true}, {type: 'null'}]}
+        deleted: {type: boolean}
+    SnapshotEntry:
+      type: object
+      required: [entityType, entityId, serverVersion, data, deleted]
+      properties:
+        entityType: {type: string, enum: [project, session, prefs]}
+        entityId: {type: string}
+        serverVersion: {$ref: '#/components/schemas/DecimalString'}
+        data: {type: object, additionalProperties: true}
+        deleted: {type: boolean}
+    SnapshotPage:
+      type: object
+      required: [changes, nextOffset, hasMore, upperSeq, generation, cursor]
+      properties:
+        changes:
+          type: array
+          maxItems: 50
+          items: {$ref: '#/components/schemas/SnapshotEntry'}
+        nextOffset: {type: integer, minimum: 0}
+        hasMore: {type: boolean}
+        upperSeq: {$ref: '#/components/schemas/DecimalString'}
+        generation: {$ref: '#/components/schemas/DecimalString'}
+        cursor: {oneOf: [{type: string}, {type: 'null'}], description: Signed pull cursor at the final page; null while more snapshot pages remain.}
+    Project:
+      type: object
+      required: [id, createdAtSec, updatedAtSec, name, parentId, archived, color]
+      properties:
+        id: {$ref: '#/components/schemas/Uuid'}
+        createdAtSec: {type: integer, description: Required client creation time in epoch seconds.}
+        updatedAtSec: {type: integer, description: Required client update time in epoch seconds.}
+        name: {type: string, minLength: 1, maxLength: 120}
+        parentId: {oneOf: [{$ref: '#/components/schemas/Uuid'}, {type: 'null'}]}
+        archived: {type: boolean}
+        shortName: {oneOf: [{type: string, maxLength: 8}, {type: 'null'}]}
+        color: {type: string, pattern: '^#[0-9a-fA-F]{6}$'}
+        creationOrder: {type: number, description: Ignored for server ordering; server assigns the stable order.}
+        spaceId: {$ref: '#/components/schemas/Uuid'}
+        revision: {type: integer}
+        lastUsedAtSec: {oneOf: [{type: integer}, {type: 'null'}]}
+      additionalProperties: true
+    CompletedSession:
+      type: object
+      required: [id, projectId, status, createdAtSec, updatedAtSec, startedAtSec, endedAtSec, durationSeconds, targetSeconds, pauses]
+      properties:
+        id: {$ref: '#/components/schemas/Uuid'}
+        projectId: {$ref: '#/components/schemas/Uuid'}
+        status: {const: COMPLETED}
+        createdAtSec: {type: integer, description: Required client creation time in epoch seconds.}
+        updatedAtSec: {type: integer, description: Required client update time in epoch seconds.}
+        startedAtSec: {type: integer, minimum: 0}
+        endedAtSec: {type: integer, minimum: 0}
+        durationSeconds: {type: integer, minimum: 0, description: Recomputed and checked from timestamps and pauses.}
+        targetSeconds: {oneOf: [{type: integer, minimum: 60, maximum: 3153600000}, {type: 'null'}]}
+        pauses:
+          type: array
+          maxItems: 10000
+          items:
+            type: object
+            required: [id, sessionId, status, startedAtSec, endedAtSec, durationSeconds]
+            properties:
+              id: {$ref: '#/components/schemas/Uuid'}
+              sessionId: {$ref: '#/components/schemas/Uuid'}
+              status: {const: COMPLETED}
+              startedAtSec: {type: integer, minimum: 0}
+              endedAtSec: {type: integer, minimum: 0}
+              durationSeconds: {type: integer, minimum: 0}
+            additionalProperties: true
+      description: >-
+        Completed session content is immutable after creation. A matching
+        duplicate is idempotent; the same ID with different content conflicts.
+        Deletion is represented by a tombstone.
+      additionalProperties: true
+    ImportCommitResult:
+      type: object
+      required: [committed, sourceProjectCount, sourceSessionCount, projectCount, sessionCount, pauseCount, sourceDigest, mapping, sessionMapping, upperSeq]
+      properties:
+        committed: {const: true}
+        sourceProjectCount: {type: integer, minimum: 0}
+        sourceSessionCount: {type: integer, minimum: 0}
+        projectCount: {type: integer, minimum: 0}
+        sessionCount: {type: integer, minimum: 0}
+        pauseCount: {type: integer, minimum: 0}
+        sourceDigest: {type: string, pattern: '^[0-9a-f]{64}$'}
+        mapping:
+          type: object
+          additionalProperties: {$ref: '#/components/schemas/Uuid'}
+        sessionMapping:
+          type: object
+          additionalProperties:
+            oneOf:
+              - {$ref: '#/components/schemas/Uuid'}
+              - {const: skip}
+        upperSeq: {$ref: '#/components/schemas/DecimalString'}

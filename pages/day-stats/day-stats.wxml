@@ -1,0 +1,36 @@
+<page-meta page-style="{{themePageStyle}}"/>
+<safe-nav theme="{{themeClass}}" title="当天统计" back-text="‹ 返回" refresh="{{true}}" hidden="{{chartFull}}" bindback="back" bindrefresh="load"/>
+<view class="container theme-{{themeClass}}">
+  <view wx:if="{{error}}" class="card error-card" bindtap="load">{{error}} · 点击重试</view>
+
+  <view class="card summary-card day-summary-card">
+    <view class="summary-head">
+      <text class="summary-head-title">{{scopeName}}</text>
+      <view class="day-date-nav" bindtouchstart="onDateTouchStart" bindtouchend="onDateTouchEnd">
+        <view class="day-date-arrow" bindtap="prev">‹</view>
+        <picker mode="date" value="{{date}}" end="{{today}}" bindchange="pickDate" class="day-date-picker">
+          <view class="summary-period">{{dateTitle}} <text class="day-date-caret">⌄</text></view>
+        </picker>
+        <view class="day-date-arrow {{canNext?'':'disabled'}}" bindtap="next">›</view>
+      </view>
+    </view>
+    <view class="summary-well">
+      <view class="summary-kicker">当天累计专注</view>
+      <view class="summary-time num"><block wx:for="{{totalParts}}" wx:key="unit"><text class="summary-time-number">{{item.value}}</text><text class="summary-time-unit">{{item.unit}}</text></block></view>
+      <view class="summary-stripe"><view wx:for="{{stackSegs}}" wx:key="projectId" class="summary-stripe-segment" style="background:{{item.color}};width:{{item.width}}%"></view></view>
+    </view>
+    <view class="summary-metrics">
+      <view class="summary-metric"><view class="summary-metric-label">专注次数</view><view class="summary-metric-value">{{focusCount}}<text class="summary-metric-unit">次</text></view></view>
+      <view class="summary-metric"><view class="summary-metric-label">暂停次数</view><view class="summary-metric-value">{{pauseCount}}<text class="summary-metric-unit">次</text></view></view>
+      <view class="summary-metric"><view class="summary-metric-label">平均单次</view><view class="summary-metric-value summary-metric-value-average">{{avgSessionText}}</view></view>
+    </view>
+  </view>
+
+  <view wx:if="{{showDistributionChart}}" class="card distribution-card day-distribution">
+    <view class="distribution-header"><view class="distribution-heading"><view class="title-sm">项目分布</view><text class="distribution-hint">点击图形查看项目</text></view><view class="chart-tools"><view wx:if="{{chartExpandable}}" class="chart-action" hover-class="chart-action-pressed" bindtap="toggleChartAll">{{chartAllExpanded ? '收起全部' : '展开全部'}}</view><view class="chart-action" hover-class="chart-action-pressed" bindtap="goHierarchy"><view class="fullscreen-icon"><view class="fullscreen-corner tl"></view><view class="fullscreen-corner tr"></view><view class="fullscreen-corner bl"></view><view class="fullscreen-corner br"></view></view><text>查看大图</text></view></view></view>
+    <stat-donut id="distributionChart" groups="{{chartGroups}}" segments="{{rows}}" tree="{{chartTree}}" theme="{{themeClass}}" total-text="{{shortTotal}}" center-label="{{scopeShortName}}" single-expand="{{singleExpand}}" compact="{{true}}" toolbar-actions="{{true}}" bindexpandstate="onChartExpandState" bindselectParent="onChartSelectParent" bindselectChild="onChartSelectChild" bindfullchange="onChartFullChange"/>
+  </view>
+  <project-list id="projectList" tree="{{chartTree}}" selected-id="{{selectedProjectId}}" range-key="{{date}}:{{scope}}" bindselect="goProject" bindfocuschange="onListFocusChange" bindclearfocus="clearProjectFocus"/>
+
+  <view class="day-records"><day-detail id="dayDetail" summary="{{false}}" distribution="{{false}}" date="{{date}}" scope="{{scope}}" controls="{{false}}" bindrecorddeleted="load"/></view>
+</view>

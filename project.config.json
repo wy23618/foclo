@@ -1,0 +1,87 @@
+{
+  "description": "YoTick 原生微信小程序（本地离线计时）",
+  "miniprogramRoot": "./",
+  "projectname": "YoTick-上传版",
+  "appid": "wx6ed8386f53a1801b",
+  "compileType": "miniprogram",
+  "libVersion": "3.16.3",
+  "setting": {
+    "es6": true,
+    "enhance": true,
+    "postcss": true,
+    "minified": true,
+    "uglifyFileName": false,
+    "ignoreUploadUnusedFiles": false,
+    "useCompilerPlugins": false,
+    "babelSetting": {
+      "ignore": [],
+      "disablePlugins": [],
+      "outputPath": ""
+    },
+    "packNpmRelationList": [],
+    "compileWorklet": false,
+    "uploadWithSourceMap": true,
+    "packNpmManually": false,
+    "minifyWXSS": true,
+    "minifyWXML": true,
+    "localPlugins": false,
+    "disableUseStrict": false,
+    "condition": false,
+    "ignoreDevUnusedFiles": false
+  },
+  "packOptions": {
+    "ignore": [
+      {
+        "type": "file",
+        "value": "project.private.config.json"
+      },
+      {
+        "value": "server",
+        "type": "folder"
+      },
+      {
+        "value": "tests",
+        "type": "folder"
+      },
+      {
+        "value": "docs",
+        "type": "folder"
+      },
+      {
+        "value": ".gitignore",
+        "type": "file"
+      },
+      {
+        "type": "folder",
+        "value": "node_modules"
+      },
+      {
+        "type": "file",
+        "value": ".env"
+      },
+      {
+        "type": "file",
+        "value": ".env.local"
+      }
+    ],
+    "include": [
+      {
+        "type": "folder",
+        "value": "pages/day-stats"
+      },
+      {
+        "type": "folder",
+        "value": "components/subject-picker"
+      },
+      {
+        "type": "folder",
+        "value": "components/subject-tree"
+      }
+    ]
+  },
+  "editorSetting": {
+    "tabIndent": "insertSpaces",
+    "tabSize": 2
+  },
+  "simulatorPluginLibVersion": {}
+}

@@ -1,0 +1,7 @@
+/* Color only: shared by both isolated TabBar implementations. */
+@import "palette.wxss";
+.tabbar { background: var(--tabbar-bg); border-color: var(--tabbar-border); }
+.tab-item { color: var(--tabbar-text); }
+.tab-on { color: var(--tabbar-active); }
+.tabbar.theme-dark .tab-text { color: var(--text-secondary); }
+.tabbar.theme-dark .tab-on { color: var(--accent-pressed); }

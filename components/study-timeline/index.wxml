@@ -1,0 +1,59 @@
+<view class="timeline-card">
+  <view class="head">
+    <view class="heading-copy"><text class="title">{{heading}}</text><text class="meta" wx:if="{{managing}}">共 {{managementRows.length}} 条计时记录</text><text class="meta" wx:elif="{{!empty}}">共 {{count}} 次 · 累计 {{totalText}}</text></view>
+    <button wx:if="{{managementRows.length || managing}}" size="mini" class="manage-button" bindtap="toggleManagement">{{managing ? '完成' : '管理'}}</button>
+  </view>
+
+  <block wx:if="{{managing}}">
+    <view class="management-hint">每条对应一次计时 · 删除后统计会更新</view>
+    <view wx:if="{{!managementRows.length}}" class="empty">这一天没有可管理的记录</view>
+    <view wx:for="{{managementRows}}" wx:key="id" class="management-row">
+      <view class="management-copy">
+        <view class="sub">{{item.project}}</view>
+        <view wx:if="{{item.path}}" class="task">{{item.path}}</view>
+        <view class="record-time">{{item.timeText}}</view>
+        <view class="record-status">{{item.durationText}}<text wx:if="{{!item.canDelete}}"> · {{item.statusText}}，结束后可删除</text></view>
+      </view>
+      <button wx:if="{{item.canDelete}}" size="mini" class="record-menu" data-id="{{item.id}}" catchtap="onRecordMenu" aria-label="管理这条记录">⋯</button>
+    </view>
+  </block>
+  <view wx:elif="{{empty}}" class="empty">{{heading === '今日学习记录' ? '今天还没有学习记录' : '这一天还没有学习记录'}}</view>
+
+  <block wx:else>
+    <view class="tl {{activeKey ? 'dim' : ''}}">
+      <view
+        wx:for="{{segments}}" wx:key="key"
+        class="seg {{activeKey === item.key ? 'on' : ''}}"
+        style="left:{{item.left}}%;width:{{item.width}}%;background:{{item.color}}"
+        data-key="{{item.key}}" bindtap="onPick" />
+    </view>
+    <view class="ax">
+      <text
+        wx:for="{{ticks}}" wx:key="label"
+        class="tick {{item.align}}"
+        style="left:{{item.left}}%">{{item.label}}</text>
+    </view>
+
+    <view
+      wx:for="{{rows}}" wx:key="key"
+      class="row {{activeKey === item.key ? 'on' : ''}}"
+      data-key="{{item.key}}" bindtap="onPick">
+      <view class="t">
+        <text class="t-main">{{item.start}}</text>
+        <text class="t-sub">–{{item.end}}</text>
+      </view>
+      <view class="mid">
+        <view class="bar" style="background:{{item.color}}" />
+        <view class="info">
+          <view class="sub">{{item.project}}<text wx:if="{{item.count}}" class="cnt">×{{item.count}}次</text></view>
+          <view class="task" wx:if="{{item.title}}">{{item.title}}</view>
+        </view>
+      </view>
+      <view class="right">
+        <text class="dur">{{item.durText}}</text>
+        <view class="mini"><view class="mini-fill" style="width:{{item.barPct}}%;background:{{item.color}}" /></view>
+      </view>
+    </view>
+  </block>
+</view>
+

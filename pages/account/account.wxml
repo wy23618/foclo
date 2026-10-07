@@ -1,0 +1,127 @@
+<page-meta page-style="{{themePageStyle}}"/>
+<view class="account-page theme-{{themeClass}}">
+  <view class="page-intro">管理账号空间、同步进度和数据恢复</view>
+
+  <view class="account-card status-card">
+    <view class="status-top">
+      <view class="status-copy">
+        <text class="eyebrow">当前空间</text>
+        <text class="account-name">{{accountLabel}}</text>
+      </view>
+      <text class="status-pill status-{{status}}">{{statusLabel}}</text>
+    </view>
+    <text wx:if="{{statusMessage}}" class="status-message">{{statusMessage}}</text>
+    <view class="status-metrics">
+      <view class="metric">
+        <text class="metric-value">{{pending}}</text>
+        <text class="metric-label">待上传</text>
+      </view>
+      <view class="metric-divider"></view>
+      <view class="metric metric-time">
+        <text class="metric-label">{{syncedAt}}</text>
+      </view>
+    </view>
+    <view class="button-row">
+      <button wx:if="{{!hasAccount}}" class="primary-button" loading="{{busy}}" disabled="{{busy}}" bindtap="onLogin">微信登录</button>
+      <button wx:if="{{hasAccount}}" class="primary-button" loading="{{busy}}" disabled="{{busy}}" bindtap="onSync">立即同步</button>
+      <button wx:if="{{hasAccount}}" class="quiet-button" loading="{{busy}}" disabled="{{busy}}" bindtap="onLogout">退出登录</button>
+    </view>
+  </view>
+
+  <view wx:if="{{hasAccount}}" class="section">
+    <text class="section-title">游客数据</text>
+    <view class="account-card section-card">
+      <view class="section-copy">
+        <text class="row-title">合并游客空间</text>
+        <text class="row-hint">登录和合并分开进行。先查看项目与记录，再选择需要合并到的项目。</text>
+      </view>
+      <button class="secondary-button" loading="{{busy}}" disabled="{{busy}}" bindtap="onPreviewMigration">预览游客数据</button>
+      <view wx:if="{{migrationPreview}}" class="migration-preview">
+        <text class="preview-summary">{{migrationSummary}}</text>
+        <text class="preview-note">同名项目请明确选择合并到哪个项目；尚未解决的名称或删除冲突会阻止合并，游客原副本仍保留。</text>
+        <view wx:for="{{mappingRows}}" wx:key="id" class="mapping-row">
+          <view class="mapping-source">
+            <text class="mapping-name">{{item.name}}</text>
+          </view>
+          <picker range="{{projectChoices}}" range-key="name" data-id="{{item.id}}" bindchange="onMappingPick"><view class="mapping-input">{{item.choiceName || '选择合并方式'}}</view></picker>
+        </view>
+        <view wx:for="{{sessionRows}}" wx:key="id" class="mapping-row"><text>{{item.label}}</text><button data-id="{{item.id}}" bindtap="onSessionChoice">{{item.decision}}</button></view>
+        <button class="primary-button migration-button" loading="{{busy}}" disabled="{{busy}}" bindtap="onCommitMigration">确认并合并</button>
+      </view>
+    </view>
+  </view>
+
+  <view wx:if="{{conflicts.length}}" class="section">
+    <text class="section-title">冲突处理 · {{conflicts.length}}</text>
+    <view wx:for="{{conflicts}}" wx:key="id" class="account-card conflict-card">
+      <view class="conflict-heading">
+        <text class="conflict-code">{{item.codeLabel}}</text>
+        <text class="conflict-date">{{item.createdLabel}}</text>
+      </view>
+      <view class="diff-block">
+        <text class="diff-title">云端版本</text>
+        <text class="diff-json">{{item.cloudText}}</text>
+      </view>
+      <view class="diff-block">
+        <text class="diff-title">本地版本</text>
+        <text class="diff-json">{{item.localText}}</text>
+      </view>
+      <button class="secondary-button" data-id="{{item.id}}" disabled="{{busy}}" bindtap="onResolve">处理此冲突</button>
+    </view>
+  </view>
+
+  <view wx:if="{{recoveryPanel}}" class="account-card recovery-panel">
+    <text class="row-title">恢复已删除内容</text>
+    <text class="row-hint">选择已有项目，或另建项目保存；原冲突资料会保留。</text>
+    <picker range="{{recoveryChoices}}" range-key="name" bindchange="onRecoveryPick"><view class="form-input">{{recoveryChoiceName}}</view></picker>
+    <input wx:if="{{!recoveryProjectId}}" class="form-input" value="{{recoveryName}}" placeholder="新项目名称" maxlength="120" bindinput="onRecoveryNameInput"/>
+    <view class="button-row">
+      <button class="quiet-button" disabled="{{busy}}" bindtap="cancelRecovery">取消</button>
+      <button class="primary-button" loading="{{busy}}" disabled="{{busy}}" bindtap="onRecoverDeleted">保存恢复副本</button>
+    </view>
+  </view>
+
+  <view class="section">
+    <text class="section-title">数据保全</text>
+    <view class="account-card section-card">
+      <view class="section-copy">
+        <text class="row-title">本机恢复副本</text>
+        <text class="row-hint">包含本机数据、待同步任务和冲突记录。可分享文件；当前环境不支持分享时会复制 JSON。</text>
+      </view>
+      <button class="secondary-button" loading="{{busy}}" disabled="{{busy}}" bindtap="onExportRecovery">导出恢复副本</button>
+      <button class="secondary-button" disabled="{{busy}}" bindtap="onExportArchived">导出历史空间副本</button>
+      <view wx:if="{{hasAccount}}" class="divider"></view>
+      <view wx:if="{{hasAccount}}" class="section-copy account-export-copy">
+        <text class="row-title">账号数据导出</text>
+        <text class="row-hint">导出当前账号空间的数据副本。</text>
+      </view>
+      <button wx:if="{{hasAccount}}" class="secondary-button" loading="{{busy}}" disabled="{{busy}}" bindtap="onExportAccount">导出账号数据</button>
+    </view>
+  </view>
+
+  <view wx:if="{{hasAccount}}" class="section">
+    <text class="section-title">空间与缓存</text>
+    <view class="account-card section-card">
+      <view class="section-copy">
+        <text class="row-title danger-title">清空账号云端数据</text>
+        <text class="row-hint">需要先导出恢复副本并经过两次确认。本机旧数据会隔离保留。</text>
+      </view>
+      <button class="danger-button" loading="{{busy}}" disabled="{{busy}}" bindtap="onClearAccount">清空账号云端数据</button>
+      <view class="divider"></view>
+      <view class="section-copy">
+        <text class="row-title">重建本机账号资料</text>
+        <text class="row-hint">无待上传内容时重新下载，旧副本保留用于恢复；不会释放旧副本占用空间。</text>
+      </view>
+      <button class="quiet-button full-button" loading="{{busy}}" disabled="{{busy || !canClearCache}}" bindtap="onClearCache">重建本机资料</button>
+    </view>
+    <view class="account-card deletion-card" bindtap="onRequestDeletion">
+      <view class="section-copy">
+        <text class="row-title">账号注销与数据删除</text>
+        <text class="row-hint">查看当前服务端处理入口状态</text>
+      </view>
+      <view class="chevron"></view>
+    </view>
+  </view>
+
+  <view class="bottom-note">切换账号不会合并或删除其他空间。请在清理前保存恢复副本。</view>
+</view>

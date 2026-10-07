@@ -1,0 +1,42 @@
+<page-meta page-style="{{draggingId || renameOpen ? 'overflow: hidden; overscroll-behavior: none;' : ''}}" />
+<view class="container manage-page theme-{{themeClass}}">
+  <view class="mg-toolbar"><view class="mg-intro">点项目看统计，长按拖动调整顺序</view><view class="mg-search-toggle" bindtap="toggleSearch"><view class="mg-search-icon"></view><text>{{searchOpen ? '收起' : '搜索'}}</text></view></view>
+  <view class="mg-tab"><segmented items="{{tabItems}}" selected="{{tab}}" bindchange="switchTab" /></view>
+  <view wx:if="{{searchOpen}}" class="mg-search-field"><view class="mg-search-icon"></view><input class="mg-search-input" value="{{searchQuery}}" focus="{{searchFocus}}" confirm-type="search" placeholder="搜索名称或上级项目" bindinput="inputSearch"/><view wx:if="{{searchQuery}}" class="mg-search-clear" bindtap="clearSearch">清除</view></view>
+  <view wx:if="{{searchQuery}}" class="mg-search-count">找到 {{visibleRows.length}} 个项目</view>
+
+  <view wx:if="{{loading}}" class="mg-loading">正在读取项目…</view>
+  <view wx:elif="{{searchQuery && !visibleRows.length}}" class="mg-no-results"><view>没有找到相关项目</view><view class="mg-no-results-hint">试试项目名称或上级名称</view></view>
+  <view wx:elif="{{!visibleRows.length}}" class="mg-empty">
+    <empty-state wx:if="{{tab === 'active'}}" icon="list" text="还没有项目" hint="回到专注页，选择项目即可新建" />
+    <empty-state wx:else icon="box" text="没有已归档项目" hint="归档的项目会显示在这里" />
+  </view>
+
+  <view wx:else class="mg-list">
+    <view wx:for="{{visibleRows}}" wx:key="projectId" class="mg-item {{item.indent === 0 ? 'mg-item-root' : ''}} {{draggingId === item.projectId ? 'mg-item-dragging' : ''}} {{draggingId && draggingId !== item.projectId ? 'mg-item-shifting' : ''}} {{sortSettling && draggingId === item.projectId ? 'mg-item-settling' : ''}} {{dropTargetId === item.projectId ? (dropAfter ? 'mg-item-drop-after' : 'mg-item-drop-before') : ''}}" style="padding-left:{{item.indent}}rpx;transform:translateY({{draggingId === item.projectId ? dragOffset : (item.sortShift || 0)}}px)" data-id="{{item.projectId}}" aria-label="长按并拖动调整同级顺序" bindtouchstart="sortTouchStart" bindlongpress="sortLongPress" bindtouchmove="sortTouchMove" bindtouchend="sortTouchEnd" bindtouchcancel="sortTouchCancel">
+      <view wx:if="{{!item.searchResult}}" class="mg-tree-toggle {{item.childCount ? '' : 'mg-tree-empty'}}" data-id="{{item.projectId}}" bindtap="toggleGroup">{{item.childCount ? (item.expanded ? '⌄' : '›') : ''}}</view>
+      <view class="mg-main" data-id="{{item.projectId}}" bindtap="goProject">
+        <view class="mg-name-line"><view class="mg-name ellipsis">{{item.name}}</view></view>
+        <view class="mg-meta ellipsis">{{item.metaText}}</view>
+      </view>
+      <view class="mg-appearance-trigger" data-id="{{item.projectId}}" bindtap="openAppearanceById" aria-label="更改颜色和简称"><view class="mg-color" style="background:{{item.displayColor}}"></view><text>外观</text></view>
+      <view class="mg-menu" data-id="{{item.projectId}}" bindtap="openActions" aria-label="更多项目操作">•••</view>
+    </view>
+  </view>
+
+</view>
+
+<view wx:if="{{renameOpen}}" class="rename-mask" bindtap="cancelRename" catchtouchmove="noop">
+  <view class="rename-sheet" catchtap="noop">
+    <view class="rename-title">重命名项目</view>
+    <view class="rename-hint">修改名称不会影响已有专注记录</view>
+    <view class="rename-input-wrap">
+      <input class="rename-input" value="{{renameValue}}" focus="{{renameFocus}}" maxlength="120" confirm-type="done" cursor-spacing="28" bindinput="inputRename" bindconfirm="saveRename" />
+      <text class="rename-count">{{renameValue.length}}/120</text>
+    </view>
+    <view class="rename-actions">
+      <button class="rename-button rename-cancel" bindtap="cancelRename">取消</button>
+      <button class="rename-button rename-save" disabled="{{!renameCanSave || renameSaving}}" bindtap="saveRename">{{renameSaving ? '保存中…' : '保存'}}</button>
+    </view>
+  </view>
+</view>

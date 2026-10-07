@@ -1,0 +1,7 @@
+{
+  "navigationBarTitleText": "专注热力图",
+  "usingComponents": {
+    "safe-nav": "/components/safe-nav/safe-nav"
+  },
+  "navigationStyle": "custom"
+}

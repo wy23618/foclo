@@ -1,0 +1,22 @@
+<view class="chart theme-{{theme}} {{compact ? 'chart-compact' : ''}}" style="visibility:{{standaloneFull ? 'hidden' : 'visible'}}">
+  <view wx:if="{{expandableCount && !singleExpand && !toolbarActions}}" class="expand-all-row">
+    <view class="expand-all-button" hover-class="expand-all-button-hover" bindtap="toggleAll">{{allExpanded ? '收起全部' : '展开全部'}}</view>
+  </view>
+  <view class="chart-viewport" style="height:{{chartHeight}}px">
+    <canvas wx:if="{{!obscured}}" type="2d" id="donut" class="render-canvas" style="width:100%;height:{{renderHeight}}px" bindtouchstart="onTouchStart" bindtouchmove="onTouchMove" bindtouchend="onTap" bindtouchcancel="onTouchCancel"></canvas>
+    <image wx:if="{{snapshotPath}}" data-path="{{snapshotPath}}" class="render-snapshot" src="{{snapshotPath}}" mode="aspectFit" style="width:100%;height:{{renderHeight}}px;visibility:{{obscured || restoringCanvas || !drawReady ? 'visible' : 'hidden'}}" bindload="onSnapshotLoad" binderror="onSnapshotError" />
+  </view>
+  <view wx:if="{{isEmpty}}" class="chart-empty-overlay theme-{{theme}}">
+    <view class="chart-empty-ring"></view>
+    <view class="chart-empty-text">该范围暂无专注记录</view>
+  </view>
+  <view wx:if="{{scrollHint}}" class="chart-hint" bindtap="openFullView">{{scrollHint}} · 点此全屏查看</view>
+  <view wx:if="{{layoutError}}" class="layout-error">{{layoutError}}</view>
+  <view wx:if="{{calloutDetails.length}}" class="chart-detail">
+    <view class="detail-name">项目明细</view>
+    <view wx:for="{{calloutDetails}}" wx:key="projectId" data-id="{{item.projectId}}" data-parent="{{item.parentId}}" data-type="{{item.type}}" bindtap="onCalloutDetailTap">{{item.name}} · {{item.globalPercent}} · {{item.time}}</view>
+  </view>
+</view>
+<view wx:if="{{fullView}}" class="full-overlay theme-{{theme}}" catchtouchmove="noop">
+  <canvas type="2d" id="donut-full" class="full-canvas" style="width:{{fullWidth}}px;height:{{fullHeight}}px" bindtouchstart="onFullTouchStart" bindtouchmove="onFullTouchMove" bindtouchend="onFullTap"></canvas>
+</view>

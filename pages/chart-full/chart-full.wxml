@@ -1,0 +1,4 @@
+<page-meta page-style="{{themePageStyle}}"/>
+<view class="full-page theme-{{theme}}">
+  <stat-donut id="fullChart" standalone-full="{{true}}" groups="{{groups}}" segments="{{segments}}" tree="{{tree}}" total-text="{{totalText}}" center-label="{{centerLabel}}" single-expand="{{singleExpand}}" theme="{{theme}}"/>
+</view>

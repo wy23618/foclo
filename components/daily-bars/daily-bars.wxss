@@ -1,0 +1,54 @@
+.bars-scroll { width: 100%; }
+
+.bars {
+  display: flex;
+  align-items: flex-end;
+  padding: 8rpx 4rpx 0;
+}
+
+.bar-col {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  width: 86rpx;
+  flex: 1 0 86rpx;
+  padding-top: 20rpx;
+}
+
+.bar-col:last-child { margin-right: 0; }
+
+.bar-top {
+  font-size: 21rpx;
+  font-weight: 600;
+  color: var(--text-secondary);
+  white-space: nowrap;
+  height: 32rpx;
+  line-height: 32rpx;
+  font-variant-numeric: tabular-nums;
+}
+
+.bar-top-zero { color: var(--text-muted); font-weight: 400; }
+
+.bar-plot {
+  height: 180rpx;
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+  width: 100%;
+}
+
+.bar-fill {
+  width: 26rpx;
+  border-radius: 12rpx 12rpx 0 0;
+  background: var(--accent);
+  min-height: 0;
+}
+
+.bar-date {
+  margin-top: 10rpx;
+  font-size: 21rpx;
+  color: var(--text-muted);
+  white-space: nowrap;
+  font-variant-numeric: tabular-nums;
+}
+.bar-col{position:relative;padding-top:36rpx}.bar-top{position:absolute;}

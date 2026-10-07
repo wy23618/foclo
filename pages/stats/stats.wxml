@@ -1,0 +1,48 @@
+<page-meta page-style="{{themePageStyle}}"/>
+<safe-nav id="safeNav" theme="{{themeClass}}" title="专注统计" hidden="{{rangeOpen || chartFull}}" bindheightchange="onNavHeightChange"/>
+<view class="container with-tabbar theme-{{themeClass}}">
+  <view class="stats-sticky-controls" style="top:{{filterTop}}px">
+    <button class="subject-entry" catchtap="openSubjects" hover-class="subject-entry-pressed"><text>全部项目</text><text>切换 ▾</text></button>
+    <view class="filter-row"><view class="flex-1"><segmented id="rangeTabs" items="{{rangeItems}}" selected="{{preset}}" bindchange="onRangeChange" /></view><view class="heat-btn" bindtap="goHeatmap"><view class="heat-grid"><view wx:for="{{[1,2,3,4,5,6,7,8,9]}}" wx:key="*this" class="hg-dot"></view></view><text class="heat-label">热力图</text></view></view>
+  </view>
+  
+  <view wx:if="{{preset === 'custom'}}" class="range-edit" bindtap="openRange">{{rangeText}} 修改 ▾</view>
+  <view wx:if="{{error}}" class="card error-card"><view>{{error}}</view><button class="btn btn-ghost btn-sm mt-sm" bindtap="refresh">重新读取</button></view>
+  <view class="card summary-card">
+    <view class="summary-head"><text class="summary-head-title">全部项目</text><text class="summary-date">{{loading ? '正在更新…' : rangeText}}</text></view>
+    <view class="summary-well"><view class="summary-kicker">累计专注</view><view class="summary-time num"><block wx:if="{{sumZero}}"><text class="summary-time-number">0</text><text class="summary-time-unit">秒</text></block><block wx:else><text wx:if="{{sumH}}" class="summary-time-number">{{sumH}}</text><text wx:if="{{sumH}}" class="summary-time-unit">小时</text><text wx:if="{{sumM}}" class="summary-time-number">{{sumM}}</text><text wx:if="{{sumM}}" class="summary-time-unit">分钟</text><text wx:if="{{!sumH && sumS}}" class="summary-time-number">{{sumS}}</text><text wx:if="{{!sumH && sumS}}" class="summary-time-unit">秒</text></block></view><view class="summary-stripe"><view wx:for="{{stackSegs}}" wx:key="projectId" class="summary-stripe-segment" style="background:{{item.color}};width:{{item.width}}%"></view></view></view>
+    <view class="summary-metrics">
+      <block wx:if="{{preset === 'today'}}">
+        <view class="summary-metric"><view class="summary-metric-label">专注次数</view><view class="summary-metric-value">{{focusCount}}<text class="summary-metric-unit">次</text></view></view>
+        <view class="summary-metric"><view class="summary-metric-label">暂停次数</view><view class="summary-metric-value">{{pauseCount}}<text class="summary-metric-unit">次</text></view></view>
+        <view class="summary-metric"><view class="summary-metric-label">平均单次</view><view class="summary-metric-value summary-metric-value-average">{{avgSessionText}}</view></view>
+      </block>
+      <block wx:else>
+        <view class="summary-metric"><view class="summary-metric-label">专注次数</view><view class="summary-metric-value">{{focusCount}}<text class="summary-metric-unit">次</text></view></view>
+        <view class="summary-metric"><view class="summary-metric-label">暂停次数</view><view class="summary-metric-value">{{pauseCount}}<text class="summary-metric-unit">次</text></view></view>
+        <view class="summary-metric"><view class="summary-metric-label">日均专注</view><view class="summary-metric-value summary-metric-value-average">{{avgDisplay}}</view></view>
+      </block>
+    </view>
+  </view>
+  <view wx:if="{{dailyGoalEnabled}}" class="card stats-goal"><view class="row-between"><view class="title-sm">今日目标</view><view class="muted small">{{dailyGoalPercent}}%</view></view><view class="goal-track"><view class="goal-fill" style="width:{{dailyGoalPercent}}%"></view></view><view class="muted small">{{dailyGoalText}} / {{dailyGoalMinutes}} 分钟</view></view>
+  <view class="card distribution-card"><view class="distribution-header"><view class="distribution-heading"><view class="title-sm">项目分布</view><text class="distribution-hint">点击图形查看项目</text></view><view class="chart-tools"><view wx:if="{{chartExpandable}}" class="chart-action" hover-class="chart-action-pressed" bindtap="toggleChartAll">{{chartAllExpanded ? '收起全部' : '展开全部'}}</view><view class="chart-action" hover-class="chart-action-pressed" bindtap="goHierarchy"><view class="fullscreen-icon"><view class="fullscreen-corner tl"></view><view class="fullscreen-corner tr"></view><view class="fullscreen-corner bl"></view><view class="fullscreen-corner br"></view></view><text>查看大图</text></view></view></view><stat-donut id="distributionChart" groups="{{chartGroups}}" segments="{{distRows}}" tree="{{chartTree}}" theme="{{themeClass}}" total-text="{{shortTotal}}" compact="{{true}}" toolbar-actions="{{true}}" obscured="{{chartObscured}}" bindexpandstate="onChartExpandState" bindselectParent="onChartSelectParent" bindselectChild="onChartSelectChild" bindfullchange="onChartFullChange" />
+  </view>
+  <project-list id="projectList" tree="{{chartTree}}" selected-id="{{selectedProjectId}}" range-key="{{preset}}:{{startDate}}:{{endDate}}" bindselect="goProject" bindfocuschange="onListFocusChange" bindclearfocus="clearProjectFocus"/>
+  <view wx:if="{{preset !== 'today'}}" class="card"><view class="title-sm">每日专注时长</view><view class="chart-hint">向左滑动查看更早日期 · 点击查看当天统计</view><daily-bars id="dailyBars" series="{{dailySeries}}" bindselect="selectDay" /></view>
+  <view class="card time-slot-card" wx:if="{{preset !== 'today'}}">
+    <view class="row-between"><view class="title-sm">专注时段分布</view><picker range="{{slotScaleOptions}}" value="{{slotScaleIndex}}" bindchange="selectSlotScale"><view class="slot-scale-picker">满格 {{slotScaleFixed ? slotScaleText : '自动'}} ▾</view></picker></view>
+    <view class="chart-hint">每柱代表 1 小时 · 按所选范围内自然日平均</view>
+    <view class="time-slot-chart">
+      <view wx:for="{{timeSlots}}" wx:key="startHour" class="time-slot-column" data-index="{{index}}" bindtap="selectTimeSlot">
+        <view class="time-slot-plot"><view class="time-slot-fill {{selectedTimeSlot === index ? 'time-slot-selected' : ''}} {{item.overScale ? 'time-slot-over' : ''}}" style="height:{{item.height}}%"></view></view>
+        <view class="time-slot-axis">{{item.axisLabel}}</view>
+      </view>
+    </view>
+    <view class="time-slot-detail" wx:if="{{selectedSlot}}">{{selectedSlot.label}} · 日均 {{selectedSlot.averageText}}{{selectedSlot.overScale ? ' · 超出满格' : ''}}</view>
+  </view>
+  <view class="day-records" wx:if="{{preset==='today'}}"><day-detail id="dayDetail" summary="{{false}}" distribution="{{false}}" date="{{selectedDate}}" controls="{{false}}" mode="{{mode}}" start="{{rangeStart}}" end="{{rangeEnd}}" binddatechange="selectDay" bindrecorddeleted="load" /></view>
+</view>
+<date-range theme="{{themeClass}}" id="dateRange" opened="{{rangeOpen}}" start="{{startDate}}" end="{{endDate}}" bindclose="closeRange" bindconfirm="confirmRange" />
+<subject-picker id="subjectPicker" opened="{{scopeOpen}}" rows="{{subjectOptions}}" theme="{{themeClass}}" bindclose="closeSubjects" bindafterclose="onSubjectsAfterClose" bindselect="chooseSubject"/>
+<heatmap-card opened="{{heatmapOpen}}" theme="{{themeClass}}" top-inset="{{filterTop}}" bindclose="closeHeatmap"/>
+<main-nav selected="{{1}}" theme="{{themeClass}}" hidden="{{rangeOpen||chartFull}}"/>

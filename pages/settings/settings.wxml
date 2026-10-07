@@ -1,0 +1,28 @@
+<page-meta page-style="{{themePageStyle}}"/>
+<safe-nav theme="{{themeClass}}" title="设置"/>
+<view class="container with-tabbar settings-home theme-{{themeClass}}">
+  <view class="settings-intro">调整你常用的专注方式</view>
+  <view wx:for="{{groups}}" wx:key="title" class="settings-group">
+    <view class="settings-group-title">{{item.title}}</view>
+    <view class="settings-card">
+      <block wx:for="{{item.items}}" wx:for-item="entry" wx:key="key">
+      <button wx:if="{{entry.key === 'feedback'}}" class="settings-entry settings-feedback" open-type="feedback" hover-class="settings-feedback-pressed">
+        <view class="settings-copy">
+          <text class="settings-name">{{entry.title}}</text>
+          <text class="settings-hint">{{entry.hint}}</text>
+        </view>
+        <view class="settings-arrow"></view>
+      </button>
+      <view wx:else class="settings-entry" data-key="{{entry.key}}" bindtap="openSection">
+        <view class="settings-copy">
+          <text class="settings-name">{{entry.title}}</text>
+          <text class="settings-hint">{{entry.hint}}</text>
+        </view>
+        <text wx:if="{{entry.value}}" class="settings-value">{{entry.value}}</text>
+        <view class="settings-arrow"></view>
+      </view>
+      </block>
+    </view>
+  </view>
+</view>
+<main-nav selected="{{2}}" theme="{{themeClass}}"/>

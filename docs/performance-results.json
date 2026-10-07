@@ -1,0 +1,35 @@
+{
+  "date": "2026-10-06",
+  "environment": {
+    "runtime": "v24.18.0",
+    "platform": "win32",
+    "measurement": "Node single-run baseline; no wx storage or frame measurement"
+  },
+  "sample": {
+    "projects": 500,
+    "sessions": 10000,
+    "pauses": 20000,
+    "totalSeconds": 15000000
+  },
+  "bytes": {
+    "backupJson": 7843479,
+    "wireImportJson": 7181777,
+    "factsAndIndexesJson": 8656347,
+    "legacyUpgradeExtraCopiesJson": 17312694
+  },
+  "timingsMs": {
+    "stringify": 42.04,
+    "parse": 25.25,
+    "fullRangeStatistics": 36.46
+  },
+  "limits": {
+    "cloudImportMaxBytes": 8388608,
+    "localBackupCommitMaxBytes": 665600,
+    "actualWxCapacity": "Read getStorageInfo.currentSize/limitSize on each device; not measured"
+  },
+  "conclusions": {
+    "requiresChunkedImport": true,
+    "wireFitsCurrentCloudImport": true,
+    "trueDeviceAcceptance": false
+  }
+}

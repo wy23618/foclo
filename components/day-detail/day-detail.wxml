@@ -1,0 +1,14 @@
+<view class="detail">
+  <view wx:if="{{summary}}" class="detail-card summary-card"><view class="heading"><view class="date-nav"><view wx:if="{{controls}}" class="arrow {{canPrev ? '' : 'disabled'}}" bindtap="prev">‹</view><picker wx:if="{{controls}}" mode="date" value="{{date}}" start="{{start}}" end="{{end || today}}" bindchange="pick"><view class="date-title">{{date}} ▾</view></picker><view wx:else class="date-title">{{date}}</view><view wx:if="{{controls}}" class="arrow {{canNext ? '' : 'disabled'}}" bindtap="next">›</view></view><view class="total">{{totalText}}</view></view><view class="caption">当天累计学习时间 · 共 {{count}} 次</view></view>
+  <view wx:if="{{distribution && distRows.length}}" class="detail-card distribution-card"><view class="section-title">科目分布</view><view wx:for="{{distRows}}" wx:key="projectId" class="distribution" data-id="{{item.projectId}}" bindtap="goProject"><view class="dot" style="background:{{item.color}}"></view><view class="name">{{item.name}}</view><view>{{item.shortText}} · {{item.pctText}}</view></view></view>
+
+  <view wx:if="{{error}}" class="detail-card records-card">
+    <view class="records-head"><view class="section-title">{{date === today ? '今日学习记录' : '当天学习记录'}}</view></view>
+    <view class="empty"><view>{{error}}</view><button bindtap="retry">重试</button></view>
+  </view>
+  <view wx:elif="{{loading && !timelineRecords.length}}" class="detail-card records-card">
+    <view class="records-head"><view class="section-title">{{date === today ? '今日学习记录' : '当天学习记录'}}</view></view>
+    <view class="empty">正在读取当天记录…</view>
+  </view>
+  <study-timeline id="recordTimeline" wx:else records="{{timelineRecords}}" color-map="{{projectColors}}" heading="{{date === today ? '今日学习记录' : '当天学习记录'}}" managing="{{recordManaging}}" bindmanagementchange="onRecordManagementChange" binddeleterecord="deleteRecord" />
+</view>

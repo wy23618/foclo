@@ -1,0 +1,29 @@
+<view wx:if="{{rootCount}}" class="project-list-card">
+  <view class="project-list-header" bindtap="toggleOpen" hover-class="project-list-pressed" aria-role="button" aria-label="{{opened ? '收起全部项目列表' : '展开全部项目列表'}}">
+    <view class="project-list-heading"><text class="project-list-title">{{title}}</text><text class="project-list-count">{{rootCount}}项</text></view>
+    <view class="project-list-action"><text>{{opened ? '收起' : '展开'}}</text><view class="project-list-chevron {{opened ? 'project-list-chevron-up' : 'project-list-chevron-down'}}"></view></view>
+  </view>
+  <view wx:if="{{focusedName}}" class="project-list-focus-toolbar">
+    <text class="project-list-focus-status">{{focusedName}}已置顶</text>
+    <text class="project-list-focus-separator">·</text>
+    <view class="project-list-focus-action" catchtap="clearFocus" aria-role="button" aria-label="取消项目选择并恢复列表">恢复排序</view>
+  </view>
+  <view wx:if="{{opened}}" class="project-list-body">
+    <view class="project-list-columns"><text class="project-list-name-column">项目名称</text><text class="project-list-time">时长</text><text class="project-list-percent">占全部</text><view class="project-list-go"></view></view>
+    <view wx:for="{{visibleRows}}" wx:key="projectId" class="project-list-row {{item.depth ? 'project-list-child' : 'project-list-parent'}} {{item.expanded ? 'project-list-expanded' : ''}} {{item.selected || item.focusedRoot ? 'project-list-selected' : ''}} {{item.focusPulse ? 'project-list-focus-pulse' : ''}}" style="{{item.expanded || item.selected || item.focusedRoot ? 'background:' + item.tint + ';' : ''}}transform:translateY({{moves[item.projectId] || 0}}px);{{moves[item.projectId] ? 'transition:none;' : ''}}" data-id="{{item.projectId}}" bindtap="toggleRow">
+      <view class="project-list-divider" style="left:{{item.depth ? item.dividerLeft : 8}}rpx"></view>
+      <block wx:for="{{item.rails}}" wx:for-item="rail" wx:key="level"><view wx:if="{{rail.visible}}" class="project-list-rail {{rail.end ? 'project-list-rail-end' : ''}}" style="left:{{rail.left}}rpx"></view></block>
+      <view wx:if="{{item.depth}}" class="project-list-branch" style="left:{{item.branchLeft}}rpx;width:{{item.branchWidth}}rpx"></view>
+      <view class="project-list-name-column" style="padding-left:{{item.indent}}rpx">
+        <view wx:if="{{item.hasChildren}}" class="project-list-toggle" data-id="{{item.projectId}}" catchtap="toggleChild" aria-role="button" aria-label="{{item.expanded ? '收起' : '展开'}}{{item.name}}的下级项目"><view class="project-list-chevron {{item.expanded ? 'project-list-chevron-down' : ''}}"></view></view>
+        <view wx:else class="project-list-toggle-placeholder"></view>
+        <view class="project-list-dot" style="background:{{item.color}}"></view>
+        <view class="project-list-copy" aria-label="{{item.rowLabel}}"><text class="project-list-name">{{item.name}}</text><text wx:if="{{item.parentName}}" class="project-list-parent-name">属于{{item.parentName}}</text></view>
+      </view>
+      <text class="project-list-time">{{item.durationText}}</text>
+      <text class="project-list-percent">{{item.percentText}}</text>
+      <view wx:if="{{!item.virtual}}" class="project-list-go project-list-view" data-id="{{item.projectId}}" catchtap="select" hover-class="project-list-pressed" aria-role="button" aria-label="查看{{item.pathText}}统计"><text>查看</text></view>
+      <view wx:else class="project-list-go"></view>
+    </view>
+  </view>
+</view>

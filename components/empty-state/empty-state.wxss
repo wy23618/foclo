@@ -1,0 +1,91 @@
+.empty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 72rpx 32rpx;
+}
+
+.empty-icon {
+  width: 128rpx;
+  height: 128rpx;
+  border-radius: 999rpx;
+  background: var(--bg-control-soft);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  position: relative;
+  margin-bottom: 28rpx;
+}
+
+.empty-text {
+  font-size: 28rpx;
+  color: var(--text-secondary);
+  font-weight: 500;
+}
+
+.empty-hint {
+  margin-top: 10rpx;
+  font-size: 24rpx;
+  color: var(--text-muted);
+  text-align: center;
+}
+
+/* ---- 时钟图标 ---- */
+.ic-clock { position: relative; width: 56rpx; height: 56rpx; }
+.ic-clock-ring {
+  position: absolute; inset: 0;
+  border: 4rpx solid var(--text-muted);
+  border-radius: 999rpx;
+}
+.ic-clock-hand {
+  position: absolute;
+  left: 50%; top: 50%;
+  width: 4rpx;
+  background: var(--text-muted);
+  border-radius: 4rpx;
+  transform-origin: 50% 100%;
+}
+.ic-clock-hand-a { height: 18rpx; margin-left: -2rpx; transform: translate(0, -100%) rotate(0deg); }
+.ic-clock-hand-b { height: 14rpx; margin-left: -2rpx; transform: translate(0, -100%) rotate(110deg); }
+
+/* ---- 列表图标 ---- */
+.ic-list { position: relative; width: 56rpx; height: 48rpx; }
+.ic-list-line, .ic-list-line-mid, .ic-list-line-low {
+  position: absolute;
+  left: 4rpx; right: 4rpx; top: 6rpx;
+  height: 6rpx;
+  border-radius: 6rpx;
+  background: var(--text-muted);
+}
+.ic-list-line-mid { top: 21rpx; width: 70%; }
+.ic-list-line-low { top: 36rpx; width: 85%; }
+
+/* ---- 箱子图标 ---- */
+.ic-box { position: relative; width: 58rpx; height: 50rpx; }
+.ic-box-body {
+  position: absolute; left: 2rpx; right: 2rpx; bottom: 0;
+  height: 36rpx;
+  border: 4rpx solid var(--text-muted);
+  border-radius: 8rpx;
+}
+.ic-box-lid {
+  position: absolute; left: 0; right: 0; top: 8rpx;
+  height: 8rpx;
+  background: var(--text-muted);
+  border-radius: 4rpx;
+}
+
+/* ---- 图表图标 ---- */
+.ic-chart {
+  display: flex; align-items: flex-end;
+  width: 58rpx; height: 50rpx;
+  gap: 8rpx;
+}
+.ic-chart-bar {
+  width: 12rpx;
+  border-radius: 6rpx 6rpx 0 0;
+  background: var(--text-muted);
+}
+.ic-chart-bar-a { height: 22rpx; }
+.ic-chart-bar-b { height: 38rpx; }
+.ic-chart-bar-c { height: 30rpx; }

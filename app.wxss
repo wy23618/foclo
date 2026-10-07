@@ -1,0 +1,253 @@
+/* app.json window 默认背景是启动 fallback，须与 --bg-page 和
+ * utils/theme.js 的 light.pageBackground 同步。JSON 不支持注释。 */
+@import "themes/palette.wxss";
+
+/* app.wxss — YoTick 全局设计系统
+ * 暖米纸底 · 森林绿主色 · 柔和白卡 · 大数字 · 圆角留白
+ * 设计令牌统一在此声明，页面/组件只消费变量，不另起配色。
+ */
+
+page {
+  /* 圆角 */
+  --r-card: 32rpx;
+  --r-card-lg: 36rpx;
+  --r-btn: 28rpx;
+  --r-pill: 999rpx;
+
+  background: var(--bg-page);
+  color: var(--text-primary);
+  font-size: 28rpx;
+  line-height: 1.5;
+  font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", "PingFang SC",
+    "Hiragino Sans GB", "Microsoft YaHei", sans-serif;
+}
+
+.theme-dark { background: var(--bg-page); color: var(--text-primary); }
+.theme-dark .setting-card,
+.theme-dark .card { background: var(--bg-card); border-color: var(--border); }
+
+/* 页面容器：统一外边距；底部为自定义 tabBar 留位（tab 页再加 .with-tabbar） */
+.container {
+  padding: 24rpx 32rpx;
+  box-sizing: border-box;
+}
+
+.with-tabbar {
+  padding-bottom: calc(168rpx + env(safe-area-inset-bottom));
+}
+
+/* ---------------- 卡片 ---------------- */
+.card {
+  background: var(--bg-card);
+  border: 1rpx solid var(--border);
+  border-radius: var(--r-card);
+  padding: 32rpx;
+  margin-bottom: 24rpx;
+  box-shadow: 0 4rpx 16rpx rgba(61, 90, 64, 0.03), 0 2rpx 4rpx rgba(30, 34, 30, 0.02);
+  box-sizing: border-box;
+}
+
+.card-soft {
+  background: var(--bg-surface-soft);
+}
+
+.card-tight { padding: 24rpx; }
+
+/* detail-card：day-detail 组件内卡片的全局别名（与 .card 同构） */
+.detail-card {
+  background: var(--bg-card);
+  border: 1rpx solid var(--border);
+  border-radius: var(--r-card);
+  padding: 32rpx;
+  margin-bottom: 24rpx;
+  box-sizing: border-box;
+}
+
+/* ---------------- 排版 ---------------- */
+.title {
+  font-size: 32rpx;
+  font-weight: 600;
+  color: var(--text-primary);
+  margin-bottom: 20rpx;
+}
+
+.title-sm {
+  font-size: 28rpx;
+  font-weight: 600;
+  color: var(--text-primary);
+}
+
+.label {
+  font-size: 24rpx;
+  font-weight: 500;
+  color: var(--text-secondary);
+}
+
+.muted { color: var(--text-secondary); }
+.faint { color: var(--text-muted); }
+.small { font-size: 24rpx; }
+.tiny { font-size: 22rpx; }
+.bold { font-weight: 600; }
+.num { font-variant-numeric: tabular-nums; }
+.ellipsis { overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
+
+/* ---------------- 布局工具 ---------------- */
+.row { display: flex; align-items: center; }
+.row-between { display: flex; align-items: center; justify-content: space-between; }
+.flex-1 { flex: 1; min-width: 0; }
+.gap-sm { gap: 12rpx; }
+.gap-md { gap: 20rpx; }
+.mt-sm { margin-top: 12rpx; }
+.mt-md { margin-top: 24rpx; }
+.mb-sm { margin-bottom: 12rpx; }
+.mb-md { margin-bottom: 24rpx; }
+.center { display: flex; align-items: center; justify-content: center; }
+
+/* ---------------- 按钮 ---------------- */
+.btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: var(--r-btn);
+  font-size: 30rpx;
+  font-weight: 600;
+  min-height: 96rpx;
+  padding: 20rpx 32rpx;
+  text-align: center;
+  border: none;
+  box-sizing: border-box;
+}
+
+.btn::after { border: none; }
+
+.btn-primary {
+  background: var(--action-primary);
+  color: var(--text-on-accent);
+  box-shadow: 0 8rpx 24rpx rgba(61, 90, 64, 0.18);
+}
+
+.btn-primary:active { background: var(--action-primary-pressed); }
+
+.btn-primary[disabled] {
+  background: var(--bg-control);
+  color: var(--text-muted);
+  box-shadow: none;
+}
+
+.btn-ghost {
+  background: var(--bg-control-soft);
+  color: var(--accent);
+}
+
+.btn-ghost:active { background: var(--bg-control); }
+
+.btn-danger {
+  background: var(--danger-bg);
+  color: var(--danger-text);
+}
+
+.btn-danger:active { background: var(--danger-bg-pressed); }
+
+.btn-block { width: 100%; }
+.btn-lg { min-height: 108rpx; font-size: 34rpx; border-radius: 32rpx; }
+.btn-sm { min-height: 72rpx; padding: 12rpx 28rpx; font-size: 26rpx; }
+
+/* ---------------- 药丸 chips（筛选/标签） ---------------- */
+.chips { display: flex; flex-wrap: wrap; gap: 16rpx; }
+
+.chip {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 14rpx 28rpx;
+  min-height: 64rpx;
+  border-radius: var(--r-pill);
+  background: var(--bg-control-soft);
+  color: var(--text-secondary);
+  font-size: 26rpx;
+  font-weight: 500;
+  box-sizing: border-box;
+}
+
+.chip-active {
+  background: var(--accent);
+  color: var(--text-on-accent);
+  font-weight: 600;
+}
+
+/* 状态/记录小标签 */
+.tag {
+  font-size: 20rpx;
+  font-weight: 500;
+  padding: 4rpx 14rpx;
+  border-radius: var(--r-pill);
+  background: var(--bg-control-soft);
+  color: var(--text-secondary);
+}
+
+.tag-live {
+  background: var(--accent-soft);
+  color: var(--accent);
+}
+
+/* 文字链接/小入口 */
+.link {
+  color: var(--accent);
+  font-size: 24rpx;
+  font-weight: 500;
+  padding: 12rpx 16rpx;
+  margin: -12rpx -8rpx;
+}
+
+/* ---------------- 表单 ---------------- */
+.input {
+  background: var(--bg-control-soft);
+  border-radius: 20rpx;
+  padding: 24rpx 28rpx;
+  font-size: 28rpx;
+  color: var(--text-primary);
+  box-sizing: border-box;
+}
+
+.input-placeholder { color: var(--text-muted); }
+
+/* ---------------- 进度槽 ---------------- */
+.track {
+  height: 16rpx;
+  background: var(--bg-control-soft);
+  border-radius: var(--r-pill);
+  overflow: hidden;
+}
+
+/* ---------------- 弹层（底部抽屉） ---------------- */
+.sheet-mask {
+  position: fixed;
+  left: 0; right: 0; top: 0; bottom: 0;
+  background: rgba(40, 42, 38, 0.35);
+  z-index: 100;
+}
+
+.sheet {
+  position: fixed;
+  left: 0; right: 0; bottom: 0;
+  background: var(--bg-surface-soft);
+  border-radius: 40rpx 40rpx 0 0;
+  padding: 32rpx 32rpx calc(32rpx + env(safe-area-inset-bottom));
+  z-index: 101;
+  box-shadow: 0 -16rpx 60rpx rgba(30, 34, 30, 0.08);
+  box-sizing: border-box;
+  max-height: 86vh;
+  overflow-y: auto;
+}
+
+.page-heading{display:flex;align-items:center;justify-content:space-between;min-height:80rpx;margin-bottom:18rpx;gap:14rpx}.heading-title{font-size:34rpx;font-weight:650;flex:1;text-align:center}.quick-back{font-size:25rpx;color:var(--accent);padding:18rpx 0;min-width:100rpx}.icon-btn{font-size:38rpx;color:var(--accent);width:88rpx;height:88rpx;display:flex;align-items:center;justify-content:center;flex-shrink:0}.card-footer{margin-top:22rpx;padding-top:24rpx;border-top:1rpx solid var(--divider);text-align:center;color:var(--accent);font-size:25rpx;min-height:60rpx}.chart-hint{font-size:22rpx;color:var(--text-secondary);margin:10rpx 0 12rpx}.error-card{color:var(--danger-text);font-size:25rpx}
+
+button.btn-block{width:100%!important;display:flex!important}.btn-block{max-width:none}
+
+.subject-entry{display:flex;justify-content:space-between;align-items:center;gap:20rpx;padding:22rpx 26rpx;background:var(--accent-soft);border:1rpx solid var(--border-accent);border-radius:24rpx;color:var(--accent);font-size:26rpx;margin:10rpx 0 18rpx}.subject-entry text:first-child{font-weight:600;flex:1;min-width:0;overflow-wrap:anywhere}
+
+button.subject-entry{position:relative;z-index:1;width:100%;box-sizing:border-box;margin:10rpx 0 18rpx;line-height:1.5;text-align:left;min-height:88rpx}button.subject-entry::after{border:none}.subject-entry-pressed{background:var(--accent-muted)}
+
+.subject-group{padding:26rpx 8rpx!important;margin-top:18rpx;border-top:2rpx solid var(--border-accent)!important;background:var(--bg-card)}.subject-group .dist-name,.subject-group .flex-1{font-size:30rpx;font-weight:650}.nested-subject{padding:20rpx 20rpx!important;border-left:4rpx solid var(--border-tree);border-top:0!important;border-bottom:1rpx solid var(--border-nested)!important;background:var(--bg-nested);border-radius:0 16rpx 16rpx 0;gap:14rpx;margin-top:4rpx}.nested-subject .dist-name,.nested-subject .flex-1{font-size:26rpx;font-weight:500}.belongs-to{display:table;margin-top:8rpx;background:var(--bg-tag);border-radius:8rpx;padding:3rpx 10rpx;font-size:20rpx;color:var(--text-tag);font-weight:400}.nested-subject .dist-secs{color:var(--text-primary)}
+
+.hierarchy-tag{display:inline-block;vertical-align:middle;padding:3rpx 12rpx;background:var(--bg-tag-muted);border-radius:18rpx;color:var(--text-tag-muted);font-size:19rpx;font-weight:400;margin-left:8rpx}

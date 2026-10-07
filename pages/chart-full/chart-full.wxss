@@ -1,0 +1,1 @@
+page,.full-page{min-height:100vh;background:var(--bg-chart-full)}

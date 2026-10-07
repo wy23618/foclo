@@ -1,0 +1,28 @@
+{
+  "pages": [
+    "pages/focus/focus",
+    "pages/stats/stats",
+    "pages/settings/settings",
+    "pages/settings-detail/settings-detail",
+    "pages/guide/guide",
+    "pages/records/records",
+    "pages/picker/picker",
+    "pages/manage/manage",
+    "pages/project-appearance/project-appearance",
+    "pages/project-stats/project-stats",
+    "pages/heatmap/heatmap",
+    "pages/day-stats/day-stats",
+    "pages/chart-full/chart-full",
+    "pages/account/account"
+  ],
+  "window": {
+    "navigationBarBackgroundColor": "#F5F7EF",
+    "navigationBarTitleText": "YoTick",
+    "navigationBarTextStyle": "black",
+    "backgroundColor": "#F5F7EF",
+    "backgroundTextStyle": "dark"
+  },
+  "style": "v2",
+  "sitemapLocation": "sitemap.json",
+  "lazyCodeLoading": "requiredComponents"
+}

@@ -1,0 +1,29 @@
+<view class="empty">
+  <view class="empty-icon">
+    <!-- 时钟 -->
+    <view wx:if="{{icon === 'clock'}}" class="ic-clock">
+      <view class="ic-clock-ring"></view>
+      <view class="ic-clock-hand ic-clock-hand-a"></view>
+      <view class="ic-clock-hand ic-clock-hand-b"></view>
+    </view>
+    <!-- 列表 -->
+    <view wx:elif="{{icon === 'list'}}" class="ic-list">
+      <view class="ic-list-line"></view>
+      <view class="ic-list-line ic-list-line-mid"></view>
+      <view class="ic-list-line ic-list-line-low"></view>
+    </view>
+    <!-- 箱子 -->
+    <view wx:elif="{{icon === 'box'}}" class="ic-box">
+      <view class="ic-box-lid"></view>
+      <view class="ic-box-body"></view>
+    </view>
+    <!-- 图表 -->
+    <view wx:else class="ic-chart">
+      <view class="ic-chart-bar ic-chart-bar-a"></view>
+      <view class="ic-chart-bar ic-chart-bar-b"></view>
+      <view class="ic-chart-bar ic-chart-bar-c"></view>
+    </view>
+  </view>
+  <view class="empty-text">{{text}}</view>
+  <view wx:if="{{hint}}" class="empty-hint">{{hint}}</view>
+</view>

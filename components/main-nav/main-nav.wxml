@@ -1,0 +1,35 @@
+<view wx:if="{{!hidden}}" class="tabbar theme-{{theme}}">
+  <view
+    wx:for="{{list}}"
+    wx:key="pagePath"
+    class="tab-item {{selected === index ? 'tab-on' : ''}}"
+    data-path="{{item.pagePath}}"
+    bindtap="switchTab"
+  >
+    <!-- 专注：秒表 -->
+    <view wx:if="{{index === 0}}" class="ic ic-timer">
+      <view class="timer-nub"></view>
+      <view class="timer-ring"></view>
+      <view class="timer-h hand-a"></view>
+      <view class="timer-h hand-b"></view>
+    </view>
+    <!-- 统计：柱图 -->
+    <view wx:elif="{{index === 1}}" class="ic ic-stats">
+      <view class="stbar stbar-a"></view>
+      <view class="stbar stbar-b"></view>
+      <view class="stbar stbar-c"></view>
+      <view class="stbar stbar-d"></view>
+    </view>
+    <!-- 设置：齿轮（纯 CSS） -->
+    <view wx:else class="ic ic-gear">
+      <view class="gear-tooth gt-0"></view>
+      <view class="gear-tooth gt-1"></view>
+      <view class="gear-tooth gt-2"></view>
+      <view class="gear-tooth gt-3"></view>
+      <view class="gear-ring"></view>
+      <view class="gear-hole"></view>
+    </view>
+    <view class="tab-text">{{item.text}}</view>
+  </view>
+</view>
+

@@ -1,0 +1,11 @@
+<view class="bars-scroll-wrap"><scroll-view scroll-x scroll-into-view="{{scrollTarget}}" scroll-with-animation="{{false}}" class="bars-scroll" enhanced show-scrollbar="{{false}}">
+  <view class="bars" style="min-width:{{plotWidth}}rpx">
+    <view wx:for="{{cols}}" wx:key="date" id="{{item.anchor}}" class="bar-col" data-date="{{item.date}}" bindtap="selectDay">
+      <view class="bar-top {{item.positive ? '' : 'bar-top-zero'}}" style="bottom:{{item.barH+42}}rpx">{{item.label}}</view>
+      <view class="bar-plot">
+        <view class="bar-fill" style="height: {{item.barH}}rpx;"></view>
+      </view>
+      <view class="bar-date">{{item.md}}</view>
+    </view>
+  </view>
+</scroll-view></view>

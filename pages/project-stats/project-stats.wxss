@@ -1,0 +1,15 @@
+@import "../stats/stats.wxss";
+
+.project-path{margin:0 2rpx 6rpx;color:var(--chart-axis);font-size:22rpx;line-height:1.5;overflow-wrap:anywhere}
+.project-tree-card{padding:24rpx 28rpx}
+
+/* 头部面包屑 */
+.project-crumb{margin:0 2rpx 6rpx;color:var(--text-muted);font-size:22rpx;line-height:1.5;overflow-wrap:anywhere}
+
+/* 导出描边按钮 */
+.export-btn{margin:8rpx 4rpx 32rpx;border:1rpx solid var(--accent);color:var(--accent);border-radius:var(--r-btn);font-size:26rpx;font-weight:600;text-align:center;padding:20rpx;min-height:88rpx;box-sizing:border-box;background:transparent}
+.project-single-source{padding:28rpx 32rpx}
+.project-chart-back{display:inline-flex;align-items:center;min-height:44rpx;margin-bottom:14rpx;color:var(--accent);font-size:23rpx;font-weight:600}
+.project-summary-title{display:flex;align-items:center;gap:12rpx;min-width:0;flex:1;}
+.project-color-dot{width:18rpx;height:18rpx;border-radius:50%;flex:none;box-shadow:0 0 0 5rpx var(--bg-control-soft);}
+.project-summary-title .summary-head-title{flex:1;}

@@ -1,0 +1,2 @@
+<page-meta page-style="{{themePageStyle}}"/>
+<view class="container theme-{{themeClass}}"></view><project-sheet id="projectSheet" theme="{{themeClass}}" opened="{{opened}}" selected="{{selected}}" bindclose="close" bindopenappearance="openAppearance" bindopenmanage="openManage" />

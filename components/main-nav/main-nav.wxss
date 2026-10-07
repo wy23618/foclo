@@ -1,0 +1,138 @@
+@import "../../themes/tabbar.wxss";
+:host { display: block; }
+.tabbar {
+  position: fixed;
+  left: 0; right: 0; bottom: 0;
+  z-index: 80;
+  display: flex;
+  box-sizing: border-box;
+  width: 100%;
+  background: var(--tabbar-bg);
+  border-top: 1rpx solid var(--border);
+  /* Keep the safe-area strip painted with the TabBar on older WeChat WebViews too. */
+  padding-bottom: constant(safe-area-inset-bottom);
+  padding-bottom: env(safe-area-inset-bottom);
+  box-shadow: 0 -4rpx 20rpx rgba(30, 34, 30, 0.04);
+  transform: translateZ(0);
+}
+
+.tabbar::after {
+  content: '';
+  position: absolute;
+  top: 100%;
+  left: 0;
+  right: 0;
+  height: constant(safe-area-inset-bottom);
+  height: env(safe-area-inset-bottom);
+  background: var(--tabbar-bg);
+  pointer-events: none;
+}
+
+
+
+.tab-item {
+  flex: 1;
+  height: 92rpx;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: flex-start;
+  box-sizing: border-box;
+  padding-top: 17rpx;
+  gap: 6rpx;
+  color: var(--text-muted);
+  font-size: 20rpx;
+}
+
+.tab-on {
+  color: var(--accent);
+  font-weight: 600;
+}
+
+.ic { position: relative; }
+
+/* ---- 秒表 ---- */
+.ic-timer { width: 44rpx; height: 44rpx; }
+
+.timer-nub {
+  position: absolute;
+  top: 0; left: 50%;
+  width: 6rpx; height: 8rpx;
+  margin-left: -3rpx;
+  background: currentColor;
+  border-radius: 4rpx;
+}
+
+.timer-ring {
+  position: absolute;
+  top: 8rpx; left: 3rpx; right: 3rpx; bottom: 0;
+  border: 3rpx solid currentColor;
+  border-radius: 999rpx;
+}
+
+.timer-h {
+  position: absolute;
+  left: 50%; top: 26rpx;
+  width: 3rpx;
+  margin-left: -1.5rpx;
+  background: currentColor;
+  border-radius: 3rpx;
+  transform-origin: 50% 100%;
+}
+
+.hand-a { height: 13rpx; transform: translate(0, -100%) rotate(0deg); }
+.hand-b { height: 10rpx; transform: translate(0, -100%) rotate(100deg); }
+
+/* ---- 设置：齿轮 ---- */
+.ic-gear {
+  width: 44rpx; height: 44rpx;
+  position: relative;
+}
+
+.gear-ring {
+  position: absolute;
+  top: 9rpx; left: 9rpx; right: 9rpx; bottom: 9rpx;
+  border: 3rpx solid currentColor;
+  border-radius: 999rpx;
+}
+
+.gear-hole {
+  position: absolute;
+  top: 17rpx; left: 17rpx; right: 17rpx; bottom: 17rpx;
+  border: 2rpx solid currentColor;
+  border-radius: 999rpx;
+}
+
+.gear-tooth {
+  position: absolute;
+  background: currentColor;
+  border-radius: 2rpx;
+}
+
+.gt-0 { left: 20rpx; top: 1rpx; width: 4rpx; height: 8rpx; }
+.gt-1 { right: 20rpx; top: 1rpx; width: 4rpx; height: 8rpx; }
+.gt-2 { left: 20rpx; bottom: 1rpx; width: 4rpx; height: 8rpx; }
+.gt-3 { right: 20rpx; bottom: 1rpx; width: 4rpx; height: 8rpx; }
+
+/* ---- 柱图 ---- */
+.ic-stats {
+  width: 44rpx; height: 40rpx;
+  display: flex;
+  align-items: flex-end;
+  gap: 5rpx;
+}
+
+.stbar {
+  flex: 1;
+  background: currentColor;
+  border-radius: 4rpx 4rpx 0 0;
+}
+
+.stbar-a { height: 45%; }
+.stbar-b { height: 82%; }
+.stbar-c { height: 62%; }
+.stbar-d { height: 95%; }
+
+.tab-text { line-height: 1.2; }
+
+.tab-item{color:var(--tabbar-text)}.tab-on{color:var(--tabbar-active)}.tabbar{box-shadow:none;border-top-color:var(--tabbar-border)}

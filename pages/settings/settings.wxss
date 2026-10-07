@@ -1,0 +1,15 @@
+.settings-home { min-height: 100vh; box-sizing: border-box; }
+.settings-intro { color: var(--text-secondary); font-size: 27rpx; margin: 22rpx 4rpx 42rpx; }
+.settings-group { margin-bottom: 30rpx; }
+.settings-group-title { color: var(--text-muted); font-size: 23rpx; font-weight: 600; margin: 0 8rpx 12rpx; }
+.settings-card { background: var(--bg-card); border: 1rpx solid var(--border); border-radius: 24rpx; padding: 0 28rpx; }
+.settings-entry { display: flex; align-items: center; min-height: 112rpx; padding: 19rpx 0; box-sizing: border-box; border-bottom: 1rpx solid var(--divider); }
+.settings-entry:last-child { border-bottom: 0; }
+.settings-card button.settings-feedback { display: flex !important; width: 100% !important; margin: 0 !important; padding: 19rpx 0 !important; background: transparent; border-radius: 0; line-height: 1.5; text-align: left; font-weight: normal; }
+.settings-feedback::after { border: 0; }
+.settings-feedback-pressed { background: var(--divider); }
+.settings-copy { flex: 1; display: flex; flex-direction: column; gap: 5rpx; }
+.settings-value { flex: none; max-width: 34%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: var(--accent); font-size: 23rpx; margin-right: 10rpx; }
+.settings-name { color: var(--text-primary); font-size: 29rpx; font-weight: 600; }
+.settings-hint { color: var(--text-muted); font-size: 22rpx; }
+.settings-arrow { width: 15rpx; height: 15rpx; border-top: 3rpx solid var(--text-muted); border-right: 3rpx solid var(--text-muted); transform: rotate(45deg); margin-right: 8rpx; opacity: .65; }

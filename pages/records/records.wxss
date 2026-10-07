@@ -1,0 +1,105 @@
+/* pages/records/records.wxss */
+
+/* 日期导航 */
+.date-nav {
+  display: flex;
+  align-items: center;
+  margin-bottom: 20rpx;
+}
+
+.date-arrow {
+  width: 72rpx;
+  height: 72rpx;
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 999rpx;
+  background: var(--bg-control-soft);
+  color: var(--accent);
+  font-size: 40rpx;
+}
+
+.date-arrow-hover { background: var(--bg-control); }
+
+.date-arrow-off {
+  color: var(--text-muted);
+  background: transparent;
+}
+
+.date-center { text-align: center; }
+
+.date-main {
+  font-size: 36rpx;
+  font-weight: 700;
+  color: var(--text-primary);
+}
+
+.date-week {
+  margin-top: 4rpx;
+  font-size: 22rpx;
+  color: var(--text-secondary);
+}
+
+.date-foot {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 12rpx;
+}
+
+.day-total {
+  font-size: 40rpx;
+  font-weight: 700;
+  color: var(--text-primary);
+}
+
+.mode-seg { width: 280rpx; }
+
+/* 记录行 */
+.rec-row {
+  padding: 22rpx 0;
+  border-bottom: 1rpx solid var(--divider);
+}
+
+.rec-row-last { border-bottom: none; }
+
+.rec-name-line { min-width: 0; max-width: 480rpx; }
+
+.rec-dot-color {
+  width: 14rpx;
+  height: 14rpx;
+  border-radius: 999rpx;
+  margin-right: 14rpx;
+  flex-shrink: 0;
+}
+
+.rec-name {
+  font-size: 28rpx;
+  font-weight: 600;
+  color: var(--text-primary);
+}
+
+.rec-dur {
+  font-size: 26rpx;
+  font-weight: 600;
+  color: var(--accent);
+  flex-shrink: 0;
+  margin-left: 16rpx;
+}
+
+.rec-sub { margin-top: 10rpx; }
+
+.rec-path { max-width: 520rpx; }
+
+.more {
+  margin-top: 16rpx;
+  text-align: center;
+  font-size: 24rpx;
+  color: var(--text-secondary);
+  padding: 16rpx;
+  border-radius: 20rpx;
+  background: var(--bg-control-soft);
+}
+
+.more-hover { background: var(--bg-control); }

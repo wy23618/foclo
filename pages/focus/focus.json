@@ -1,0 +1,16 @@
+{
+  "navigationBarTitleText": "专注",
+  "enablePullDownRefresh": false,
+  "usingComponents": {
+    "segmented": "../../components/segmented/segmented",
+    "project-sheet": "/components/project-sheet/project-sheet",
+    "focus-ring": "/components/focus-ring/focus-ring",
+    "day-detail": "/components/day-detail/day-detail",
+    "safe-nav": "/components/safe-nav/safe-nav",
+    "main-nav": "/components/main-nav/main-nav",
+    "stats-panel": "/components/stats-panel/stats-panel",
+    "settings-panel": "/components/settings-panel/settings-panel"
+  },
+  "pageOrientation": "auto",
+  "navigationStyle": "custom"
+}

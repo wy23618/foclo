@@ -1,0 +1,9 @@
+<view class="seg">
+  <view
+    wx:for="{{items}}"
+    wx:key="key"
+    class="seg-item {{selected === item.key ? 'seg-on seg-on-' + tone : ''}}"
+    data-key="{{item.key}}"
+    bindtap="onTap"
+  >{{item.label}}</view>
+</view>

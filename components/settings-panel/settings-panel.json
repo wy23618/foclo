@@ -1,0 +1,6 @@
+{
+  "component": true,
+  "usingComponents": {
+    "safe-nav": "/components/safe-nav/safe-nav"
+  }
+}

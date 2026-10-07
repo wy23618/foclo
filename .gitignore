@@ -1,0 +1,10 @@
+server/node_modules/
+server/dist/
+server/data/
+server/.env
+server/.env.*
+!server/.env.example
+*.dump
+*.log
+server/local-postgres-password.txt
+project.private.config.json

@@ -1,0 +1,64 @@
+<view wx:if="{{opened}}" class="overlay theme-{{theme}}" style="top:{{topInset}}px" catchtouchmove="noop">
+  <view class="mask" bindtap="close" catchtouchmove="noop"></view>
+  <view class="panel">
+    <view class="head"><text class="title">学习热力图</text><view class="close" bindtap="close" hover-class="pressed">关闭</view></view>
+    <view class="body">
+      <view class="scope" bindtap="openScopePicker"><text class="scope-name">{{scopeName}}</text><text>选择项目⌄</text></view>
+      <view class="month-stage">
+        <view wx:if="{{transitionFrom}}" class="month-page month-page-outgoing {{outgoingClass}}">
+          <view class="month-nav"><view class="arrow">‹</view><view class="month-label">{{transitionFrom.monthTitle}}</view><view class="arrow">›</view></view>
+          <view class="calendar">
+            <view class="week"><text wx:for="{{transitionFrom.weekHead}}" wx:key="*this">{{item}}</text></view>
+            <view class="cal-row" wx:for="{{transitionFrom.grid}}" wx:for-item="row" wx:key="index"><view class="cal-slot" wx:for="{{row}}" wx:for-item="cell" wx:key="date"><view class="cell {{cell.outside?'outside':''}} {{cell.isToday?'today':''}} {{cell.isFuture?'future':''}}" style="{{cell.heatStyle}}"><text class="day">{{cell.day}}</text><text class="duration">{{cell.outside?'':cell.shortText}}</text></view></view></view>
+          </view>
+          <view class="summary"><view><text class="label">本月累计</text><text class="value">{{transitionFrom.monthTotalText}}</text></view><view><text class="label">活跃天数</text><text class="value">{{transitionFrom.activeDays}} 天</text></view></view>
+          <view class="legend"><text>少</text><view class="heat-gradient"></view><text>多</text></view>
+        </view>
+        <view class="month-page month-page-current {{incomingClass}} {{dragAnimating?'drag-animating':''}}" style="{{dragDirection || dragAnimating ? 'transform:translateX(' + dragOffset + 'px);' : ''}}">
+          <view class="month-nav"><view class="arrow" bindtap="prevMonth">‹</view><picker class="month-picker" mode="date" fields="month" value="{{monthKey}}" end="{{currentMonth}}" bindchange="pickMonth"><view>{{monthTitle || monthKey}} ▾</view></picker><view class="arrow {{canGoNext?'':'off'}}" bindtap="nextMonth">›</view></view>
+          <view class="calendar" bindtouchstart="touchStart" bindtouchmove="touchMove" bindtouchend="touchEnd" bindtouchcancel="touchCancel">
+            <view class="week"><text wx:for="{{weekHead}}" wx:key="*this">{{item}}</text></view>
+            <view class="cal-row" wx:for="{{grid}}" wx:for-item="row" wx:key="index"><view class="cal-slot" wx:for="{{row}}" wx:for-item="cell" wx:key="date"><view class="cell {{cell.outside?'outside':''}} {{cell.isToday?'today':''}} {{cell.isFuture?'future':''}}" style="{{cell.heatStyle}}" data-cell="{{cell}}" bindtap="onCellTap"><text class="day">{{cell.day}}</text><text class="duration">{{cell.outside?'':cell.shortText}}</text></view></view></view>
+          </view>
+          <view class="summary"><view><text class="label">本月累计</text><text class="value">{{monthTotalText}}</text></view><view><text class="label">活跃天数</text><text class="value">{{activeDays}} 天</text></view></view>
+          <view class="legend"><text>少</text><view class="heat-gradient"></view><text>多</text></view>
+        </view>
+        <view wx:if="{{dragPreview && dragDirection}}" class="month-page month-page-preview {{dragAnimating?'drag-animating':''}}" style="transform:translateX({{dragPreviewOffset}}px)">
+          <view class="month-nav"><view class="arrow">‹</view><view class="month-label">{{dragPreview.monthTitle}}</view><view class="arrow">›</view></view>
+          <view class="calendar">
+            <view class="week"><text wx:for="{{dragPreview.weekHead}}" wx:key="*this">{{item}}</text></view>
+            <view class="cal-row" wx:for="{{dragPreview.grid}}" wx:for-item="row" wx:key="index"><view class="cal-slot" wx:for="{{row}}" wx:for-item="cell" wx:key="date"><view class="cell {{cell.outside?'outside':''}} {{cell.isToday?'today':''}} {{cell.isFuture?'future':''}}" style="{{cell.heatStyle}}"><text class="day">{{cell.day}}</text><text class="duration">{{cell.outside?'':cell.shortText}}</text></view></view></view>
+          </view>
+          <view class="summary"><view><text class="label">本月累计</text><text class="value">{{dragPreview.monthTotalText}}</text></view><view><text class="label">活跃天数</text><text class="value">{{dragPreview.activeDays}} 天</text></view></view>
+          <view class="legend"><text>少</text><view class="heat-gradient"></view><text>多</text></view>
+          <view wx:if="{{dragPreviewLoading}}" class="preview-loading">读取中…</view>
+        </view>
+      </view>
+      <view wx:if="{{error}}" class="message" bindtap="load">{{error}} · 点击重试</view>
+      <view wx:elif="{{loading && !grid.length}}" class="message">正在读取…</view>
+      <view class="hint">点击日期查看记录 · 左右滑动切换月份</view>
+    </view>
+  </view>
+  <view wx:if="{{scopePickerOpen}}" class="scope-picker-overlay">
+    <view class="scope-picker-mask" bindtap="closeScopePicker" catchtouchmove="noop"></view>
+    <view class="scope-dialog" catchtap="noop">
+      <view class="scope-head"><text>选择统计范围</text><view class="scope-close" bindtap="closeScopePicker">×</view></view>
+      <input class="scope-search" value="{{scopeQuery}}" bindinput="queryScopes" placeholder="搜索项目名称或路径" confirm-type="search" />
+      <view wx:if="{{!scopeQuery && recentScopes.length}}" class="recent-scopes"><text class="scope-section-label">最近选择</text><view class="recent-list"><view wx:for="{{recentScopes}}" wx:key="id" class="recent-item {{scope===item.id?'recent-selected':''}}" data-id="{{item.id}}" bindtap="selectScope">{{item.id?item.name:'全部项目'}}</view></view></view>
+      <view class="scope-section-label">{{scopeQuery?'搜索结果':'项目层级'}}</view>
+      <scroll-view scroll-y class="scope-options" enhanced show-scrollbar="{{false}}">
+        <view wx:if="{{scopeLoading}}" class="scope-empty">正在读取项目…</view>
+        <view wx:elif="{{scopeError}}" class="scope-empty" bindtap="loadScopeOptions">{{scopeError}} · 点击重试</view>
+        <block wx:else>
+        <view wx:if="{{!scopeQuery}}" class="scope-row all-scope-row" data-id="" bindtap="selectScope"><view class="scope-row-main"><text class="scope-option-name">全部项目</text><text class="scope-check" wx:if="selectedScopeId===''">✓</text></view></view>
+        <view wx:for="{{scopePickerRows}}" wx:key="id" class="scope-row {{item.archived?'scope-archived':''}}" style="padding-left:{{item.searchMatch?0:item.depth*22}}rpx">
+          <view class="scope-row-main" data-id="{{item.id}}" bindtap="selectScope"><view class="scope-project-dot"></view><view class="scope-row-copy"><text class="scope-option-name">{{item.name}}</text><text wx:if="{{scopeQuery}}" class="scope-path">{{item.path}}</text></view><text wx:if="{{selectedScopeId===item.id}}" class="scope-check">✓</text></view>
+          <view wx:if="{{!scopeQuery && item.hasChildren}}" class="scope-expand {{item.expanded?'scope-expanded':''}}" data-id="{{item.id}}" catchtap="toggleScopeBranch"><view class="scope-chevron"></view></view>
+        </view>
+        <view wx:if="{{scopeQuery && !scopePickerRows.length}}" class="scope-empty">没有找到匹配的项目</view>
+        </block>
+      </scroll-view>
+      <view class="scope-picker-footer" bindtap="closeScopePicker">完成</view>
+    </view>
+  </view>
+</view>

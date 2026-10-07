@@ -1,0 +1,14 @@
+{
+  "usingComponents": {
+    "project-list": "/components/project-list/project-list",
+    "heatmap-card": "/components/heatmap-card/heatmap-card",
+    "segmented": "../../components/segmented/segmented",
+    "daily-bars": "../../components/daily-bars/daily-bars",
+    "stat-donut": "../../components/stat-donut/stat-donut",
+    "date-range": "../../components/date-range/date-range",
+    "day-detail": "../../components/day-detail/day-detail",
+    "safe-nav": "/components/safe-nav/safe-nav",
+    "subject-picker": "/components/subject-picker/subject-picker"
+  },
+  "component": true
+}

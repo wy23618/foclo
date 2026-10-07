@@ -1,0 +1,6 @@
+<view wx:if="{{opened}}" class="mask" catchtap="close" catchtouchmove="noop"></view>
+<view wx:if="{{opened}}" class="sheet theme-{{theme}}" catchtouchmove="noop">
+  <view class="handle"></view><view class="heading">自定义时间范围</view><view class="hint">包含开始日和结束日</view>
+  <view class="dates"><picker mode="date" value="{{draftStart}}" end="{{today}}" bindchange="startChange"><view class="date"><text>开始日期</text><view>{{draftStart}}</view></view></picker><view class="dash">—</view><picker mode="date" value="{{draftEnd}}" end="{{today}}" bindchange="endChange"><view class="date"><text>结束日期</text><view>{{draftEnd}}</view></view></picker></view>
+  <view class="error">{{error}}</view><view class="buttons"><button bindtap="close">取消</button><button class="confirm" bindtap="confirm">查看统计</button></view>
+</view>
