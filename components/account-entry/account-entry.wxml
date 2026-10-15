@@ -10,6 +10,6 @@
     <view class="entry-hint">用于换设备继续使用；新记录会自动保存</view>
     <button class="entry-guest" bindtap="experience">先以游客身份体验</button>
     <view class="entry-note">游客记录只在本机。之后登录时，旧记录会先征求你的同意。</view>
-    <view class="entry-privacy" bindtap="openPrivacy">了解记录如何保存 <text>›</text></view>
+    <view class="entry-privacy" bindtap="openPrivacy">了解记录如何保存 <text class="entry-privacy-text">›</text></view>
   </view>
 </view>

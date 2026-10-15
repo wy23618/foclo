@@ -1,7 +1,7 @@
 <view wx:if="{{activated}}" class="stats-panel theme-{{themeClass}}" style="display:{{opened ? 'flex' : 'none'}}">
-<safe-nav id="safeNav" theme="{{themeClass}}" title="专注统计" hidden="{{rangeOpen || chartFull}}" bindheightchange="onNavHeightChange"/>
+<safe-nav class="stats-panel-nav" id="safeNav" theme="{{themeClass}}" title="专注统计" hidden="{{rangeOpen || chartFull}}" bindheightchange="onNavHeightChange"/>
   <view class="stats-sticky-controls">
-    <button class="subject-entry" catchtap="openSubjects" hover-class="subject-entry-pressed"><text>全部项目</text><text>切换 ▾</text></button>
+    <button class="subject-entry" catchtap="openSubjects" hover-class="subject-entry-pressed"><text class="subject-entry-label">全部项目</text><text class="subject-entry-action">切换 ▾</text></button>
     <view class="filter-row"><view class="flex-1"><segmented id="rangeTabs" items="{{rangeItems}}" selected="{{preset}}" bindchange="onRangeChange" /></view><view class="heat-btn" bindtap="goHeatmap"><view class="heat-grid"><view wx:for="{{[1,2,3,4,5,6,7,8,9]}}" wx:key="*this" class="hg-dot"></view></view><text class="heat-label">热力图</text></view></view>
   </view>
 <scroll-view class="stats-panel-scroll" scroll-y="{{true}}" scroll-top="{{panelScrollTop}}" scroll-with-animation="{{true}}" bindscroll="onPanelScroll">

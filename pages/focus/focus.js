@@ -22,6 +22,7 @@ function focusClock(sec,mode){return mode==='stopwatch'?format.pad2(Math.floor(s
 Page({
   data: {
     ready: false,
+    themeClass: 'light',
     accountSaveText: '游客记录仅存本机 · 微信登录自动保存',
     accountHasLogin: false,
     focusNavHeight: 78,

@@ -4,7 +4,7 @@
 
   <view wx:if="{{error}}" class="detail-card records-card">
     <view class="records-head"><view class="section-title">{{date === today ? '今日学习记录' : '当天学习记录'}}</view></view>
-    <view class="empty"><view>{{error}}</view><button bindtap="retry">重试</button></view>
+    <view class="empty"><view>{{error}}</view><button class="empty-action" bindtap="retry">重试</button></view>
   </view>
   <view wx:elif="{{loading && !timelineRecords.length}}" class="detail-card records-card">
     <view class="records-head"><view class="section-title">{{date === today ? '今日学习记录' : '当天学习记录'}}</view></view>

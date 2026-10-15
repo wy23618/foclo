@@ -7,7 +7,7 @@
 .settings-card { background: var(--bg-card); border: 1rpx solid var(--border); border-radius: 24rpx; padding: 0 28rpx; }
 .settings-entry { display: flex; align-items: center; min-height: 112rpx; padding: 19rpx 0; box-sizing: border-box; border-bottom: 1rpx solid var(--divider); }
 .settings-entry:last-child { border-bottom: 0; }
-.settings-card button.settings-feedback { display: flex !important; width: 100% !important; margin: 0 !important; padding: 19rpx 0 !important; background: transparent; border-radius: 0; line-height: 1.5; text-align: left; font-weight: normal; }
+.settings-card .settings-feedback { display: flex !important; width: 100% !important; margin: 0 !important; padding: 19rpx 0 !important; background: transparent; border-radius: 0; line-height: 1.5; text-align: left; font-weight: normal; }
 .settings-feedback::after { border: 0; }
 .settings-feedback-pressed { background: var(--divider); }
 .settings-copy { flex: 1; display: flex; flex-direction: column; gap: 5rpx; }
