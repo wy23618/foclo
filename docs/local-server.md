@@ -1,6 +1,8 @@
-# YoTick 本机服务器
+# Foclo 旧版本机 API/PostgreSQL 开发环境
 
-本地开发使用这台 Windows 电脑运行 YoTick API 与独立 PostgreSQL 17 数据目录，不依赖 CloudBase，也不触碰电脑上已有的 PostgreSQL 服务数据。数据库目录、随机口令和服务日志保存在 `%LOCALAPPDATA%\YoTick\LocalServer`；项目运行凭证保存在被 Git 忽略的 `server/.env`。如果 PostgreSQL 安装在其他目录，可将 `YOTICK_POSTGRES_BIN` 设为包含 `initdb.exe` 和 `pg_ctl.exe` 的 `bin` 目录。
+> 历史开发与恢复资料：当前线上 API 和数据存储使用 Cloudflare Workers 与 SQLite Durable Objects，常规部署请看 [Cloudflare 指南](CLOUDFLARE.md)。本文件只描述本地 PostgreSQL 兼容环境，不是 VPS 方案或当前线上服务入口。旧路径和 `YOTICK_` 配置名保留以读取本机现有资料。
+
+本地开发使用这台 Windows 电脑运行 Foclo API 与独立 PostgreSQL 17 数据目录，不依赖 CloudBase，也不触碰电脑上已有的 PostgreSQL 服务数据。数据库目录、随机口令和服务日志保存在 `%LOCALAPPDATA%\YoTick\LocalServer`；项目运行凭证保存在被 Git 忽略的 `server/.env`。如果 PostgreSQL 安装在其他目录，可将 `YOTICK_POSTGRES_BIN` 设为包含 `initdb.exe` 和 `pg_ctl.exe` 的 `bin` 目录。
 
 首次启动会在本机创建独立数据库集群，监听 `127.0.0.1:5433`，并以 `yotick_app`（应用）和 `yotick_migrator`（迁移）两个受限账号运行迁移。默认 API 只监听 `127.0.0.1:3000`。数据目录会在停止后保留，不要手动删除。
 

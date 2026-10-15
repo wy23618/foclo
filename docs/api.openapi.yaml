@@ -1,6 +1,6 @@
 openapi: 3.1.0
 info:
-  title: YoTick Account and Sync API
+  title: Foclo Account and Sync API
   version: 1.0.0
   description: >-
     Protocol version 1. All API routes use HTTPS in deployed environments.
@@ -24,7 +24,7 @@ paths:
       tags: [Auth]
       operationId: loginWithWechatMini
       summary: Exchange a one-time WeChat mini-program login code
-      description: The server validates the code with WeChat over HTTPS and creates or finds the YoTick user and their single account space.
+      description: The server validates the code with WeChat over HTTPS and creates or finds the Foclo user and their single account space.
       security: []
       requestBody:
         required: true
