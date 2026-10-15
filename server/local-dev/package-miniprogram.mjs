@@ -94,7 +94,7 @@ const evidence = {
   files: manifest.length, bytes: manifest.reduce((sum, file) => sum + file.bytes, 0),
   pages: app.pages.length, validatedReferences: references,
   excluded: ['server', 'tests', 'docs', '.git', 'project.private.config.json', '.env', 'node_modules', 'backups', 'database contents'],
-  scope: 'Runtime source only; no local storage or server DB was read or deleted. Development/trial phone API uses temporary ECS HTTPS with debugging; release API is unconfigured. Real trial-device acceptance remains required.',
+  scope: 'Runtime source only; no local storage or server DB was read or deleted. Development, trial and release builds use the configured Foclo Cloudflare API. Real-device account and sync acceptance remains required after the owner uploads the mini program.',
   manifest,
 };
 fs.writeFileSync(destination + '.manifest.json', JSON.stringify(evidence, null, 2) + '\n', { flag: 'wx' });
