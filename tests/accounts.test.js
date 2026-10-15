@@ -4,6 +4,7 @@ const { createMemoryAdapter } = require("../storage/adapter");
 const { createAccounts } = require("../sync/accounts");
 const { uuid } = require("../core/ids");
 const local = require("../sync/local");
+const { FOCLO_API_BASE_URL } = require("../sync/environment");
 
 test('DevTools cloud switch preserves old test cache and requires fresh cloud login', async () => {
   const previousWx=global.wx;
@@ -15,7 +16,7 @@ test('DevTools cloud switch preserves old test cache and requires fresh cloud lo
   await raw.set('yotick-global/credentials/'+ref.userId,{accessToken:'local-test'});
   global.wx={getAccountInfoSync:()=>({miniProgram:{envVersion:'develop'}}),getSystemInfoSync:()=>({platform:'devtools'})};
   let requests=0;
-  const accounts=createAccounts(raw,app,{baseUrl:'https://121.199.74.171/api/v1',transport:async()=>{requests++;return {};}});
+  const accounts=createAccounts(raw,app,{baseUrl:FOCLO_API_BASE_URL,transport:async()=>{requests++;return {};}});
   try {
     await accounts.init();
     assert.equal(accounts.getCurrent(),null);

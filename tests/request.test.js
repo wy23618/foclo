@@ -1,7 +1,7 @@
 const test=require('node:test');
 const assert=require('node:assert/strict');
 const {createRequest}=require('../sync/request');
-const {LAN_DEBUG_API_HOST,TEMP_CLOUD_DEBUG_API_HOST}=require('../sync/environment');
+const {LAN_DEBUG_API_HOST,FOCLO_API_BASE_URL}=require('../sync/environment');
 test('DevTools development login requests can reach loopback HTTP through wx.request', async () => {
   const previousWx = global.wx;
   const seen = [];
@@ -44,7 +44,7 @@ test('LAN HTTP is limited to the configured development phone address', async ()
     else global.wx = previousWx;
   }
 });
-test('API address is selected for development/trial phones and remains absent in release', () => {
+test('all mini-program environments select the migrated Cloudflare API', () => {
   const previousWx = global.wx;
   const environmentPath = require.resolve('../sync/environment');
   const configPath = require.resolve('../sync/config');
@@ -58,15 +58,15 @@ test('API address is selected for development/trial phones and remains absent in
     return require('../sync/config').apiBaseUrl;
   }
   try {
-    assert.equal(load('devtools', 'develop'), `https://${TEMP_CLOUD_DEBUG_API_HOST}/api/v1`);
-    assert.equal(load('android', 'develop'), `https://${TEMP_CLOUD_DEBUG_API_HOST}/api/v1`);
-    assert.equal(load('ios', 'develop'), `https://${TEMP_CLOUD_DEBUG_API_HOST}/api/v1`);
-    assert.equal(load('android', 'trial'), `https://${TEMP_CLOUD_DEBUG_API_HOST}/api/v1`);
-    assert.equal(load('ios', 'trial'), `https://${TEMP_CLOUD_DEBUG_API_HOST}/api/v1`);
-    assert.equal(load('devtools', 'trial'), '');
-    assert.equal(load('android', 'release'), '');
-    assert.equal(load('ios', 'release'), '');
-    assert.equal(load('android', undefined), '');
+    assert.equal(load('devtools', 'develop'), FOCLO_API_BASE_URL);
+    assert.equal(load('android', 'develop'), FOCLO_API_BASE_URL);
+    assert.equal(load('ios', 'develop'), FOCLO_API_BASE_URL);
+    assert.equal(load('android', 'trial'), FOCLO_API_BASE_URL);
+    assert.equal(load('ios', 'trial'), FOCLO_API_BASE_URL);
+    assert.equal(load('devtools', 'trial'), FOCLO_API_BASE_URL);
+    assert.equal(load('android', 'release'), FOCLO_API_BASE_URL);
+    assert.equal(load('ios', 'release'), FOCLO_API_BASE_URL);
+    assert.equal(load('android', undefined), FOCLO_API_BASE_URL);
   } finally {
     delete require.cache[environmentPath];
     delete require.cache[configPath];
@@ -104,26 +104,23 @@ test('phone LAN requests wait for debugging to be enabled; release HTTPS does no
     else global.wx = previousWx;
   }
 });
-test('phone cloud test requests wait for WeChat debugging before using the HTTPS IP endpoint', async () => {
+test('phone cloud test requests use the configured HTTPS API without temporary debugging', async () => {
   const previousWx = global.wx;
   try {
     const events = [];
     global.wx = {
       getAccountInfoSync: () => ({ miniProgram: { envVersion: 'develop' } }),
       getSystemInfoSync: () => ({ platform: 'android' }),
-      setEnableDebug: options => {
-        events.push('debug-start');
-        queueMicrotask(() => { events.push('debug-ready'); options.success(); });
-      },
+      setEnableDebug: () => { throw new Error('Production API requests must not enable debugging'); },
       request: options => {
         events.push(options.url);
         queueMicrotask(() => options.success({ statusCode: 200, data: { ok: true } }));
         return { abort() {} };
       },
     };
-    const request = createRequest({ baseUrl: `https://${TEMP_CLOUD_DEBUG_API_HOST}/api/v1` });
+    const request = createRequest({ baseUrl: FOCLO_API_BASE_URL });
     assert.deepEqual(await request('GET', '/health'), { ok: true });
-    assert.deepEqual(events, ['debug-start', 'debug-ready', `https://${TEMP_CLOUD_DEBUG_API_HOST}/api/v1/health`]);
+    assert.deepEqual(events, [FOCLO_API_BASE_URL + '/health']);
     request.cancel();
     const ordinaryEvents = [];
     global.wx.request = options => {
@@ -131,30 +128,26 @@ test('phone cloud test requests wait for WeChat debugging before using the HTTPS
       queueMicrotask(() => options.success({ statusCode: 200, data: { ok: true } }));
       return { abort() {} };
     };
-    const unrelated = createRequest({ baseUrl: `https://${TEMP_CLOUD_DEBUG_API_HOST}.example/api/v1` });
+    const unrelated = createRequest({ baseUrl: 'https://example.com/api/v1' });
     await unrelated('GET', '/health');
-    assert.deepEqual(ordinaryEvents, [`https://${TEMP_CLOUD_DEBUG_API_HOST}.example/api/v1/health`]);
+    assert.deepEqual(ordinaryEvents, ['https://example.com/api/v1/health']);
     unrelated.cancel();
   } finally {
     if (previousWx === undefined) delete global.wx;
     else global.wx = previousWx;
   }
 });
-test('trial HTTPS requests share debug preparation, authenticate, and sanitize network errors', async () => {
+test('trial HTTPS requests authenticate without enabling debug and sanitize network errors', async () => {
   const previousWx = global.wx;
   try {
     for (const platform of ['android', 'ios']) {
-      let debugCalls = 0, debugReady = false, fail = false;
+      let debugCalls = 0, fail = false;
       const seen = [];
       global.wx = {
         getAccountInfoSync: () => ({ miniProgram: { envVersion: 'trial' } }),
         getSystemInfoSync: () => ({ platform }),
-        setEnableDebug: options => {
-          debugCalls++;
-          queueMicrotask(() => { debugReady = true; options.success(); });
-        },
+        setEnableDebug: () => { debugCalls++; },
         request: options => {
-          assert.equal(debugReady, true, 'domain-dependent request must wait for debug');
           assert.equal(options.header.Authorization, 'Bearer test-token');
           seen.push(options.url);
           queueMicrotask(() => fail
@@ -163,14 +156,14 @@ test('trial HTTPS requests share debug preparation, authenticate, and sanitize n
           return { abort() {} };
         },
       };
-      const request = createRequest({ baseUrl: `https://${TEMP_CLOUD_DEBUG_API_HOST}/api/v1`, credentials: { accessToken: 'test-token' } });
+      const request = createRequest({ baseUrl: FOCLO_API_BASE_URL, credentials: { accessToken: 'test-token' } });
       await Promise.all([request('GET', '/me'), request('GET', '/sync/pull')]);
-      assert.equal(debugCalls, 1);
+      assert.equal(debugCalls, 0);
       assert.equal(seen.length, 2);
       fail = true;
       await assert.rejects(request('GET', '/me'), error => {
         assert.equal(error.code, 'NETWORK_ERROR');
-        assert.match(error.message, /右上角打开调试/);
+        assert.equal(error.message, '网络未连接或请求超时');
         assert.doesNotMatch(error.message, /secret|https:\/\//);
         return true;
       });
@@ -182,20 +175,18 @@ test('trial HTTPS requests share debug preparation, authenticate, and sanitize n
   }
 });
 
-test('trial cancellation while enabling debug never sends an authenticated request', async () => {
+test('trial cancellation before the HTTPS request never sends an authenticated request', async () => {
   const previousWx = global.wx;
-  let debug;
   try {
     global.wx = {
       getAccountInfoSync: () => ({ miniProgram: { envVersion: 'trial' } }),
       getSystemInfoSync: () => ({ platform: 'android' }),
-      setEnableDebug: options => { debug = options; },
+      setEnableDebug: () => { throw new Error('A cancelled HTTPS request must not enable debugging'); },
       request: () => { throw new Error('Cancelled trial request was sent'); },
     };
-    const request = createRequest({ baseUrl: `https://${TEMP_CLOUD_DEBUG_API_HOST}/api/v1` });
+    const request = createRequest({ baseUrl: FOCLO_API_BASE_URL });
     const pending = request('GET', '/me');
     request.cancel();
-    debug.success();
     await assert.rejects(pending, error => error.code === 'CANCELLED');
   } finally {
     if (previousWx === undefined) delete global.wx;
@@ -203,7 +194,7 @@ test('trial cancellation while enabling debug never sends an authenticated reque
   }
 });
 
-test('release and unknown environments reject explicit temporary ECS URL without enabling debug', () => {
+test('release and unknown environments accept the configured Cloudflare API without enabling debug', () => {
   const previousWx = global.wx;
   try {
     for (const envVersion of ['release', undefined]) {
@@ -212,8 +203,7 @@ test('release and unknown environments reject explicit temporary ECS URL without
         getSystemInfoSync: () => ({ platform: 'android' }),
         setEnableDebug: () => { throw new Error('Production debugging must not be enabled'); },
       };
-      assert.throws(() => createRequest({ baseUrl: `https://${TEMP_CLOUD_DEBUG_API_HOST}/api/v1` }), /正式 HTTPS/);
-      assert.doesNotThrow(() => createRequest({ baseUrl: 'https://test.invalid/api/v1' }));
+      assert.doesNotThrow(() => createRequest({ baseUrl: FOCLO_API_BASE_URL }));
     }
   } finally {
     if (previousWx === undefined) delete global.wx;

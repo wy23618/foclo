@@ -203,7 +203,7 @@ function createAccounts(
     app.globalData.guestSession = (await raw.get(GLOBAL + "auto-login")) === false;
     let savedRef = await raw.get(GLOBAL + "current");
     if (savedRef && require('./environment').isDevToolsDevelopment() &&
-        baseUrl === 'https://' + require('./environment').TEMP_CLOUD_DEBUG_API_HOST + '/api/v1' &&
+        baseUrl === require('./environment').FOCLO_API_BASE_URL &&
         savedRef.apiBaseUrl !== baseUrl) {
       // Preserve the old test cache, but never send its queued edits to cloud.
       await raw.set(GLOBAL + 'previous-local-account', savedRef);
@@ -240,7 +240,7 @@ function createAccounts(
     const ref = {
       apiBaseUrl: baseUrl,
       ...(require('./environment').isDevToolsDevelopment() &&
-          baseUrl === 'https://' + require('./environment').TEMP_CLOUD_DEBUG_API_HOST + '/api/v1'
+          baseUrl === require('./environment').FOCLO_API_BASE_URL
         ? { localEpoch:'cloud-devtools-v1' } : {}),
       userId: who.userId || who.user?.id,
       spaceId: who.spaceId || who.space?.id,

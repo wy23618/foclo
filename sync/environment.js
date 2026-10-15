@@ -1,7 +1,5 @@
 const LAN_DEBUG_API_HOST = "10.22.4.17";
-// Temporary public HTTPS endpoint for internal development/trial phone checks.
-// Release builds never select this address.
-const TEMP_CLOUD_DEBUG_API_HOST = "121.199.74.171";
+const FOCLO_API_BASE_URL = "https://api.foclo.hellovian.com/api/v1";
 
 function getMiniProgramEnvironment() {
   try {
@@ -40,7 +38,7 @@ function isPhoneCloudTesting() {
 
 module.exports = {
   LAN_DEBUG_API_HOST,
-  TEMP_CLOUD_DEBUG_API_HOST,
+  FOCLO_API_BASE_URL,
   getMiniProgramEnvironment,
   isDevToolsDevelopment,
   isPhoneDevelopment,
