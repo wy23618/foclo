@@ -1,0 +1,71 @@
+import {readdirSync,readFileSync} from 'node:fs';
+import {DatabaseSync} from 'node:sqlite';
+import {BACKUP_TABLES} from '../dist/src/backup.js';
+import test from 'node:test';
+import assert from 'node:assert/strict';
+import {randomUUID,createHash,createHmac} from 'node:crypto';
+import {Miniflare,convertV4MiniflareOptions,Response as MockResponse} from 'miniflare';
+
+test('Workers runtime: WeChat auth, durable sync, savepoint rollback, snapshots, refresh and isolation',async()=>{
+  const mf=new Miniflare(convertV4MiniflareOptions({workers:[{name:"test-worker",modules:[{type:'ESModule',path:'dist/worker/worker.js'},...readdirSync('dist/worker').filter(x=>/\.(sql|html|md)$/.test(x)&&x!=='README.md').map(x=>({type:'Text',path:'dist/worker/'+x}))],compatibilityDate:'2026-10-15',compatibilityFlags:['nodejs_compat'],durableObjects:{FOCLO_DB:{className:'FocloDatabase',useSQLite:true}},bindings:{WECHAT_APP_ID:'test-app',WECHAT_APP_SECRET:'test-secret',TOKEN_PEPPER:'t'.repeat(48),CURSOR_SECRET:'c'.repeat(48),MIGRATION_TOKEN:'m'.repeat(48)},outboundService:async req=>{
+    assert.equal(new URL(req.url).hostname,'api.weixin.qq.com');
+    return MockResponse.json({openid:'test-'+new URL(req.url).searchParams.get('js_code')});
+  }}]}));
+  try{
+    // Invoke the exported fetcher directly; all HTTP, SQL and DO logic runs in workerd.
+    const worker=await mf.getWorker();
+    const call=async(path,body,token,method=body===undefined?'GET':'POST')=>{
+      const r=await worker.fetch('https://foclo.test'+path,{method,headers:{...(body===undefined?{}:{'content-type':'application/json'}),...(token?{authorization:'Bearer '+token}:{})},...(body===undefined?{}:{body:JSON.stringify(body)})});
+      const text=await r.text();return {status:r.status,data:text?JSON.parse(text):null};
+    };
+    assert.equal((await call('/health/ready')).status,200);
+    assert.equal((await call('/api/v1/me')).status,401);
+    const source=new DatabaseSync(':memory:');source.exec(readFileSync('cloudflare/schema.sql','utf8'));
+    const importedUser=randomUUID(),importedSpace=randomUUID(),importedToken='a'.repeat(43);
+    source.prepare('INSERT INTO users(id) VALUES(?)').run(importedUser);
+    source.prepare('INSERT INTO spaces(id,user_id) VALUES(?,?)').run(importedSpace,importedUser);
+    source.prepare('INSERT INTO auth_sessions(id,user_id,space_id,family_id,access_token_hash,refresh_token_hash,access_expires_at,refresh_expires_at) VALUES(?,?,?,?,?,?,?,?)').run(randomUUID(),importedUser,importedSpace,randomUUID(),createHmac('sha256','t'.repeat(48)).update(importedToken).digest(),Buffer.from('synthetic-refresh-hash'),new Date(Date.now()+600000).toISOString(),new Date(Date.now()+1200000).toISOString());
+    const tables=BACKUP_TABLES.map(name=>{const columns=source.prepare(`PRAGMA table_info(${name})`).all().map(c=>c.name);return {name,columns,rows:source.prepare(`SELECT * FROM ${name}`).all().map(r=>columns.map(c=>r[c] instanceof Uint8Array?{base64:Buffer.from(r[c]).toString('base64')}:r[c]))};});source.close();
+    const data={format:'foclo-cloudflare-backup',version:1,appId:'test-app',tables};
+    const backup={...data,sha256:createHash('sha256').update(JSON.stringify(data)).digest('hex')};
+    assert.equal((await call('/_maintenance/restore',backup)).status,404);
+    assert.equal((await call('/_maintenance/restore',{...backup,sha256:'invalid'},'m'.repeat(48))).status,409);
+    const restored=await call('/_maintenance/restore',backup,'m'.repeat(48));assert.equal(restored.status,200,JSON.stringify(restored.data));
+    assert.equal(restored.data.counts.users,1);
+    assert.equal((await call('/api/v1/me',undefined,importedToken)).data.userId,importedUser);
+    assert.equal((await call('/_maintenance/restore',backup,'m'.repeat(48))).status,409);
+    const login=await call('/api/v1/auth/wechat-mini',{code:'first',deviceId:randomUUID()});
+    assert.equal(login.status,200,JSON.stringify(login.data));
+    const {accessToken,refreshToken,account}=login.data;
+    assert.equal((await call('/api/v1/me',undefined,accessToken)).data.spaceId,account.spaceId);
+    const project={id:randomUUID(),name:'Synthetic test project',parentId:null,archived:false,color:'#123456',shortName:'',createdAtSec:1800000000,updatedAtSec:1800000000};
+    const op={operationId:randomUUID(),kind:'project.create',entityId:project.id,payload:project};
+    const body={protocolVersion:1,...account,deviceId:randomUUID(),operations:[op]};
+    const pushed=await call('/api/v1/sync/push',body,accessToken);
+    assert.equal(pushed.status,200,JSON.stringify(pushed.data));assert.equal(pushed.data.results[0].status,'applied');
+    assert.deepEqual((await call('/api/v1/sync/push',body,accessToken)).data,pushed.data);
+    const duplicate={...project,id:randomUUID()};
+    const bad={operationId:randomUUID(),kind:'project.create',entityId:duplicate.id,payload:duplicate};
+    const conflict=await call('/api/v1/sync/push',{...body,operations:[bad]},accessToken);
+    assert.equal(conflict.data.results[0].code,'NAME_CONFLICT',JSON.stringify(conflict.data));
+    const pulled=await call('/api/v1/sync/pull?generation=1',undefined,accessToken);
+    assert.equal(pulled.data.changes.length,1);assert.equal(pulled.data.changes[0].data.name,project.name);
+    assert.equal(pulled.data.changes[0].deleted,false);
+    const snap=await call('/api/v1/sync/snapshots',{generation:'1'},accessToken);
+    assert.equal(snap.status,200,JSON.stringify(snap.data));
+    const read=await call('/api/v1/sync/snapshots/'+snap.data.id,undefined,accessToken);
+    assert.equal(read.data.changes[0].data.name,project.name);assert.equal(read.data.changes[0].serverVersion,'1');
+    const jobId=randomUUID();
+    assert.equal((await call('/api/v1/imports',{jobId,generation:'1',chunkCount:1,sourceId:'synthetic'},accessToken)).status,200);
+    assert.equal((await call(`/api/v1/imports/${jobId}/chunks/0`,{projects:[],sessions:[]},accessToken,'PUT')).status,200);
+    const preview=await call('/api/v1/imports/preview',{jobId},accessToken);assert.equal(preview.status,200,JSON.stringify(preview.data));
+    const rotations=await Promise.all([call('/api/v1/auth/refresh',{refreshToken}),call('/api/v1/auth/refresh',{refreshToken})]);
+    assert.equal(rotations[0].status,200,JSON.stringify(rotations[0].data));assert.deepEqual(rotations[0].data,rotations[1].data);
+    const second=await call('/api/v1/auth/wechat-mini',{code:'second',deviceId:randomUUID()});
+    const denied=await call('/api/v1/sync/push',body,second.data.accessToken);assert.equal(denied.data.error.code,'FORBIDDEN');
+    const token=rotations[0].data.accessToken;
+    const cleared=await call('/api/v1/data/clear',{generation:'1',operationId:randomUUID(),confirmation:'DELETE_ALL_ACCOUNT_DATA'},token);assert.equal(cleared.data.generation,'2');
+    assert.equal((await call('/api/v1/auth/logout',{},token)).status,204);
+    assert.equal((await call('/api/v1/me',undefined,token)).status,401);
+  }finally{await mf.dispose();}
+});

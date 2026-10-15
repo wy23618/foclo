@@ -12,7 +12,10 @@
     "dev": "tsx watch src/index.ts",
     "test": "tsx --test tests/*.test.ts",
     "migrate": "node dist/src/migrate.js",
-    "fulfill-deletion": "node dist/src/fulfill-deletion.js"
+    "fulfill-deletion": "node dist/src/fulfill-deletion.js",
+    "deploy": "wrangler deploy",
+    "dev:cloudflare": "wrangler dev",
+    "test:cloudflare": "wrangler deploy --dry-run --outdir dist/worker && node --test cloudflare/runtime.test.mjs"
   },
   "dependencies": {
     "fastify": "5.12.5",
@@ -23,6 +26,7 @@
     "@types/pg": "8.23.1",
     "embedded-postgres": "18.4.0-beta.17",
     "tsx": "4.23.15",
-    "typescript": "7.0.2"
+    "typescript": "7.0.2",
+    "wrangler": "4.151.0"
   }
 }

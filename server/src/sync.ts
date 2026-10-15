@@ -33,6 +33,8 @@ export async function transaction<T>(
   pool: Pool,
   fn: (db: PoolClient) => Promise<T>,
 ): Promise<T> {
+  if ("withTransaction" in pool)
+    return (pool as any).withTransaction(fn);
   const db = await pool.connect();
   try {
     await db.query("BEGIN");
@@ -478,12 +480,18 @@ export async function push(pool: Pool, who: Identity, body: any) {
     const space = await lock(db, who, body.generation),
       results = [];
     for (const op of body.operations) {
-      await db.query("SAVEPOINT operation");
       const before = { ...space };
       try {
-        results.push(await executeOperation(db, space, op, body.deviceId));
+        const execute = () => executeOperation(db, space, op, body.deviceId);
+        if ("withSavepoint" in db) {
+          results.push(await (db as any).withSavepoint(execute));
+        } else {
+          await db.query("SAVEPOINT operation");
+          results.push(await execute());
+        }
       } catch (e: any) {
-        await db.query("ROLLBACK TO SAVEPOINT operation");
+        if (!("withSavepoint" in db))
+          await db.query("ROLLBACK TO SAVEPOINT operation");
         Object.assign(space, before);
         if (
           !(e instanceof ProtocolError) &&
@@ -516,7 +524,7 @@ export async function push(pool: Pool, who: Identity, body: any) {
             [space.id, space.generation, op.operationId, digest(op), result],
           );
       }
-      await db.query("RELEASE SAVEPOINT operation");
+      if (!("withSavepoint" in db)) await db.query("RELEASE SAVEPOINT operation");
     }
     await db.query(
       "UPDATE spaces SET change_seq=$2,next_order=$3 WHERE id=$1",

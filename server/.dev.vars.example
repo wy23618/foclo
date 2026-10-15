@@ -1,0 +1,4 @@
+WECHAT_APP_ID=your-wechat-app-id
+WECHAT_APP_SECRET=your-wechat-app-secret
+TOKEN_PEPPER=replace-with-at-least-32-independent-random-characters
+CURSOR_SECRET=replace-with-a-different-random-secret-at-least-32-characters

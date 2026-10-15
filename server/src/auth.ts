@@ -97,6 +97,8 @@ async function withTransaction<T>(
   pool: Pool,
   operation: (client: PoolClient) => Promise<T>,
 ): Promise<T> {
+  if ("withTransaction" in pool)
+    return (pool as any).withTransaction(operation);
   const client = await pool.connect();
   try {
     await client.query("BEGIN");
@@ -127,7 +129,7 @@ export async function exchangeWechatCode(
     response = await fetcher(url, {
       method: "GET",
       signal: AbortSignal.timeout(5000),
-      redirect: "error",
+      redirect: "manual",
     });
   } catch {
     throw serviceUnavailable();

@@ -1,7 +1,7 @@
 {
-  "description": "YoTick 原生微信小程序（本地离线计时）",
+  "description": "Foclo 专注计时与学习统计微信小程序",
   "miniprogramRoot": "./",
-  "projectname": "YoTick-上传版",
+  "projectname": "Foclo",
   "appid": "wx6ed8386f53a1801b",
   "compileType": "miniprogram",
   "libVersion": "3.16.3",
@@ -66,6 +66,22 @@
       {
         "type": "file",
         "value": ".env.local"
+      },
+      {
+        "type": "folder",
+        "value": ".github"
+      },
+      {
+        "type": "folder",
+        "value": "scripts"
+      },
+      {
+        "type": "file",
+        "value": "README.md"
+      },
+      {
+        "type": "file",
+        "value": "SECURITY.md"
       }
     ],
     "include": [
