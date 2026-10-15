@@ -1,7 +1,7 @@
 <page-meta page-style="{{themePageStyle}}"/>
 <safe-nav theme="{{themeClass}}" title="设置"/>
 <view class="container with-tabbar settings-home theme-{{themeClass}}">
-  <view class="settings-intro">调整你常用的专注方式</view>
+  <view class="settings-intro">计时、账号和记录，都可以在这里管理。</view>
   <view wx:for="{{groups}}" wx:key="title" class="settings-group">
     <view class="settings-group-title">{{item.title}}</view>
     <view class="settings-card">

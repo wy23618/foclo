@@ -1,6 +1,6 @@
 .settings-home { min-height: 100vh; box-sizing: border-box; }
-.settings-intro { color: var(--text-secondary); font-size: 27rpx; margin: 22rpx 4rpx 42rpx; }
-.settings-group { margin-bottom: 30rpx; }
+.settings-intro { color: var(--text-secondary); font-size: 25rpx; margin: 18rpx 4rpx 32rpx; }
+.settings-group { margin-bottom: 24rpx; }
 .settings-group-title { color: var(--text-muted); font-size: 23rpx; font-weight: 600; margin: 0 8rpx 12rpx; }
 .settings-card { background: var(--bg-card); border: 1rpx solid var(--border); border-radius: 24rpx; padding: 0 28rpx; }
 .settings-entry { display: flex; align-items: center; min-height: 112rpx; padding: 19rpx 0; box-sizing: border-box; border-bottom: 1rpx solid var(--divider); }

@@ -2,7 +2,7 @@
   <view class="identity-mask"></view>
   <view class="identity-sheet">
     <text class="identity-eyebrow">YoTick · 账号资料</text>
-    <view class="identity-title">头像与昵称</view>
+    <view class="identity-title">可选的头像与昵称</view>
     <view class="identity-subtitle">按你的喜好设置，方便认出自己的账号。</view>
     <button class="identity-avatar" open-type="chooseAvatar" bindchooseavatar="onChooseAvatar">
       <image wx:if="{{avatarUrl}}" src="{{avatarUrl}}" mode="aspectFill"/>
@@ -10,7 +10,7 @@
     </button>
     <view class="avatar-hint">{{avatarUrl ? '点击更换头像' : '点击选择微信头像'}}</view>
     <input class="identity-nickname" type="nickname" value="{{nickname}}" maxlength="32" placeholder="点此选择微信昵称" bindinput="onNickname" bindblur="onNickname" bindchange="onNickname"/>
-    <view class="identity-note">头像昵称由你选择，仅作展示。记录归属由微信账号识别。</view>
+    <view class="identity-note">可选填写，不影响登录。头像昵称只保存在这台设备；记录归属仍由微信账号识别。</view>
     <button class="identity-confirm" disabled="{{!canConfirm}}" bindtap="confirm">保存资料</button>
     <button class="identity-cancel" bindtap="cancel">暂不修改</button>
   </view>

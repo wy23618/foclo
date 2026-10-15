@@ -14,6 +14,7 @@ Component({
     },
     login() { this.finish(true); },
     experience() { this.finish(false); },
+    openPrivacy() { wx.navigateTo({ url:'/pages/privacy/privacy' }); },
     finish(value) {
       const resolve = this.resolveChoice;
       this.resolveChoice = null;

@@ -92,7 +92,6 @@ Page({
     statusMessage: "",
     accountLabel: "游客体验",
     avatarUrl: '',
-    accountSuffix: '',
     profileUserId: '',
     pending: 0,
     syncedAt: "暂无同步记录",
@@ -173,7 +172,6 @@ Page({
         ? (this.data.profileUserId === account.userId ? this.data.accountLabel : '微信账号')
         : "游客体验",
       hasAccount: !!account,
-      accountSuffix:account ? account.userId.slice(-4) : '',
       avatarUrl:account && this.data.profileUserId === account.userId ? this.data.avatarUrl : '',
       pending,
       syncedAt: formatTime(status.lastSyncedAt),
@@ -263,7 +261,6 @@ Page({
     const method = this.data.loginMethods.find(item => item.id === id);
     if (!method || method.id !== 'wechat') return;
     this.setData({ busy:true });
-    wx.showLoading({ title:'正在连接微信', mask:true });
     try {
       const { loginAndImport, confirmGuestImport } = require('../../sync/login-flow');
       const result = await loginAndImport(this.accounts, async summary => {
@@ -271,13 +268,23 @@ Page({
         const agreed = await confirmGuestImport(summary);
         if (agreed) wx.showLoading({ title:'正在迁移记录', mask:true });
         return agreed;
+      }, () => new Promise(resolve => {
+        wx.showModal({
+          title:'开启账号同步？',
+          content:'微信登录使用微信账号标识识别你，不读取手机号、聊天或通讯录。登录后，项目、专注记录和账号设置会自动保存，方便你换设备继续使用。头像昵称可选。详情见「设置 > 隐私政策」。',
+          confirmText:'登录同步', cancelText:'先不用',
+          success:result => {
+            if (result.confirm) wx.showLoading({ title:'正在连接微信', mask:true });
+            resolve(!!result.confirm);
+          }, fail:() => resolve(false)
         });
+      }));
       if (result.cancelled) return;
       getApp().globalData.guestSession = false;
       await this.refresh();
     } catch (error) {
       wx.hideLoading();
-        wx.showModal({ title:error.loggedIn ? '游客记录尚未迁移' : '微信登录未完成',
+      wx.showModal({ title:error.loggedIn ? '游客记录尚未迁移' : '微信登录未完成',
         content:(error.message || '请稍后重试') + '。本机原记录仍保留。', showCancel:false });
       await this.refresh();
     } finally { wx.hideLoading(); this.setData({ busy:false }); }
@@ -293,6 +300,7 @@ Page({
     } catch (error) { wx.showToast({ title:error.message || '资料暂未保存', icon:'none' }); }
     finally { this.setData({ busy:false }); }
   },
+  openPrivacy() { wx.navigateTo({ url:'/pages/privacy/privacy' }); },
   onLogout() {
     wx.showModal({
       title: "退出登录？",
@@ -325,7 +333,6 @@ Page({
     } finally { this.setData({ busy: false }); }
   },
 
-  openDataBackup() { wx.navigateTo({ url:'/pages/settings-detail/settings-detail?section=data' }); },
 
   onRecoveryPick(e) {
     const choice = this.data.recoveryChoices[Number(e.detail.value)];

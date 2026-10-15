@@ -8,6 +8,8 @@
 .account-avatar image { width:100%; height:100%; }
 .account-identity-hint { font-size:21rpx; color:var(--text-secondary); }
 .profile-edit { text-align:right; padding:16rpx 8rpx 0; font-size:23rpx; color:var(--accent); }
+.login-privacy { display:flex; justify-content:space-between; gap:12rpx; margin:16rpx 8rpx 0; padding:12rpx 0; color:var(--text-secondary); font-size:21rpx; }
+.login-privacy text { color:var(--accent); white-space:nowrap; }
 .login-method-row { display:flex; align-items:center; justify-content:space-between; gap:20rpx; padding:26rpx 30rpx; }
 .login-method-row + .login-method-row { border-top:1rpx solid var(--divider); }
 .method-current { flex:none; color:var(--accent); font-size:23rpx; }

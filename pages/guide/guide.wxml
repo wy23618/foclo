@@ -1,14 +1,14 @@
 <page-meta page-style="{{themePageStyle}}"/>
 <view class="guide-page theme-{{themeClass}}">
   <view class="guide-hero">
-    <text class="guide-brand">YoTick · 小小入门卡</text>
-    <view class="guide-title">先专注一小会儿。</view>
-    <view class="guide-subtitle">三张卡片，就会用了。</view>
+    <text class="guide-brand">YoTick · 使用指南</text>
+    <view class="guide-title">从选择项目，到看懂记录</view>
+    <view class="guide-subtitle">按实际操作顺序，快速走完一轮。</view>
   </view>
   <swiper class="guide-deck" current="{{cardIndex}}" bindchange="onCardChange" indicator-dots indicator-color="{{indicatorColor}}" indicator-active-color="{{indicatorActiveColor}}">
     <swiper-item wx:for="{{quickSteps}}" wx:key="number">
       <view class="starter-card">
-        <view class="starter-top"><text>开始的小步骤</text><text>{{item.number}} / 03</text></view>
+        <view class="starter-top"><text>从这里开始</text><text>{{item.number}} / 03</text></view>
         <view class="starter-symbol">{{item.symbol}}</view>
         <view class="starter-preview preview-{{index}}">{{item.preview}}</view>
         <view class="starter-title">{{item.title}}</view>
@@ -16,8 +16,8 @@
       </view>
     </swiper-item>
   </swiper>
-  <button class="guide-start" bindtap="startFocus">去专注一下 →</button>
-  <view class="tips-label">用到时，再看一眼</view>
+  <button class="guide-start" bindtap="startFocus">开始一轮专注 <text>→</text></button>
+  <view class="tips-label">遇到具体情况，再展开查看</view>
   <view class="guide-tips">
     <view wx:for="{{chapters}}" wx:key="id" id="guide-{{item.id}}" class="tip-card">
       <view class="tip-heading" data-id="{{item.id}}" bindtap="toggleChapter"><text class="tip-symbol">{{item.symbol}}</text><text class="tip-title">{{item.title}}</text><text class="tip-expand">{{opened[item.id] ? '−' : '+'}}</text></view>

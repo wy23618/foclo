@@ -141,7 +141,6 @@ Page({
   async loginWechat(initial = false) {
     if (this.loggingIn) return;
     this.loggingIn = true;
-    wx.showLoading({ title:'正在连接微信', mask:true });
     try {
       const { loginAndImport, confirmGuestImport } = require('../../sync/login-flow');
       const result = await loginAndImport(app.globalData.accounts, async summary => {
@@ -151,11 +150,11 @@ Page({
         return agreed;
       }, async () => {
         wx.hideLoading();
-          const entry = this.selectComponent('#accountEntry');
-          if (!entry) throw new Error('登录入口暂不可用');
-          const agreed = await entry.request();
-          if (agreed) wx.showLoading({ title:'正在连接微信', mask:true });
-          return agreed;
+        const entry = this.selectComponent('#accountEntry');
+        if (!entry) throw new Error('登录入口暂不可用');
+        const agreed = await entry.request();
+        if (agreed) wx.showLoading({ title:'正在连接微信', mask:true });
+        return agreed;
       });
       if (result.cancelled) return;
       app.globalData.guestSession = false;

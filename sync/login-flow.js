@@ -24,10 +24,13 @@ async function importGuestWithConfirmation(accounts, confirmImport, explicit = f
   }
 }
 function confirmGuestImport(summary) {
+  const contents = [];
+  if (summary.projectCount) contents.push(summary.projectCount + ' 个项目');
+  if (summary.sessionCount) contents.push(summary.sessionCount + ' 条专注记录');
+  const scope = contents.length ? contents.join('、') : '本机游客记录';
   return new Promise((resolve, reject) => wx.showModal({
     title: "保存之前的记录？",
-    content: "有 " + (summary.sessionCount ? summary.sessionCount + " 条专注记录" : summary.projectCount + " 个项目") +
-      "尚未保存到账号，要一起保存吗？",
+    content: "本机有 " + scope + " 尚未保存到账号。确认后会导入当前微信账号；已保存或已删除的内容会跳过，游客原记录仍保留。要一起保存吗？",
     confirmText: "一起保存",
     cancelText: "暂不保存",
     success: (result) => resolve(!!result.confirm),

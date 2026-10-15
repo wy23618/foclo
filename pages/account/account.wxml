@@ -2,7 +2,7 @@
 <account-identity id="accountIdentity" theme="{{themeClass}}"/>
 <view class="account-page theme-{{themeClass}}">
   <block wx:if="{{!toolsOnly}}">
-  <view class="page-intro">登录后自动保存，同一个微信换手机也能查看</view>
+  <view class="page-intro">不登录也能记录。登录后，记录可保存到账号并在其他设备继续使用。</view>
 
   <view class="account-card status-card">
     <view class="status-top">
@@ -13,7 +13,7 @@
       <view class="status-copy">
         <text class="eyebrow">当前账号</text>
         <text class="account-name">{{accountLabel}}</text>
-        <text wx:if="{{hasAccount}}" class="account-identity-hint">微信账号 · {{accountSuffix}}</text>
+      <text wx:if="{{hasAccount}}" class="account-identity-hint">已关联当前微信</text>
       </view>
       <text class="status-pill status-{{status}}">{{statusLabel}}</text>
     </view>
@@ -30,10 +30,10 @@
       <button class="quiet-button" disabled="{{busy}}" bindtap="onLogout">退出登录</button>
     </view>
   </view>
-  <view wx:if="{{hasAccount}}" class="profile-edit" bindtap="onEditProfile">{{avatarUrl ? '修改头像与昵称' : '选择微信头像与昵称'}}</view>
+  <view wx:if="{{hasAccount}}" class="profile-edit" bindtap="onEditProfile">{{avatarUrl ? '修改头像与昵称（可选）' : '设置头像与昵称（可选）'}}</view>
 
   <view wx:if="{{!hasAccount}}" class="section">
-    <text class="section-title">登录</text>
+    <text class="section-title">跨设备保存</text>
     <view class="account-card login-methods">
       <view wx:for="{{loginMethods}}" wx:key="id" class="login-method-row">
         <view class="section-copy"><text class="row-title">{{item.name}}</text><text class="row-hint">{{item.description}}</text></view>
@@ -41,6 +41,7 @@
         <button wx:else class="method-login" disabled="{{busy}}" data-method="{{item.id}}" bindtap="onLogin">登录</button>
       </view>
     </view>
+    <view class="login-privacy" bindtap="openPrivacy">登录和同步会用到哪些数据？<text>查看隐私说明 ›</text></view>
   </view>
 
   <view wx:if="{{hasAccount && hasGuestData}}" class="section">
@@ -85,7 +86,6 @@
     </view>
   </view>
 
-  <view class="account-card deletion-card" bindtap="openDataBackup"><view class="section-copy"><text class="row-title">数据与备份</text><text class="row-hint">备份文件、恢复记录</text></view><view class="chevron"></view></view>
   </block>
   <block wx:if="{{toolsOnly}}">
     <view class="page-intro">日常记录会自动保存，无需在这里操作。</view>

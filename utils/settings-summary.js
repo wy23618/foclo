@@ -1,15 +1,19 @@
 const GROUPS = [
-  { title: '使用习惯', items: [
+  { title: '专注设置', items: [
     { key: 'projects', title: '管理项目', hint: '名称、分类、颜色与简称' },
     { key: 'focus', title: '专注与休息', hint: '计时时长、休息安排' },
-    { key: 'display', title: '外观与屏幕', hint: '主题、屏幕常亮' },
     { key: 'stats', title: '目标与统计', hint: '每日目标、统计范围' }
   ] },
-  { title: '更多', items: [
-    { key: 'account', title: '账号与登录', hint: '登录方式、退出与自动保存' },
-    { key: 'privacy', title: '隐私与数据', hint: '记录去向、导出和注销说明' },
-    { key: 'data', title: '数据与备份', hint: '保存备份、找回记录' },
-    { key: 'guide', title: '入门小卡', hint: '三张卡片，轻松上手' },
+  { title: '界面偏好', items: [
+    { key: 'display', title: '外观与屏幕', hint: '主题、屏幕常亮' }
+  ] },
+  { title: '账号与数据', items: [
+    { key: 'account', title: '账号与同步', hint: '可选登录，跨设备保存记录' },
+    { key: 'data', title: '数据与备份', hint: '备份、恢复与数据管理' },
+    { key: 'privacy', title: '隐私政策', hint: '数据用途、同步范围和管理方式' }
+  ] },
+  { title: '帮助', items: [
+    { key: 'guide', title: '使用指南', hint: '项目、计时与统计，按步骤说明' },
     { key: 'feedback', title: '反馈与建议', hint: '哪里不好用，或希望增加什么功能' },
     { key: 'help', title: '帮助与关于', hint: '使用说明、版本信息' }
   ] }

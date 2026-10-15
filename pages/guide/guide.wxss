@@ -1,17 +1,19 @@
 .guide-page { min-height:100vh; padding:32rpx 30rpx calc(36rpx + env(safe-area-inset-bottom)); box-sizing:border-box; background:var(--bg-page); color:var(--text-primary); }
 .guide-hero { padding:12rpx 6rpx 24rpx; }
 .guide-brand { color:var(--accent); font-size:23rpx; }
-.guide-title { font-size:43rpx; font-weight:700; margin-top:18rpx; }
+.guide-title { font-size:39rpx; line-height:1.35; font-weight:700; margin-top:18rpx; }
 .guide-subtitle { color:var(--text-secondary); font-size:25rpx; margin-top:12rpx; }
 .guide-deck { height:500rpx; }
-.starter-card { margin:0 4rpx; padding:28rpx 30rpx; box-sizing:border-box; height:452rpx; border:1rpx solid var(--border); border-radius:30rpx; background:var(--bg-card); }
+.starter-card { position:relative; overflow:hidden; margin:0 4rpx; padding:28rpx 30rpx; box-sizing:border-box; height:452rpx; border:1rpx solid var(--border); border-radius:30rpx; background:var(--bg-card); box-shadow:0 12rpx 32rpx rgba(44,65,40,.06); }
+.starter-card::after { content:''; position:absolute; z-index:0; top:-108rpx; right:-72rpx; width:240rpx; height:240rpx; border-radius:50%; background:var(--accent-soft); opacity:.55; }
+.starter-card > view { position:relative; z-index:1; }
 .starter-top { display:flex; justify-content:space-between; color:var(--text-secondary); font-size:21rpx; }
 .starter-symbol { color:var(--accent); font-size:64rpx; text-align:center; line-height:1.2; margin:18rpx 0 10rpx; }
 .starter-preview { border-radius:18rpx; background:var(--bg-control-soft); color:var(--accent); width:fit-content; max-width:100%; margin:0 auto 24rpx; padding:12rpx 24rpx; font-size:26rpx; }
 .preview-1 { font-size:40rpx; font-weight:600; letter-spacing:3rpx; font-variant-numeric:tabular-nums; padding:4rpx 24rpx; }
 .starter-title { font-size:31rpx; font-weight:600; margin-bottom:12rpx; }
 .starter-text { font-size:25rpx; color:var(--text-secondary); line-height:1.65; }
-.guide-start { background:var(--action-primary); color:var(--text-on-accent); border-radius:20rpx; font-size:28rpx; line-height:1.5; padding:22rpx; margin:6rpx 4rpx 30rpx; }
+.guide-start { display:flex; align-items:center; justify-content:center; gap:12rpx; background:var(--action-primary); color:var(--text-on-accent); border-radius:20rpx; font-size:28rpx; line-height:1.5; padding:22rpx; margin:6rpx 4rpx 30rpx; }
 .guide-start::after { border:0; }
 .tips-label { font-size:23rpx; color:var(--text-secondary); margin:0 6rpx 14rpx; }
 .guide-tips { border:1rpx solid var(--border); border-radius:24rpx; background:var(--bg-card); overflow:hidden; }
