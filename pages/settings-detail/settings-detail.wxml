@@ -54,7 +54,7 @@
     <view class="data-note">{{hasAccount ? '当前使用微信账号记录。更改先存在这台设备，联网后自动保存到账号。' : '当前使用游客记录，仅保存在这台设备。登录后可选择保存到账号。'}}</view>
     <view class="setting-card detail-card">
       <view class="setting-row" data-row="备份本机数据" bindtap="onRow"><view class="row-copy"><text class="row-title">保存一份备份</text><text class="row-summary">{{hasAccount ? '备份当前账号在这台设备上的项目和记录' : '备份这台设备的游客项目和记录'}}</text></view><view class="chevron"></view></view>
-      <view class="setting-row" data-row="从备份恢复" bindtap="onRow"><view class="row-copy"><text class="row-title">从备份找回记录</text><text class="row-summary">选择以前保存的 YoTick 备份文件</text></view><view class="chevron"></view></view>
+      <view class="setting-row" data-row="从备份恢复" bindtap="onRow"><view class="row-copy"><text class="row-title">从备份找回记录</text><text class="row-summary">选择以前保存的 Foclo 备份文件</text></view><view class="chevron"></view></view>
     </view>
     <view class="detail-group-title" bindtap="toggleMoreData">其他操作 {{moreDataOpen ? '−' : '+'}}</view>
     <block wx:if="{{moreDataOpen}}">
@@ -70,7 +70,7 @@
     <view class="setting-card detail-card">
       <view class="setting-row" data-row="使用帮助" bindtap="onRow"><view class="row-copy"><text class="row-title">使用指南</text><text class="row-summary">专注、项目、统计与数据保存</text></view><view class="chevron"></view></view>
       <view class="setting-row" data-row="复制反馈信息" bindtap="onRow"><view class="row-copy"><text class="row-title">复制反馈信息</text><text class="row-summary">设备和版本信息，不含项目与专注记录</text></view><view class="chevron"></view></view>
-      <view class="setting-row" data-row="关于 YoTick" bindtap="onRow"><view class="row-copy"><text class="row-title">关于 YoTick</text><text class="row-summary">版本 {{appVersion || '以当前构建为准'}} · 本机数据说明</text></view><view class="chevron"></view></view>
+      <view class="setting-row" data-row="关于 Foclo" bindtap="onRow"><view class="row-copy"><text class="row-title">关于 Foclo</text><text class="row-summary">版本 {{appVersion || '以当前构建为准'}} · 本机数据说明</text></view><view class="chevron"></view></view>
     </view>
   </view>
 </view>

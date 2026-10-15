@@ -2,11 +2,11 @@ param([string]$OutputPath)
 $ErrorActionPreference = 'Stop'
 $serverRoot = [IO.Path]::GetFullPath((Join-Path $PSScriptRoot '..'))
 if (-not $OutputPath) {
-  $OutputPath = Join-Path $serverRoot ('delivery\YoTick-backend-' + (Get-Date -Format 'yyyyMMdd-HHmmss') + '.zip')
+  $OutputPath = Join-Path $serverRoot ('delivery\Foclo-backend-' + (Get-Date -Format 'yyyyMMdd-HHmmss') + '.zip')
 }
 $OutputPath = [IO.Path]::GetFullPath($OutputPath)
 if (Test-Path -LiteralPath $OutputPath) { throw 'Output already exists; choose a new filename.' }
-$stageRoot = Join-Path $env:TEMP ('YoTick-bundle-' + [guid]::NewGuid().ToString('N'))
+$stageRoot = Join-Path $env:TEMP ('Foclo-bundle-' + [guid]::NewGuid().ToString('N'))
 New-Item -ItemType Directory -Path $stageRoot | Out-Null
 # Explicit allowlist: credentials, live data, tests and dependencies never copied.
 foreach ($name in @('package.json','package-lock.json','.env.example','.dockerignore','Dockerfile','tsconfig.json','src','migrations','deploy')) {
@@ -26,7 +26,7 @@ foreach ($name in @('deployment.md','backup-recovery.md','database-design.md','a
   Copy-Item -LiteralPath (Join-Path $docsRoot $name) -Destination (Join-Path (Join-Path $stageRoot 'docs') $name)
 }
 @'
-# YoTick backend delivery
+# Foclo backend delivery
 
 Requires Node.js 24 and a separately configured PostgreSQL database.
 Run npm ci --omit=dev to install locked runtime dependencies.

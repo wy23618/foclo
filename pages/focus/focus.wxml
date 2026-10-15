@@ -1,6 +1,6 @@
 <page-meta page-style="{{themePageStyle}}"/>
 <account-entry id="accountEntry" theme="{{themeClass}}" bindvisibilitychange="onIdentityVisibility"/>
-<safe-nav id="safeNav" theme="{{themeClass}}" brand="{{true}}" title="YoTick" bindheightchange="onFocusNavHeight" hidden="{{activeTab!==0||customOpen||todayOpen||immersive||screenLocked}}"/>
+<safe-nav id="safeNav" theme="{{themeClass}}" brand="{{true}}" title="Foclo" bindheightchange="onFocusNavHeight" hidden="{{activeTab!==0||customOpen||todayOpen||immersive||screenLocked}}"/>
 <!-- 主视图 -->
 <view hidden="{{identityOpen}}" class="container with-tabbar focus-layout {{cur && cur.state==='IDLE'?'focus-layout-idle':'focus-layout-running'}} {{activeTab!==0?'focus-layout-hidden':''}} theme-{{themeClass}}" style="min-height:calc(100vh - {{focusNavHeight}}px)">
   <view wx:if="{{blocked}}" class="card">
@@ -106,7 +106,7 @@
   <view class="guide-welcome-mask"></view>
   <scroll-view scroll-y class="guide-welcome-card">
     <view class="guide-welcome-symbol"><view class="guide-welcome-clock-hand"></view></view>
-    <view class="guide-welcome-title">欢迎使用 YoTick</view>
+    <view class="guide-welcome-title">欢迎使用 Foclo</view>
     <view class="guide-welcome-subtitle">三张小卡，轻松上手。</view>
     <swiper class="welcome-deck" current="{{welcomeStep}}" bindchange="onWelcomeCardChange">
       <swiper-item wx:for="{{welcomeCards}}" wx:key="number"><view class="welcome-mini-card"><text class="welcome-card-symbol">{{item.symbol}}</text><text class="welcome-card-title">{{item.title}}</text><text class="welcome-card-copy">{{item.text}}</text></view></swiper-item>

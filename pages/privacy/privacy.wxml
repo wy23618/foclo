@@ -1,7 +1,7 @@
 <page-meta page-style="{{themePageStyle}}"/>
 <view class="privacy-page theme-{{themeClass}}">
   <view class="privacy-hero">
-    <view class="privacy-eyebrow">YoTick · 隐私说明</view>
+    <view class="privacy-eyebrow">Foclo · 隐私说明</view>
     <view class="privacy-title">记录是为了你自己使用</view>
     <view class="privacy-intro">登录同步的目的，是让你换设备后还能接着使用自己的项目和专注记录。游客可以只在本机使用。</view>
   </view>

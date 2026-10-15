@@ -15,7 +15,7 @@ const SECTIONS = {
   display: { title: '外观与屏幕', rows: ['外观主题', '屏幕常亮', '极简模式与锁定'] },
   stats: { title: '目标与统计', rows: ['统计默认范围', '显示今日目标', '时段图满格', '每周起始日'] },
   data: { title: '数据与备份', rows: ['项目管理', '恢复默认设置'] },
-  help: { title: '帮助与关于', rows: ['使用帮助', '关于 YoTick'] }
+  help: { title: '帮助与关于', rows: ['使用帮助', '关于 Foclo'] }
 };
 Page({
   data: { loading: true, moreDataOpen: false, page: 'focus', title: '专注与休息', prefs: DEFAULTS, lightThemes: LIGHT_THEMES, minuteOptions: [], commonIndexes: [14,29,44,59], defaultMinuteIndex: 29, shortOptions: [], longOptions: [], cycleOptions: [], slotScaleOptions:SCALE_LABELS, slotScaleIndex:0 },
@@ -110,7 +110,7 @@ Page({
     if (row === '显示今日目标') return this.save({ dailyGoalEnabled: !this.data.prefs.dailyGoalEnabled });
     if (row === '每周起始日') return this.choose('weekStartsSunday', ['周一', '周日'], [false, true]);
     if (row === '使用帮助') return wx.navigateTo({ url: '/pages/guide/guide' });
-    if (row === '关于 YoTick') return wx.showModal({ title: 'YoTick', content: '专注计时与本地统计工具\n版本：' + (this.data.appVersion || '以当前构建为准') + '\n专注与记录会先保存在本机。当前开发版的同步服务只供同一台电脑上的开发者工具连接。', showCancel: false });
+    if (row === '关于 Foclo') return wx.showModal({ title: 'Foclo', content: '专注计时与本地统计工具\n版本：' + (this.data.appVersion || '以当前构建为准') + '\n专注与记录会先保存在本机。当前开发版的同步服务只供同一台电脑上的开发者工具连接。', showCancel: false });
   },
   selectTheme(e) {
     const theme = e.currentTarget.dataset.theme;
@@ -169,7 +169,7 @@ Page({
       const env=await app.globalData.service.createBackup();if(!env.ok){wx.hideLoading();wx.showToast({title:env.error.message,icon:'none'});return;}
       const backup=env.data,content=JSON.stringify(backup),size=unescape(encodeURIComponent(content)).length;
       if(size>10*1024*1024){wx.hideLoading();wx.showToast({title:'备份超过 10 MB，暂不支持导出',icon:'none'});return;}
-      const name=this.getFileName('YoTick-data','json');
+      const name=this.getFileName('Foclo-data','json');
       wx.hideLoading();
       await this.writeAndShareFile(name, content, '备份文件已发送');
     } catch(e) { wx.hideLoading();wx.showModal({title:'备份尚未完成',content:e.message||'备份失败，请稍后重试',showCancel:false}); }
@@ -183,7 +183,7 @@ Page({
       const file=r.tempFiles&&r.tempFiles[0];if(!file)return;
       if(file.size>10*1024*1024){wx.showToast({title:'备份超过 10 MB，暂不支持导入',icon:'none'});return;}
       wx.getFileSystemManager().readFile({filePath:file.path,encoding:'utf8',success:async read=>{
-        let backup;try{backup=JSON.parse(read.data);}catch(e){wx.showToast({title:'文件不是有效的 YoTick 备份',icon:'none'});return;}
+        let backup;try{backup=JSON.parse(read.data);}catch(e){wx.showToast({title:'文件不是有效的 Foclo 备份',icon:'none'});return;}
         this.fileBusy=true;wx.showLoading({title:'正在校验备份'});
         const preview=await app.globalData.service.previewBackup(backup);wx.hideLoading();
         if(!preview.ok){this.fileBusy=false;wx.showModal({title:'无法恢复备份',content:preview.error.message,showCancel:false});return;}
@@ -218,7 +218,7 @@ Page({
       });
       const esc=v=>'"'+String(v==null?'':v).replace(/"/g,'""')+'"';
       const csv='统计表，不能用于恢复\r\n'+['项目','开始时间（UTC+8）','结束时间（UTC+8）','净专注秒数','暂停秒数','状态'].map(esc).join(',')+'\r\n'+rows.map(row=>row.map(esc).join(',')).join('\r\n');
-      const name=this.getFileName('YoTick-statistics-'+scope,'csv');this.writeAndShareFile(name,'\ufeff'+csv,'统计表已交付');
+      const name=this.getFileName('Foclo-statistics-'+scope,'csv');this.writeAndShareFile(name,'\ufeff'+csv,'统计表已交付');
       },fail:()=>{}});
     } catch(e) {wx.hideLoading();wx.showToast({title:e.message||'统计表生成失败',icon:'none'});}
     finally {this.fileBusy=false;}
@@ -246,7 +246,7 @@ Page({
     let info={};try{info=wx.getSystemInfoSync()||{};}catch(e){}
     wx.showModal({title:'复制反馈信息',editable:true,placeholderText:'请描述遇到的问题（选填）',content:'默认不包含项目名称和专注记录',success:r=>{
       if(!r.confirm)return;
-      const report=`YoTick ${this.data.appVersion||'版本未知'}\n设备：${info.brand||''} ${info.model||''}\n系统：${info.system||''}\n问题描述：${String(r.content||'未填写')}`;
+      const report=`Foclo ${this.data.appVersion||'版本未知'}\n设备：${info.brand||''} ${info.model||''}\n系统：${info.system||''}\n问题描述：${String(r.content||'未填写')}`;
       wx.setClipboardData({data:report,success:()=>wx.showToast({title:'反馈信息已复制',icon:'success'})});
     }});
   },

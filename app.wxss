@@ -2,7 +2,7 @@
  * utils/theme.js 的 light.pageBackground 同步。JSON 不支持注释。 */
 @import "themes/palette.wxss";
 
-/* app.wxss — YoTick 全局设计系统
+/* app.wxss — Foclo 全局设计系统
  * 暖米纸底 · 森林绿主色 · 柔和白卡 · 大数字 · 圆角留白
  * 设计令牌统一在此声明，页面/组件只消费变量，不另起配色。
  */

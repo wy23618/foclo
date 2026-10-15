@@ -350,7 +350,7 @@ Page({
       const content =
         typeof value === "string" ? value : JSON.stringify(value, null, 2);
       if (!content) throw new Error("没有可导出的内容");
-      const fileName = "yotick-" + fileLabel + "-" + Date.now() + ".json";
+      const fileName = "foclo-" + fileLabel + "-" + Date.now() + ".json";
       let delivered = false;
       if (wx.getFileSystemManager && wx.env && wx.env.USER_DATA_PATH) {
         const filePath = wx.env.USER_DATA_PATH + "/" + fileName;

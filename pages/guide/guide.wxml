@@ -1,7 +1,7 @@
 <page-meta page-style="{{themePageStyle}}"/>
 <view class="guide-page theme-{{themeClass}}">
   <view class="guide-hero">
-    <text class="guide-brand">YoTick · 使用指南</text>
+    <text class="guide-brand">Foclo · 使用指南</text>
     <view class="guide-title">从选择项目，到看懂记录</view>
     <view class="guide-subtitle">按实际操作顺序，快速走完一轮。</view>
   </view>

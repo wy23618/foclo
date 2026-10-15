@@ -1,7 +1,7 @@
 <view wx:if="{{opened}}" class="identity-overlay theme-{{theme}}" catchtouchmove="noop">
   <view class="identity-mask"></view>
   <view class="identity-sheet">
-    <text class="identity-eyebrow">YoTick · 账号资料</text>
+    <text class="identity-eyebrow">Foclo · 账号资料</text>
     <view class="identity-title">可选的头像与昵称</view>
     <view class="identity-subtitle">按你的喜好设置，方便认出自己的账号。</view>
     <button class="identity-avatar" open-type="chooseAvatar" bindchooseavatar="onChooseAvatar">
