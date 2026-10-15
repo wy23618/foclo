@@ -4,6 +4,14 @@ $serverRoot = (Resolve-Path (Join-Path $PSScriptRoot '..')).Path
 $privateRoot = Join-Path $env:LOCALAPPDATA 'YoTick\LocalServer'
 $dataDir = Join-Path $privateRoot 'postgres-data'
 $pidPath = Join-Path $privateRoot 'api.pid'
+$backupPidPath = Join-Path $privateRoot 'backup-daemon.pid'
+if (Test-Path -LiteralPath $backupPidPath) {
+  $backupProcessId = [int](Get-Content -LiteralPath $backupPidPath)
+  $backupInfo = Get-CimInstance Win32_Process -Filter "ProcessId=$backupProcessId" -ErrorAction SilentlyContinue
+  $backupEntry = Join-Path $PSScriptRoot 'backup-daemon.mjs'
+  if ($backupInfo -and $backupInfo.Name -eq 'node.exe' -and $backupInfo.CommandLine -like "*$backupEntry*") { Stop-Process -Id $backupProcessId }
+  Remove-Item -LiteralPath $backupPidPath
+}
 $pgBinCandidates = @(
   $env:YOTICK_POSTGRES_BIN,
   (Join-Path $env:ProgramFiles 'PostgreSQL\17\bin'),

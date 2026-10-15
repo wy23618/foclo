@@ -40,6 +40,16 @@ project.create/patch/reorder/archive/restore/deleteSubtree，session.createCompl
 
 无云端变更的开始/暂停/恢复不扫描待上传队列；只读同步状态不反复重载事实。大规模删除的回执数据库保留完整效果，传输确认按字节截取并标记 hasMoreChanges，worker 先拉完变更再发送下一任务。真机文件容量、耗时及帧表现仍待测量。
 
-Node 24 LTS + TypeScript + Fastify 5 + pg；精确版本与 lockfile 固定。标准 PostgreSQL、CloudBase 云托管，wx.request HTTPS。正式环境禁止测试身份。普通运行账号与迁移账号分离，TLS 不关闭证书校验。
+当前运行架构（由ADR 007替代早期草案）：Node 24 LTS + TypeScript + Fastify 5 + pg，标准 PostgreSQL。用户后续明确选择自有阿里云 ECS；后端和 PostgreSQL 已部署在同一主机，数据库保持本机监听，公网接入待域名/备案条件到位。小程序使用 wx.request HTTPS，正式环境禁止测试身份。普通运行账号与迁移账号分离，TLS 不关闭证书校验。
 
-参考：[Node 支持周期](https://github.com/nodejs/Release)、[Fastify 支持策略](https://fastify.dev/docs/latest/Reference/LTS/)。云资源可用性与价格在 E 阶段核实。
+参考：[Node 支持周期](https://github.com/nodejs/Release)、[Fastify 支持策略](https://fastify.dev/docs/latest/Reference/LTS/)。后续云资源计费和容量按控制台与实际负载核实。
+
+## ADR 007：从 CloudBase 暂定方案切换到自有 ECS
+
+后续内部测试更新（2026-10-09）：用户准备上传为体验版。允许手机develop/trial使用既有临时IP HTTPS并尝试开启调试，仅供有限成员内部测试。正式release仍不选择该入口，且请求层拒绝明确指定临时入口的正式/未知环境；不放开trial HTTP。该方案基于腾讯网络/调试说明，真实微信trial仍须上传后手机验收，不能宣称合法域名配置或正式上线已完成。详见[体验测试说明](trial-testing.md)。
+
+日期：2026-10-08。用户明确选择先用本人领取的阿里云 ECS 自建通用后端，不依赖 CloudBase。采用 Ubuntu 22.04、Node 24、PostgreSQL 17；业务 API 和数据库只监听回环地址，由 systemd 管理。选择理由是以标准 Node/PostgreSQL 保留迁移自由，并在现有试用资源上完成内部部署。此选择不代表免费试用满足中国大陆备案条件，也不代表已完成小程序公网链路。用户确认当前没有域名；试用 ECS 控制台显示按量付费。正式微信公网请求需合格域名、备案、有效 HTTPS 和小程序请求域名配置。云端数据库现有内容是测试快照。
+
+2026-10-08 冲突展示细化：冻结上传被拒绝后，后续拉取必须把未处理冲突的cloud更新为权威影子最新版本，同时保留cloudAtConflict和本地原提议。已持久化resolving/resolutionChanges的明确选择不随后台拉取改变。旧客户端已经推进游标却留下过期cloud的条目可在空增量页中修正；不要求删除队列、冲突或清空空间。
+
+2026-10-08 文件读取性能细化：DevTools实际万条资料显示串行stat/会话读取耗时较高。索引扫描与范围会话读取改用最多8个并行原生读取，保持输入/文件键顺序；每批全部结束后才传播失败，不启动失败之后的批次，避免失败查询离开串行服务队列后仍有悬挂读取。目录递归前先flush文件批次；完整扫描成功前不发布新容量索引。没有改变可靠提交、写入串行、队列、凭证或游标。数量8是当前保守并发上限，不能据电脑改善宣称手机帧表现通过。

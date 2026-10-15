@@ -1,0 +1,29 @@
+# Ubuntu 22.04 single-host deployment
+
+This layout targets one Ubuntu 22.04 ECS (2 vCPU, 2 GiB RAM, 40 GiB disk), with Node.js 24, PostgreSQL 17, and the API bound to `127.0.0.1:3000`. Follow the official Node.js and PostgreSQL installation instructions for Ubuntu 22.04 to add their supported package repositories, then install Node.js 24 and PostgreSQL 17 from those sources. Do not use an unreviewed one-line installer.
+
+## Layout and service identity
+
+Install the verified backend bundle under a versioned directory in `/opt/yotick/` and point `/opt/yotick/current` at the selected release. Create a dedicated system account and group named `yotick`; it must not be a login or sudo account. The bundle and release files should be owned by root and not writable by `yotick`. Install `yotick.service` as `/etc/systemd/system/yotick.service`, then reload systemd.
+
+For an application update, upload the verified archive to `/root/YoTick-backend-<version>.zip`, then stage it with `bash /opt/yotick/current/deploy/linux/stage-release.sh /root/YoTick-backend-<version>.zip <sha256> /opt/yotick/releases/<version>`. Review the new release files, then run `bash /opt/yotick/current/deploy/linux/activate-release.sh /opt/yotick/releases/<version>` as root. The activation script takes an exclusive release lock, atomically swaps the `current` symlink, restarts the API and checks `/health/ready`; if readiness fails, it restores the previous code release and restarts it. To manually roll back, pass the desired retained release directory to the same script. This only rolls back application code: do not assume it can reverse a database migration or undo data written under a newer schema. Take and verify a database backup first, and use only backward-compatible migrations for routine updates. A database restore must follow the isolated restore and `restore_epoch` procedure in `docs/backup-recovery.md`.
+
+Create `/etc/yotick/server.env`, owned by `root:yotick` with mode `0640`. It contains the application variables shown in `server/.env.example`. Set `NODE_ENV=production`, `DATABASE_SSL=true`, `HOST=127.0.0.1`, and `PORT=3000`. Put strong, distinct values in `TOKEN_PEPPER` and `CURSOR_SECRET` (at least 32 characters), and the real WeChat credentials in this protected file. Do not commit or include it in a bundle or backup intended for distribution.
+
+`config.ts` requires `MIGRATION_DATABASE_URL` even for the API process, while the API pool uses only `DATABASE_URL`. Give the API an inert, non-privileged placeholder URL for `MIGRATION_DATABASE_URL`; do not put the migration administrator's URL or password in this file. Run migrations as a separate administrator-controlled operation using the actual migration credential, then apply `server/deploy/permissions.sql` as the database administrator. The API role should have only the grants in that permissions script.
+
+## PostgreSQL and TLS
+
+Keep PostgreSQL listening on `127.0.0.1` only. Review `postgresql-yotick.conf` alongside the active PostgreSQL configuration and merge suitable settings; do not replace the complete existing configuration blindly. The values are a conservative starting point for a 2 GiB host. In particular, `work_mem` is per operation and can multiply across concurrent queries.
+
+PostgreSQL TLS remains required even for loopback connections. Configure the PostgreSQL server with a certificate signed by a CA trusted by the host, and include `IP:127.0.0.1` in the certificate subjectAltName. Install the CA certificate as `/etc/yotick/postgres-ca.crt`, owned by `root:root` and readable by the service (for example mode `0644`); it is a public certificate, not a secret. The systemd unit sets `NODE_EXTRA_CA_CERTS` to this file so Node.js explicitly trusts the issuing CA at startup. Do not rely only on Ubuntu's system trust store, since Node.js may use its bundled CA set. Set PostgreSQL `ssl=on`, protect its private key so only the `postgres` account can read it, and configure `pg_hba.conf` to permit `hostssl` from `127.0.0.1/32` using SCRAM while rejecting `hostnossl` from that address. Confirm the active server certificate and reload/restart PostgreSQL using the distribution's documented procedure.
+
+Keep `DATABASE_CA` empty; the service explicitly adds `/etc/yotick/postgres-ca.crt` to Node's trusted CAs. The Node PostgreSQL client sets `rejectUnauthorized: true`, so it verifies the chain and server identity; do not disable certificate validation or use a certificate without the loopback IP identity. Use `127.0.0.1` in both database URLs, not `localhost`.
+
+Create the database and separate login roles through reviewed SQL/administrative steps. Restrict the app role to the permissions script. Do not run an initialization script that drops, recreates, or overwrites a database. Back up and verify the intended database before each migration; migration execution is owned by the administrator, not the API service.
+
+## Start and local proxy
+
+Set the reverse proxy to connect to `http://127.0.0.1:3000`. Configure HTTPS and public hostnames at that proxy, and keep the API and PostgreSQL ports closed to external interfaces. Enable the unit with systemd after environment, database, TLS, and bundle paths have been checked. Inspect service logs and the application's live/ready health endpoints before directing traffic to it.
+
+The systemd unit runs as `yotick`, reads `/etc/yotick/server.env`, applies a 384 MiB Node heap limit and systemd `MemoryHigh=512M` / `MemoryMax=768M`, and uses filesystem and privilege restrictions. Treat these memory thresholds as initial settings and adjust them after observing actual load. The unit does not grant write access to the release bundle or carry the migration credential. Plan disk space for database data, logs, and backups within the 40 GiB volume, and store an independent backup off-host.

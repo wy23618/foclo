@@ -1,13 +1,15 @@
 <page-meta page-style="{{themePageStyle}}"/>
+<account-entry id="accountEntry" theme="{{themeClass}}" bindvisibilitychange="onIdentityVisibility"/>
 <safe-nav id="safeNav" theme="{{themeClass}}" brand="{{true}}" title="YoTick" bindheightchange="onFocusNavHeight" hidden="{{activeTab!==0||customOpen||todayOpen||immersive||screenLocked}}"/>
 <!-- 主视图 -->
-<view class="container with-tabbar focus-layout {{cur && cur.state==='IDLE'?'focus-layout-idle':'focus-layout-running'}} {{activeTab!==0?'focus-layout-hidden':''}} theme-{{themeClass}}" style="min-height:calc(100vh - {{focusNavHeight}}px)">
+<view hidden="{{identityOpen}}" class="container with-tabbar focus-layout {{cur && cur.state==='IDLE'?'focus-layout-idle':'focus-layout-running'}} {{activeTab!==0?'focus-layout-hidden':''}} theme-{{themeClass}}" style="min-height:calc(100vh - {{focusNavHeight}}px)">
   <view wx:if="{{blocked}}" class="card">
     <view class="title">数据需要处理</view>
     <view class="muted">{{blocked.message}}</view>
   </view>
 
   <block wx:if="{{cur}}">
+    <view wx:if="{{cur.state==='IDLE' && !immersive && !screenLocked}}" class="account-save-status" bindtap="openAccountSaving">{{accountSaveText}}</view>
     <view class="focus-stage">
     <!-- 状态 + 项目 -->
     <view class="proj-head">
@@ -23,8 +25,8 @@
     </view>
 
     <!-- 圆形表盘 -->
-    <view class="dial {{pausedLook?'dial-paused':''}}"><focus-ring id="focusRing" theme="{{themeClass}}" obscured="{{pickerOpen||todayOpen||welcomeOpen}}" wx:if="{{!immersive&&!screenLocked}}" progress="{{progress}}" paused="{{pausedLook}}" running="{{cur.state==='STUDYING'}}" duration-seconds="{{cur.state==='IDLE'?targetSeconds:cur.targetSeconds}}" countdown="{{(cur.state==='IDLE'?mode:cur.mode)==='countdown'}}"/>
-      
+    <view class="dial {{pausedLook?'dial-paused':''}}"><focus-ring id="focusRing" theme="{{themeClass}}" obscured="{{pickerOpen||todayOpen||welcomeOpen||identityOpen}}" wx:if="{{!immersive&&!screenLocked&&!identityOpen}}" progress="{{progress}}" paused="{{pausedLook}}" running="{{cur.state==='STUDYING'}}" duration-seconds="{{cur.state==='IDLE'?targetSeconds:cur.targetSeconds}}" countdown="{{(cur.state==='IDLE'?mode:cur.mode)==='countdown'}}"/>
+
       <view class="dial-nub"></view>
       <view class="dial-inner">
         <view class="dial-num num {{bigText.length>8?'dial-num-extra-long':(bigText.length>5?'dial-num-long':'')}} {{(cur.state==='IDLE'?mode:cur.mode)==='stopwatch'?'dial-num-stopwatch':''}} {{bigText.length>10?'dial-num-wide':''}} {{pausedLook ? 'dial-num-paused' : ''}}">{{bigText}}</view>
@@ -91,7 +93,7 @@
   </block>
 </view>
 <project-sheet top-inset="{{focusNavHeight}}" bottom-nav="{{true}}" theme="{{themeClass}}" id="projectSheet" opened="{{pickerOpen}}" selected="{{cur.projectId}}" bindclose="closePicker" bindselected="projectSelected" bindchanged="refresh" bindopenappearance="openPickerAppearance" bindopenmanage="openPickerManage"/>
-<main-nav selected="{{activeTab}}" theme="{{themeClass}}" inline="{{true}}" hidden="{{statsNavHidden||customOpen||todayOpen||immersive||screenLocked||welcomeOpen}}" bindchange="switchMainTab"/>
+<main-nav selected="{{activeTab}}" theme="{{themeClass}}" inline="{{true}}" hidden="{{statsNavHidden||customOpen||todayOpen||immersive||screenLocked||welcomeOpen||identityOpen}}" bindchange="switchMainTab"/>
 <view wx:if="{{restPrompt}}" class="focus-overlay rest-overlay theme-{{themeClass}}"><view class="focus-mask"></view><view class="focus-sheet rest-sheet"><view class="rest-icon">☕</view><view class="title-sm">这一轮完成了</view><view class="rest-description">已保存专注记录 · 第 {{restRound}} 轮</view><view class="rest-duration">{{restLong ? '长休息' : '短休息'}} · {{restDuration / 60}} 分钟</view><view class="two-col rest-actions"><button class="btn btn-ghost" bindtap="skipRest">跳过</button><button class="btn btn-primary" bindtap="startRest">开始休息</button></view></view></view>
 <view wx:if="{{restState}}" class="focus-overlay rest-overlay theme-{{themeClass}}"><view class="focus-mask"></view><view class="focus-sheet rest-sheet"><view class="rest-icon">☕</view><view class="title-sm">{{restState === 'PAUSED' ? '休息已暂停' : '休息中'}}</view><view class="rest-clock num">{{restClock}}</view><view class="rest-description">休息单独计时，不计入专注统计</view><view class="two-col rest-actions"><button wx:if="{{restState === 'RUNNING'}}" class="btn btn-ghost" bindtap="pauseRest">暂停</button><button wx:else class="btn btn-ghost" bindtap="resumeRest">继续</button><button class="btn btn-danger" bindtap="skipRest">跳过休息</button></view></view></view>
 <view wx:if="{{customOpen}}" class="focus-overlay theme-{{themeClass}}" catchtouchmove="noop"><view class="focus-mask" bindtap="closeCustom"></view><view class="focus-sheet"><view class="title-sm">自定义专注时长</view><picker-view class="minute-wheel" immediate-change="{{true}}" indicator-style="height:50rpx" value="{{minuteWheelValue}}" bindchange="minutePick"><picker-view-column><view wx:for="{{minuteOptions}}" wx:key="*this" class="minute-option">{{item}}</view></picker-view-column></picker-view><view class="minute-entry"><input type="number" value="{{customMinutes}}" bindinput="minuteInput" maxlength="4"/><text>分钟（1–1440）</text></view><view class="two-col"><button class="btn btn-ghost" bindtap="closeCustom">取消</button><button class="btn btn-primary" bindtap="confirmCustom">确定</button></view></view></view>
@@ -105,13 +107,12 @@
   <scroll-view scroll-y class="guide-welcome-card">
     <view class="guide-welcome-symbol"><view class="guide-welcome-clock-hand"></view></view>
     <view class="guide-welcome-title">欢迎使用 YoTick</view>
-    <view class="guide-welcome-subtitle">选好内容，开始一次专注。</view>
-    <view class="guide-welcome-steps">
-      <view><text class="guide-welcome-number">1</text><view><text class="guide-welcome-step-title">选好这次学什么</text><text class="guide-welcome-step-hint">点圆盘上方的项目标签</text></view></view>
-      <view><text class="guide-welcome-number">2</text><view><text class="guide-welcome-step-title">选一种计时方式</text><text class="guide-welcome-step-hint">自由累计，或先定一个时长</text></view></view>
-      <view><text class="guide-welcome-number">3</text><view><text class="guide-welcome-step-title">开始专注，回看积累</text><text class="guide-welcome-step-hint">需要时暂停，结束后查看统计</text></view></view>
-    </view>
-    <view class="guide-welcome-actions"><button class="guide-welcome-skip" bindtap="dismissWelcome" hover-class="guide-welcome-pressed">直接开始</button><button class="guide-welcome-learn" bindtap="openWelcomeGuide" hover-class="guide-welcome-pressed">快速了解</button></view>
-    <view class="guide-welcome-note">完整指南随时可在「设置」中查看</view>
+    <view class="guide-welcome-subtitle">三张小卡，轻松上手。</view>
+    <swiper class="welcome-deck" current="{{welcomeStep}}" bindchange="onWelcomeCardChange">
+      <swiper-item wx:for="{{welcomeCards}}" wx:key="number"><view class="welcome-mini-card"><text class="welcome-card-symbol">{{item.symbol}}</text><text class="welcome-card-title">{{item.title}}</text><text class="welcome-card-copy">{{item.text}}</text></view></swiper-item>
+    </swiper>
+    <view class="welcome-progress">{{welcomeStep + 1}} / 3 · 左右滑动看看</view>
+    <view class="guide-welcome-actions"><button class="guide-welcome-skip" bindtap="dismissWelcome" hover-class="guide-welcome-pressed">直接开始</button><button class="guide-welcome-learn" bindtap="nextWelcomeCard" hover-class="guide-welcome-pressed">{{welcomeStep===2 ? '我会了，开始' : '下一张 →'}}</button></view>
+    <view class="guide-welcome-note">以后在设置里也能找到这些卡片</view>
   </scroll-view>
 </view>

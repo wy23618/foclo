@@ -38,7 +38,9 @@ function createAccounts(
     listeners = new Set();
   let legacyFallback = false;
   const update = (s) => {
-    status = { ...status, ...s };
+    // A new worker state replaces the previous failure, while pending-only
+    // local updates keep the current connection status and its explanation.
+    status = { ...status, ...(s.state ? { message: "", code: undefined } : {}), ...s };
     listeners.forEach((fn) => fn(status));
   };
   async function canSwitch() {
@@ -198,7 +200,16 @@ function createAccounts(
     }
     if (!(await raw.get(GLOBAL + "deviceId")))
       await raw.set(GLOBAL + "deviceId", uuid());
-    await activate(await raw.get(GLOBAL + "current"), true);
+    app.globalData.guestSession = (await raw.get(GLOBAL + "auto-login")) === false;
+    let savedRef = await raw.get(GLOBAL + "current");
+    if (savedRef && require('./environment').isDevToolsDevelopment() &&
+        baseUrl === 'https://' + require('./environment').TEMP_CLOUD_DEBUG_API_HOST + '/api/v1' &&
+        savedRef.apiBaseUrl !== baseUrl) {
+      // Preserve the old test cache, but never send its queued edits to cloud.
+      await raw.set(GLOBAL + 'previous-local-account', savedRef);
+      savedRef = null;
+    }
+    await activate(savedRef, true);
   }
   async function login() {
     await loginStep("检查当前计时状态失败", () => canSwitch());
@@ -227,13 +238,19 @@ function createAccounts(
       saveCredentials: async () => {},
     })("GET", "/me"));
     const ref = {
+      apiBaseUrl: baseUrl,
+      ...(require('./environment').isDevToolsDevelopment() &&
+          baseUrl === 'https://' + require('./environment').TEMP_CLOUD_DEBUG_API_HOST + '/api/v1'
+        ? { localEpoch:'cloud-devtools-v1' } : {}),
       userId: who.userId || who.user?.id,
       spaceId: who.spaceId || who.space?.id,
       generation: who.generation || who.space?.generation,
     };
     if (!ref.userId || !ref.spaceId) throw new Error("账号服务返回信息不完整");
     await loginStep("保存登录信息失败", () => raw.set(GLOBAL + "credentials/" + ref.userId, credentials));
+    await raw.set(GLOBAL + "auto-login", true);
     await loginStep("打开账号空间失败", () => activate(ref));
+    app.globalData.guestSession = false;
     return ref;
   }
   async function logout() {
@@ -246,8 +263,35 @@ function createAccounts(
       }
     }
     const ref = current;
+    await raw.set(GLOBAL + "auto-login", false);
     await activate(null);
+    app.globalData.guestSession = true;
     if (ref) await raw.remove(GLOBAL + "credentials/" + ref.userId);
+  }
+  async function getDisplayProfile() {
+    return current ? (await raw.get(GLOBAL + 'profile/' + current.userId)) || null : null;
+  }
+  async function saveDisplayProfile(value, avatarStore = require('./display-profile')) {
+    if (!current) throw new Error('请先登录账号');
+    const captured = epoch, userId = current.userId;
+    const profile = require('./display-profile').normalizeProfile(value);
+    const key = GLOBAL + 'profile/' + userId;
+    const previous = await raw.get(key);
+    const savedPath = await avatarStore.keepAvatar(profile.avatarUrl);
+    try {
+      if (captured !== epoch) throw new Error('账号已切换，请重新确认资料');
+      await raw.set(key, { ...profile, avatarUrl:savedPath, userId });
+    } catch (error) {
+      await avatarStore.discardAvatar(savedPath);
+      throw error;
+    }
+    if (previous && previous.avatarUrl !== savedPath) await avatarStore.discardAvatar(previous.avatarUrl);
+    update({});
+    return { ...profile, avatarUrl:savedPath, userId };
+  }
+  async function stayGuest() {
+    await raw.set(GLOBAL + 'auto-login', false);
+    app.globalData.guestSession = true;
   }
   async function conflicts() {
     const adapter = app.globalData.adapter,
@@ -626,6 +670,10 @@ function createAccounts(
   async function migrateGuest() {
     await canSwitch();
     if (!current || !request) throw new Error("请先登录账号");
+    // Finish account edits (especially deletions) before comparing the guest copy.
+    await worker.trigger();
+    if ((await local.pending(app.globalData.adapter)).length || (await conflicts()).length)
+      throw new Error('账号还有更改未保存，请联网完成保存后再试。登录前的记录会保留');
     return require("./migration").upload(
       raw,
       app.globalData.adapter,
@@ -634,7 +682,32 @@ function createAccounts(
       (progress) => update({ migration: progress }),
     );
   }
-  async function commitGuestMigration(mapping, sessionMapping) {
+  async function getGuestSummary() {
+    const summary = await require("./migration").guestSummary(raw);
+    summary.checked = !current || !summary.hasData;
+    if (current && worker && summary.hasData) {
+      if (status.state !== 'synced') await worker.trigger();
+      // Only suppress a prompt after successfully checking the account.
+      if (status.state === 'synced') {
+        const pending = await require('./guest-pending').pendingGuest(raw, app.globalData.adapter);
+        if (pending) Object.assign(summary, pending, { checked:true });
+      }
+    }
+    const decision = current && await raw.get(GLOBAL + "guest-import/" + current.userId);
+    const imported = await app.globalData.adapter.get("yotick/import/current");
+    const alreadyImported = !!(imported && imported.status === "committed" && imported.guestSignature === summary.signature);
+    return {
+      ...summary,
+      imported: alreadyImported,
+      shouldAsk: summary.checked && summary.hasData && !(decision && decision.signature === summary.signature) &&
+        !alreadyImported,
+    };
+  }
+  async function deferGuestImport(signature) {
+    if (!current) throw new Error("请先登录账号");
+    await raw.set(GLOBAL + "guest-import/" + current.userId, { signature, choice: "deferred" });
+  }
+  async function commitGuestMigration(mapping, sessionMapping, options) {
     await canSwitch();
     if (!request) throw new Error("请先登录");
     const result = await require("./migration").commit(
@@ -643,6 +716,7 @@ function createAccounts(
       await raw.get(GLOBAL + "deviceId"),
       mapping,
       sessionMapping,
+      options,
     );
     await worker.trigger();
     return result;
@@ -803,6 +877,10 @@ function createAccounts(
       confirmation: "REQUEST_ACCOUNT_DELETION",
     });
   }
+  async function getDeletionRequest() {
+    if (!request) throw new Error("请先登录");
+    return request("GET", "/account/deletion-requests", {});
+  }
   async function createMigrationTarget(name) {
     await canSwitch();
     if (!worker) throw new Error("请先登录");
@@ -822,6 +900,9 @@ function createAccounts(
   return {
     init,
     login,
+    getDisplayProfile,
+    saveDisplayProfile,
+    stayGuest,
     logout,
     activate,
     conflicts,
@@ -829,12 +910,16 @@ function createAccounts(
     recoverConflict,
     clearAccount,
     exportRecovery,
+    exportLocalBackup: () => app.globalData.service.createBackup(),
     listRecoverySpaces,
     migrateGuest,
+    getGuestSummary,
+    deferGuestImport,
     commitGuestMigration,
     exportAccount,
     clearCache,
     deleteAccount,
+    getDeletionRequest,
     createMigrationTarget,
     trigger: () => (worker ? worker.trigger() : Promise.resolve()),
     getStatus: () => status,

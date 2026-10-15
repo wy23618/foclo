@@ -1,0 +1,41 @@
+<page-meta page-style="{{themePageStyle}}"/>
+<view class="privacy-page theme-{{themeClass}}">
+  <view class="privacy-hero">
+    <view class="privacy-eyebrow">YoTick · 数据说明</view>
+    <view class="privacy-title">你的记录，如何被使用</view>
+    <view class="privacy-intro">这里说明当前开发联调版本的数据处理方式，帮助你在登录、同步和备份前了解记录去向。</view>
+  </view>
+  <view class="privacy-notice"><view class="notice-mark">i</view><view class="notice-copy"><view class="notice-title">当前为开发联调说明</view><view>正式运营主体、联系渠道和微信后台隐私指引尚未配置。本页不是完整的正式隐私政策；正式运营前会补充并更新相关信息。</view></view></view>
+  <view class="privacy-card">
+    <view class="section-heading"><view class="section-index">01</view><view class="section-title">本机与同步数据</view></view>
+    <view class="privacy-row"><view class="row-title">游客使用</view><view class="row-copy">游客的计时记录保存在本机。游客状态下不会因为打开本页而发起账号或隐私授权。</view></view>
+    <view class="privacy-row"><view class="row-title">账号记录与云端记录</view><view class="row-copy">它们属于同一微信账号，不是两套独立记录。登录后，这台设备会保存账号记录供离线使用，服务器保存已上传的内容供其他设备同步。离线新增或修改的内容，联网并保存成功后才会出现在其他设备。</view></view>
+    <view class="privacy-row"><view class="row-title">账号标识</view><view class="row-copy">登录后，服务器使用微信 OpenID 识别你的账号，不读取手机号。头像和昵称由你通过微信提供的控件主动选择，只用于展示，按账号保存在本机，不上传到服务器；新设备需要重新选择。</view></view>
+    <view class="privacy-row"><view class="row-title">同步的记录</view><view class="row-copy">项目名称、简称、颜色、层级、排序和归档状态；专注记录的开始/结束时间、实际与目标时长，以及每次暂停的时间和时长。服务器还保存同步版本与操作回执，用于跨设备同步和恢复。</view></view>
+    <view class="privacy-row"><view class="row-title">会同步的账号设置</view><view class="row-copy">启动方式、默认和常用专注时长、结束确认、每日目标、休息设置和每周起始日会同步到账号。</view></view>
+    <view class="privacy-row"><view class="row-title">服务访问日志</view><view class="row-copy">应用日志会隐藏授权信息、Cookie、微信登录码、访问令牌和刷新令牌。Nginx 访问日志可能包含 IP、请求 URL（含查询参数）、状态码和耗时；每天轮转，最多保留14份。系统日志最多100 MiB、最长保留14天。</view></view>
+    <view class="privacy-row"><view class="row-title">仅保存在本机的设置</view><view class="row-copy">主题、浅色主题和屏幕显示等设备偏好仅保存在当前设备，不会同步到账号。</view></view>
+  </view>
+  <view class="privacy-card">
+    <view class="section-heading"><view class="section-index">02</view><view class="section-title">账号、导出与注销</view></view>
+    <view class="privacy-row"><view class="row-title">游客与账号记录</view><view class="row-copy">首次登录会询问是否将本机游客记录保存到当前微信账号。确认后上传并导入，有冲突时由你选择；暂不导入会保留本机记录，之后仍可手动导入。登录后的账号记录自动同步。</view></view>
+    <view class="privacy-row"><view class="row-title">备份文件</view><view class="row-copy">“数据与备份”可以保存当前使用的项目和记录：游客模式备份游客记录，登录后备份当前账号在这台设备上的记录。恢复时也会加入当前使用的记录；登录后恢复的新增内容会同步到当前账号。文件不会随之后的修改自动更新。</view></view>
+    <view class="privacy-row"><view class="row-title">注销申请</view><view class="row-copy">注销操作用于登记删除申请，提交后仍需处理，不代表数据已经删除。</view></view>
+  </view>
+  <view class="privacy-card">
+    <view class="section-heading"><view class="section-index">03</view><view class="section-title">开发环境与保存</view></view>
+    <view class="privacy-row"><view class="row-title">云端位置</view><view class="row-copy">当前测试数据保存在阿里云杭州开发服务器，用于验证账号与同步；这不是正式运营环境。</view></view>
+    <view class="privacy-row"><view class="row-title">备份与期限</view><view class="row-copy">数据库备份会加密后保存在同一服务器。目前未配置异地备份或自动过期清理；注销申请也不会自动删除备份中的记录。</view></view>
+    <view class="privacy-row"><view class="row-title">删除进度</view><view class="row-copy">注销申请需要运营者处理。当前尚未配置正式运营主体和联系渠道，因此不能承诺处理期限或声称申请已完成。</view></view>
+  </view>
+  <view class="privacy-card privacy-card-last">
+    <view class="section-heading"><view class="section-index">04</view><view class="section-title">退出与本机副本</view></view>
+    <view class="privacy-row"><view class="row-copy">退出登录后回到独立的游客记录，账号记录不会变成游客记录，也不会被删除。重新登录同一微信可继续使用账号记录。删除账号中的项目或记录会同步到同一账号的其他设备，但不会删除游客原副本或你已保存的备份文件；删除后请勿用旧备份重新恢复不需要的记录。</view></view>
+    <view class="privacy-footnote">当前代码未接入广告或分析 SDK。</view>
+  </view>
+  <view class="privacy-actions">
+    <button class="primary-action" bindtap="openAccount" hover-class="action-pressed">账号与登录 <text>›</text></button>
+    <button class="secondary-action" bindtap="openPrivacyContract" hover-class="action-pressed">微信平台隐私指引 <text>↗</text></button>
+  </view>
+  <view class="privacy-footer">如需管理记录，请先确认当前使用的是游客数据还是已登录账号数据。</view>
+</view>

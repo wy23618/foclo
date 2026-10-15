@@ -3,6 +3,10 @@ const assert = require('node:assert/strict');
 
 const { createMemoryAdapter } = require('../storage/adapter');
 const { createFileTierAdapter, DEFAULT_MAX_BYTES } = require('../storage/file-adapter');
+const { createAccountAdapter } = require('../storage/account-adapter');
+const { createService } = require('../core/service');
+const local = require('../sync/local');
+const { uuid } = require('../core/ids');
 
 function error(code, message) {
   const result = new Error(message || code);
@@ -120,6 +124,40 @@ function makeRaw() {
 function setup(raw, fs, options) {
   return createFileTierAdapter(raw, { env: { USER_DATA_PATH: '/wx/user' }, getFileSystemManager: () => fs }, options);
 }
+
+test('file-backed account settles an expired countdown once after restart and queues one upload', async () => {
+  let now = 1800000000;
+  const raw = makeRaw();
+  const fs = new FakeFileSystem('/wx/user');
+  const adapter = () => createAccountAdapter(setup(raw, fs), 'settle-space');
+  let service = createService(adapter(), { clock: () => now });
+  assert.equal((await service.init()).ok, true);
+  const project = await service.createProject({ operationId: uuid(), name: '重启自动结算' });
+  await adapter().set(local.STATE, { generation: 'test-generation', nextOrder: 0 });
+  const started = await service.start({ operationId: uuid(), projectId: project.data.project.id, targetSeconds: 60 });
+  assert.equal(started.ok, true);
+  now += 60;
+
+  service = createService(adapter(), { clock: () => now });
+  const restored = await service.init();
+  assert.equal(restored.ok, true);
+  assert.equal(restored.data.state, 'IDLE');
+  const fact = await adapter().get('yotick/s/' + started.data.sessionId);
+  assert.equal(fact.status, 'COMPLETED');
+  assert.equal(fact.durationSeconds, 60);
+  assert.equal(fact.endedAtSec, fact.startedAtSec + 60);
+  let tasks = await local.pending(adapter());
+  assert.equal(tasks.filter(task => task.kind === 'session.createCompleted').length, 1);
+
+  const repeated = createService(adapter(), { clock: () => now });
+  assert.equal((await repeated.init()).ok, true);
+  const backup = await repeated.createBackup();
+  assert.equal(backup.data.sessions.length, 1);
+  assert.equal(backup.data.sessions[0].id, started.data.sessionId);
+  assert.equal(backup.data.sessions[0].status, 'COMPLETED');
+  tasks = await local.pending(adapter());
+  assert.equal(tasks.filter(task => task.kind === 'session.createCompleted').length, 1);
+});
 
 test('routes only large namespaced facts and legacy snapshots to files', async () => {
   const raw = makeRaw(), fs = new FakeFileSystem('/wx/user'), adapter = setup(raw, fs);

@@ -1,6 +1,7 @@
 import type { FastifyInstance } from "fastify";
 import type { Pool, PoolClient } from "pg";
 import { randomUUID } from "node:crypto";
+import { planGuestMerge } from './guest-merge.js';
 import { authenticate } from "./auth.js";
 import type { ServerConfig } from "./config.js";
 import { transaction, executeOperation, type Identity } from "./sync.js";
@@ -102,6 +103,7 @@ async function preview(db: PoolClient, j: any) {
       });
   }
   return {
+    mergePolicy: 'KEEP_ACCOUNT',
     projectCount: c.projects.length,
     sessionCount: c.sessions.length,
     pauseCount: c.sessions.reduce((n, s) => n + s.pauses.length, 0),
@@ -262,8 +264,14 @@ export function registerImports(
       requireValue(space.generation === j.generation, "GENERATION_MISMATCH");
       const c = await contents(db, j);
       requireValue(b.sourceDigest === digest(c), "SOURCE_CHANGED");
-      const mapping = b.mapping || {},
-        sessionMapping = b.sessionMapping || {};
+      requireValue(b.mergePolicy === undefined || b.mergePolicy === 'KEEP_ACCOUNT', 'INVALID_PAYLOAD');
+      const automatic = b.mergePolicy === 'KEEP_ACCOUNT';
+      const plan = automatic ? planGuestMerge(c,
+        (await db.query('SELECT * FROM projects WHERE space_id=$1', [space.id])).rows,
+        (await db.query('SELECT * FROM study_sessions WHERE space_id=$1', [space.id])).rows,
+        String(space.generation)) : null;
+      const mapping = plan ? plan.mapping : b.mapping || {},
+        sessionMapping = plan ? plan.sessionMapping : b.sessionMapping || {};
       requireValue(
         mapping &&
           typeof mapping === "object" &&
@@ -281,6 +289,7 @@ export function registerImports(
         "INVALID_MAPPING",
       );
       const results = [];
+      let addedProjectCount = 0;
       let ordered = c.projects.slice(),
         done = new Set<string>();
       while (ordered.length) {
@@ -289,6 +298,10 @@ export function registerImports(
         );
         requireValue(ready.length, "INVALID_PARENT");
         for (const p of ready) {
+          if (plan?.skippedProjects.has(p.id)) {
+            done.add(p.id);
+            continue;
+          }
           if (mapping[p.id]) {
             requireValue(uuid(mapping[p.id]));
             const target = (
@@ -325,7 +338,8 @@ export function registerImports(
                 ),
                 "VERSION_CONFLICT",
               );
-            } else
+            } else {
+              addedProjectCount++;
               results.push(
                 await executeOperation(
                   db,
@@ -335,13 +349,14 @@ export function registerImports(
                     kind: "project.create",
                     entityId: p.id,
                     payload: {
-                      ...p,
+                      ...(plan?.projectOverrides[p.id] || p),
                       parentId: mapping[p.parentId] || p.parentId,
                     },
                   },
                   b.deviceId,
                 ),
               );
+            }
           }
           done.add(p.id);
         }
@@ -380,7 +395,7 @@ export function registerImports(
         committed: true,
         sourceProjectCount: c.projects.length,
         sourceSessionCount: c.sessions.length,
-        projectCount: new Set(c.projects.map((p) => mapping[p.id] || p.id))
+        projectCount: new Set(c.projects.filter(p => !plan?.skippedProjects.has(p.id)).map((p) => mapping[p.id] || p.id))
           .size,
         sessionCount: new Set(
           c.sessions
@@ -393,6 +408,11 @@ export function registerImports(
         sourceDigest: digest(c),
         mapping,
         sessionMapping,
+        ...(automatic ? { mergePolicy:'KEEP_ACCOUNT',
+          addedProjectCount,
+          addedSessionCount:c.sessions.filter(s => sessionMapping[s.id] !== 'skip').length,
+          skippedSessionCount:c.sessions.filter(s => sessionMapping[s.id] === 'skip').length,
+          skippedProjectCount:plan!.skippedProjects.size } : {}),
         upperSeq: space.change_seq,
       };
       await db.query(

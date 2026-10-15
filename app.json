@@ -13,7 +13,8 @@
     "pages/heatmap/heatmap",
     "pages/day-stats/day-stats",
     "pages/chart-full/chart-full",
-    "pages/account/account"
+    "pages/account/account",
+    "pages/privacy/privacy"
   ],
   "window": {
     "navigationBarBackgroundColor": "#F5F7EF",

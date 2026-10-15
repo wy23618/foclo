@@ -1,67 +1,28 @@
 <page-meta page-style="{{themePageStyle}}"/>
 <view class="guide-page theme-{{themeClass}}">
   <view class="guide-hero">
-    <view class="guide-brand"><view class="guide-brand-dot"></view><text>YoTick · 使用指南</text></view>
-    <view class="guide-title">专注，从这里开始。</view>
-    <view class="guide-subtitle">从一次专注开始，慢慢看见自己的积累。</view>
+    <text class="guide-brand">YoTick · 小小入门卡</text>
+    <view class="guide-title">先专注一小会儿。</view>
+    <view class="guide-subtitle">三张卡片，就会用了。</view>
   </view>
-
-  <view class="guide-card quick-card">
-    <view class="guide-card-heading"><text class="guide-section-title">第一次使用</text><text class="guide-badge">3 步上手</text></view>
-    <view wx:for="{{quickSteps}}" wx:key="number" class="quick-step" data-id="{{item.chapter}}" bindtap="openChapter" hover-class="guide-pressed" aria-role="button" aria-label="{{item.title}}，查看说明">
-      <view class="step-number">{{item.number}}</view>
-      <view class="step-copy"><view class="step-title">{{item.title}}</view><view class="step-text">{{item.text}}</view></view>
-      <view class="guide-chevron"></view>
-    </view>
-    <view class="quick-footnote">不必一次了解全部，用到哪里，再来看哪里。</view>
-  </view>
-
-  <view class="guide-directory">
-    <view class="guide-directory-heading"><text class="guide-section-title">你想了解什么？</text><text class="guide-small">点一下查看</text></view>
-    <view class="topic-grid">
-      <view wx:for="{{chapters}}" wx:key="id" class="topic-entry" data-id="{{item.id}}" bindtap="openChapter" hover-class="guide-pressed" aria-role="button" aria-label="查看{{item.title}}">
-        <text class="topic-number">{{item.number}}</text><view class="topic-copy"><view class="topic-title">{{item.shortTitle}}</view><view class="topic-hint">{{item.shortHint}}</view></view><view class="guide-chevron"></view>
+  <swiper class="guide-deck" current="{{cardIndex}}" bindchange="onCardChange" indicator-dots indicator-color="{{indicatorColor}}" indicator-active-color="{{indicatorActiveColor}}">
+    <swiper-item wx:for="{{quickSteps}}" wx:key="number">
+      <view class="starter-card">
+        <view class="starter-top"><text>开始的小步骤</text><text>{{item.number}} / 03</text></view>
+        <view class="starter-symbol">{{item.symbol}}</view>
+        <view class="starter-preview preview-{{index}}">{{item.preview}}</view>
+        <view class="starter-title">{{item.title}}</view>
+        <view class="starter-text">{{item.text}}</view>
       </view>
-    </view>
-  </view>
-
-  <view class="guide-chapters">
-    <view wx:for="{{chapters}}" wx:key="id" id="guide-{{item.id}}" class="guide-card chapter-card">
-      <view class="chapter-heading" data-id="{{item.id}}" bindtap="toggleChapter" hover-class="guide-pressed" aria-role="button" aria-label="{{opened[item.id] ? '收起' : '展开'}}{{item.title}}">
-        <view class="chapter-number">{{item.number}}</view><view class="chapter-copy"><view class="chapter-title">{{item.title}}</view><view class="chapter-subtitle">{{item.subtitle}}</view></view><view class="guide-chevron chapter-chevron {{opened[item.id] ? 'chevron-open' : ''}}"></view>
-      </view>
-      <view wx:if="{{opened[item.id]}}" class="chapter-body">
-        <view class="guide-illustration">
-          <text class="illustration-label">操作示意</text>
-          <view wx:if="{{item.illustration === 'timer'}}" class="demo-timer">
-            <view class="demo-project"><view class="demo-dot"></view><text>高等数学</text><view class="guide-chevron"></view></view>
-            <view class="demo-dial"><text class="demo-clock">30:00</text><text class="demo-clock-caption">计划专注时长</text></view>
-            <view class="demo-modes"><text>正向计时</text><text class="demo-mode-on">倒计专注</text></view>
-            <view class="demo-start">开始专注</view>
-          </view>
-          <view wx:elif="{{item.illustration === 'tools'}}" class="demo-tools"><view>极简显示</view><view>防误触</view><view>暂停 / 继续</view><view class="demo-end">结束</view></view>
-          <view wx:elif="{{item.illustration === 'tree'}}" class="demo-tree">
-            <view class="demo-tree-name"><view class="demo-dot dot-math"></view><text>数学</text></view>
-            <view class="demo-tree-children">
-              <view class="demo-tree-node"><view class="demo-tree-name"><view class="demo-dot"></view><text>高等数学</text><text class="demo-menu">···</text></view><view class="demo-tree-children"><view class="demo-tree-node demo-tree-last"><view class="demo-tree-name"><view class="demo-dot dot-chapter"></view><text>极限章节</text><text class="demo-menu">···</text></view></view></view></view>
-              <view class="demo-tree-node"><view class="demo-tree-name"><view class="demo-dot dot-linear"></view><text>线性代数</text><text class="demo-menu">···</text></view></view>
-              <view class="demo-tree-node demo-tree-last"><view class="demo-tree-name"><view class="demo-dot dot-chapter"></view><text>概率论</text><text class="demo-menu">···</text></view></view>
-            </view>
-          </view>
-          <view wx:elif="{{item.illustration === 'stats'}}" class="demo-stats"><view class="demo-ranges"><text>今天</text><text class="demo-range-on">近7天</text><text>近30天</text><text>自定义</text></view><view class="demo-stat-row"><view class="demo-dot dot-math"></view><text>数学</text><text class="demo-stat-time">2小时</text></view><view class="demo-track"><view class="demo-track-fill"></view></view><view class="demo-stat-row"><view class="demo-dot"></view><text>英语</text><text class="demo-stat-time">1小时</text></view><view class="demo-track"><view class="demo-track-fill demo-track-short"></view></view></view>
-          <view wx:elif="{{item.illustration === 'heatmap'}}" class="demo-heatmap"><view class="demo-calendar-heading">左右滑动切换月份</view><view class="demo-heat-grid"><view wx:for="{{demoHeatCells}}" wx:for-item="cell" wx:key="id" class="demo-heat-cell demo-heat-{{cell.level}}"></view></view><view class="demo-calendar-note">点日期，查看当天学习记录</view></view>
-          <view wx:elif="{{item.illustration === 'files'}}" class="demo-files"><view class="demo-file"><text class="demo-file-type">JSON</text><text class="demo-file-title">完整备份</text><text class="demo-file-note">可以恢复数据</text></view><view class="demo-file"><text class="demo-file-type">CSV</text><text class="demo-file-title">统计表格</text><text class="demo-file-note">Excel / WPS 查看</text></view></view>
-        </view>
-        <view wx:for="{{item.items}}" wx:for-item="instruction" wx:key="title" class="instruction"><view class="instruction-title">{{instruction.title}}</view><view class="instruction-text">{{instruction.text}}</view></view>
-        <view class="chapter-tip {{item.warning ? 'chapter-tip-warning' : ''}}"><view class="chapter-tip-title">{{item.warning ? '请先保存好你的数据' : '记住这一点'}}</view><view>{{item.tip}}</view></view>
-        <view class="chapter-footer"><view data-id="{{item.id}}" bindtap="toggleChapter" hover-class="guide-pressed">收起这一节</view><view bindtap="backToTop" hover-class="guide-pressed">回到目录 ↑</view></view>
-      </view>
+    </swiper-item>
+  </swiper>
+  <button class="guide-start" bindtap="startFocus">去专注一下 →</button>
+  <view class="tips-label">用到时，再看一眼</view>
+  <view class="guide-tips">
+    <view wx:for="{{chapters}}" wx:key="id" id="guide-{{item.id}}" class="tip-card">
+      <view class="tip-heading" data-id="{{item.id}}" bindtap="toggleChapter"><text class="tip-symbol">{{item.symbol}}</text><text class="tip-title">{{item.title}}</text><text class="tip-expand">{{opened[item.id] ? '−' : '+'}}</text></view>
+      <view wx:if="{{opened[item.id]}}" class="tip-content">{{item.tip}}</view>
     </view>
   </view>
-
-  <view class="guide-card data-reminder"><view class="reminder-mark">!</view><view><view class="instruction-title">重要记录，记得备份</view><view class="instruction-text">记录会先保存在本机。当前开发版只有这台电脑上的开发者工具能连接同步服务，换设备、清除数据或卸载前请先保存 JSON 备份。</view><view class="reminder-link" data-id="data" bindtap="openChapter" aria-role="button" aria-label="查看备份和恢复说明">了解备份与恢复 <view class="guide-chevron"></view></view></view></view>
-
-  <view class="guide-card faq-card"><view class="guide-section-title faq-title">常见问题</view><view wx:for="{{faqs}}" wx:key="id" class="faq-item"><view class="faq-heading" data-id="{{item.id}}" bindtap="toggleFaq" hover-class="guide-pressed" aria-role="button" aria-label="{{item.question}}"><text>{{item.question}}</text><view class="guide-chevron chapter-chevron {{faqOpened[item.id] ? 'chevron-open' : ''}}"></view></view><view wx:if="{{faqOpened[item.id]}}" class="faq-answer">{{item.answer}}</view></view></view>
-  <button class="guide-feedback" open-type="feedback" hover-class="guide-pressed"><view><view class="feedback-title">还有不清楚的地方？</view><view class="feedback-hint">告诉我们，让 YoTick 更好用</view></view><text class="feedback-action">反馈与建议</text></button>
   <view class="guide-end">慢慢来，每一次专注都算数。</view>
 </view>

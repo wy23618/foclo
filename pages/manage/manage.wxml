@@ -19,7 +19,7 @@
         <view class="mg-name-line"><view class="mg-name ellipsis">{{item.name}}</view></view>
         <view class="mg-meta ellipsis">{{item.metaText}}</view>
       </view>
-      <view class="mg-appearance-trigger" data-id="{{item.projectId}}" bindtap="openAppearanceById" aria-label="更改颜色和简称"><view class="mg-color" style="background:{{item.displayColor}}"></view><text>外观</text></view>
+      <view class="mg-appearance-trigger" data-id="{{item.projectId}}" bindtap="openAppearanceById" aria-label="更改颜色和简称"><view class="mg-color" style="background:{{item.displayColor}}"></view><text>颜色与简称</text></view>
       <view class="mg-menu" data-id="{{item.projectId}}" bindtap="openActions" aria-label="更多项目操作">•••</view>
     </view>
   </view>

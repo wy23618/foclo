@@ -141,6 +141,26 @@ function rangeStatistics(sessions, range, nowSec, projectIndex, mode) {
   };
 }
 
+// 时间线只绘制范围内的实际学习区间，暂停（包括尚未恢复的暂停）留空。
+function studyIntervalsInRange(session, range, nowSec) {
+  const effectiveEnd = session.status === 'COMPLETED' ? session.endedAtSec : nowSec;
+  const start = Math.max(session.startedAtSec, range.start);
+  const end = Math.min(effectiveEnd, range.end);
+  const intervals = [];
+  let cursor = start;
+  const pauses = (session.pauses || []).slice().sort((a, b) => a.startedAtSec - b.startedAtSec);
+  for (let i = 0; i < pauses.length && cursor < end; i++) {
+    const pause = pauses[i];
+    const pauseEnd = Math.min(pause.status === 'COMPLETED' ? pause.endedAtSec : nowSec, end);
+    if (pauseEnd <= cursor || pauseEnd <= pause.startedAtSec) continue;
+    const studyEnd = Math.min(pause.startedAtSec, end);
+    if (studyEnd > cursor) intervals.push({ startedAtSec: cursor, endedAtSec: studyEnd });
+    cursor = Math.max(cursor, pauseEnd);
+  }
+  if (cursor < end) intervals.push({ startedAtSec: cursor, endedAtSec: end });
+  return intervals;
+}
+
 // 范围记录（贡献 > 0），按真实 startedAtSec 升序，同起点按 sessionId 排序。
 // 每行携带真实起止与裁剪起止（§5.5）。分页由服务层处理。
 function recordsInRange(sessions, range, nowSec, projectIndex, includeZeroCompleted) {
@@ -166,6 +186,7 @@ function recordsInRange(sessions, range, nowSec, projectIndex, includeZeroComple
       clippedStartedAtSec: Math.max(s.startedAtSec, range.start),
       clippedEndedAtSec: Math.min(effectiveEnd, range.end),
       seconds: sec,
+      studyIntervals: studyIntervalsInRange(s, range, nowSec),
       totalDurationSeconds: s.status === 'COMPLETED' ? s.durationSeconds : null,
       status: s.status,
       paused: !!ap,

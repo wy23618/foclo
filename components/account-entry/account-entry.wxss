@@ -1,0 +1,12 @@
+.entry-page { position:fixed; inset:0; z-index:1200; box-sizing:border-box; display:flex; flex-direction:column; padding:100rpx 56rpx calc(52rpx + env(safe-area-inset-bottom)); background:var(--bg-page, #F5F7EF); color:var(--text-primary, #293326); }
+.entry-brand { font-size:36rpx; font-weight:600; letter-spacing:2rpx; }
+.entry-content { flex:1; display:flex; flex-direction:column; align-items:center; justify-content:center; padding:40rpx 0; }
+.entry-mark { width:116rpx; height:116rpx; border-radius:36rpx; background:var(--action-primary, #526C42); color:var(--text-on-accent, #fff); font-size:66rpx; line-height:116rpx; text-align:center; margin-bottom:44rpx; }
+.entry-title { font-size:40rpx; font-weight:600; text-align:center; }
+.entry-description { margin-top:20rpx; font-size:25rpx; line-height:1.6; text-align:center; color:var(--text-secondary, #75806F); }
+.entry-actions { text-align:center; }
+.entry-login { width:100%!important; padding:24rpx!important; line-height:1.5; font-size:29rpx; border-radius:22rpx; background:var(--action-primary, #526C42); color:var(--text-on-accent, #fff); }
+.entry-login::after,.entry-guest::after { border:0; }
+.entry-hint { margin-top:18rpx; font-size:22rpx; color:var(--text-secondary, #75806F); }
+.entry-guest { background:transparent; color:var(--text-primary, #293326); margin:30rpx auto 0!important; padding:18rpx!important; font-size:26rpx; line-height:1.5; }
+.entry-note { margin-top:8rpx; font-size:21rpx; line-height:1.5; color:var(--text-secondary, #75806F); }

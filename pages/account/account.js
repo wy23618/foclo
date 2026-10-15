@@ -5,15 +5,15 @@ const {
 } = require("../../utils/theme");
 
 const STATUS_LABELS = {
-  guest: "游客空间",
-  syncing: "正在同步",
-  synced: "已同步",
-  pending: "等待同步",
+  guest: "仅保存在本机",
+  syncing: "正在保存",
+  synced: "已保存",
+  pending: "等待保存",
   offline: "离线，资料已保存在本机",
   "upgrade-required": "空间升级待处理",
-  failed: "同步失败",
+  failed: "保存未完成",
   "auth-required": "需要重新登录",
-  conflict: "有冲突待处理",
+  conflict: "需要确认更改",
   quarantined: "空间已隔离",
 };
 
@@ -30,9 +30,11 @@ function unwrap(result) {
 function formatTime(value) {
   if (!value) return "暂无同步记录";
   const date = new Date(value);
+  const pad = (n) => String(n).padStart(2, "0");
   return Number.isNaN(date.getTime())
     ? "暂无同步记录"
-    : "上次同步：" + date.toLocaleString();
+    : "最近保存：" + date.getFullYear() + "/" + pad(date.getMonth() + 1) + "/" +
+      pad(date.getDate()) + " " + pad(date.getHours()) + ":" + pad(date.getMinutes()) + ":" + pad(date.getSeconds());
 }
 
 function conflictText(value) {
@@ -41,10 +43,10 @@ function conflictText(value) {
   if (data.status === "COMPLETED")
     return (
       "开始：" +
-      new Date(data.startedAtSec * 1000).toLocaleString() +
+      require('../../utils/record-date').dateText(data.startedAtSec) +
       "\n专注：" +
-      data.durationSeconds +
-      " 秒\n暂停：" +
+      require('../../utils/format').durationText(data.durationSeconds) +
+      "\n暂停：" +
       (data.pauses || []).length +
       " 次"
     );
@@ -88,27 +90,35 @@ Page({
     status: "guest",
     statusLabel: STATUS_LABELS.guest,
     statusMessage: "",
-    accountLabel: "游客空间",
+    accountLabel: "游客体验",
+    avatarUrl: '',
+    accountSuffix: '',
+    profileUserId: '',
     pending: 0,
     syncedAt: "暂无同步记录",
     conflicts: [],
     busy: false,
+    loginMethods: require('../../sync/login-methods').LOGIN_METHODS,
+    advancedOpen: false,
+    toolsOnly:false,
+    hasGuestData: false,
+    guestSummaryText: "",
     hasAccount: false,
     canClearCache: false,
     exportedRecovery: false,
-    migrationPreview: null,
-    migrationSummary: "",
-    mappingRows: [],
-    mapping: {},
-    projectChoices: [{ id: "", name: "保留为独立项目" }],
     recoveryChoices: [{ id: "", name: "另建项目保存" }],
     recoveryChoiceName: "另建项目保存",
-    sessionRows: [],
-    sessionMapping: {},
     recoveryPanel: false,
     recoveryConflictId: "",
     recoveryProjectId: "",
     recoveryName: "",
+  },
+
+  onLoad(options) {
+    this.loginOnOpen = options && options.login === "1";
+    const toolsOnly = !!(options && options.tools === '1');
+    this.setData({ toolsOnly });
+    if (toolsOnly) wx.setNavigationBarTitle({ title:'账号数据与注销' });
   },
 
   async onShow() {
@@ -123,6 +133,10 @@ Page({
         this.applyStatus(status),
       );
     await this.refresh();
+    if (this.loginOnOpen) {
+      this.loginOnOpen = false;
+      await this.onLogin();
+    }
     const service = app.globalData.service;
     try {
       const prefs = service && (await service.getPrefs());
@@ -156,9 +170,11 @@ Page({
       statusLabel: STATUS_LABELS[status.state] || "状态未知",
       statusMessage: status.message || "",
       accountLabel: account
-        ? "微信账号 · " + account.userId.slice(-4)
-        : "游客空间",
+        ? (this.data.profileUserId === account.userId ? this.data.accountLabel : '微信账号')
+        : "游客体验",
       hasAccount: !!account,
+      accountSuffix:account ? account.userId.slice(-4) : '',
+      avatarUrl:account && this.data.profileUserId === account.userId ? this.data.avatarUrl : '',
       pending,
       syncedAt: formatTime(status.lastSyncedAt),
       conflicts,
@@ -170,6 +186,16 @@ Page({
     try {
       const status = this.accounts.getStatus();
       this.applyStatus(status);
+      const displayedAccount = this.accounts.getCurrent();
+      const profile = await this.accounts.getDisplayProfile();
+      if (displayedAccount === this.accounts.getCurrent()) this.setData({
+        profileUserId:displayedAccount ? displayedAccount.userId : '',
+        avatarUrl:profile && profile.avatarUrl || '',
+        accountLabel:profile && profile.nickname || (displayedAccount ? '微信账号' : '游客体验'),
+      });
+      const guest = await this.accounts.getGuestSummary();
+      this.setData({ hasGuestData: guest.checked && guest.hasData && !guest.imported,
+        guestSummaryText: [guest.projectCount ? guest.projectCount + " 个项目" : '', guest.sessionCount ? guest.sessionCount + " 条记录" : ''].filter(Boolean).join(' · ') + '尚未保存到账号' });
       const list = await this.accounts.conflicts();
       const conflicts = (list || []).map((item) =>
         Object.assign({}, item, {
@@ -196,10 +222,6 @@ Page({
           .concat(env.data.archived)
           .map((p) => ({ id: p.projectId, name: p.pathText }));
         this.setData({
-          projectChoices: [
-            { id: "", name: "保留为独立项目" },
-            { id: "__new__", name: "另建项目保存" },
-          ].concat(choices),
           recoveryChoices: [{ id: "", name: "另建项目保存" }].concat(choices),
         });
       }
@@ -217,6 +239,11 @@ Page({
         throw new Error("此功能正在准备中，请稍后再试");
       const result = await fn.apply(this.accounts, args || []);
       if (result !== undefined) unwrap(result);
+      if (method === "logout") {
+        getApp().globalData.guestSession = true;
+          wx.reLaunch({ url: '/pages/focus/focus' });
+        return;
+      }
       if (action) wx.showToast({ title: action, icon: "success" });
       await this.refresh();
     } catch (error) {
@@ -230,22 +257,46 @@ Page({
     }
   },
 
-  onLogin() {
-    wx.showModal({
-      title: "登录账号",
-      content:
-        "登录只会建立账号空间。游客数据是否合并，会在登录后单独预览并由你确认。",
-      confirmText: "继续登录",
-      success: (r) => {
-        if (r.confirm) this.runAction("登录成功", "login");
-      },
-    });
+  async onLogin(event) {
+    if (this.data.busy) return;
+    const id = event && event.currentTarget && event.currentTarget.dataset.method || 'wechat';
+    const method = this.data.loginMethods.find(item => item.id === id);
+    if (!method || method.id !== 'wechat') return;
+    this.setData({ busy:true });
+    wx.showLoading({ title:'正在连接微信', mask:true });
+    try {
+      const { loginAndImport, confirmGuestImport } = require('../../sync/login-flow');
+      const result = await loginAndImport(this.accounts, async summary => {
+        wx.hideLoading();
+        const agreed = await confirmGuestImport(summary);
+        if (agreed) wx.showLoading({ title:'正在迁移记录', mask:true });
+        return agreed;
+        });
+      if (result.cancelled) return;
+      getApp().globalData.guestSession = false;
+      await this.refresh();
+    } catch (error) {
+      wx.hideLoading();
+        wx.showModal({ title:error.loggedIn ? '游客记录尚未迁移' : '微信登录未完成',
+        content:(error.message || '请稍后重试') + '。本机原记录仍保留。', showCancel:false });
+      await this.refresh();
+    } finally { wx.hideLoading(); this.setData({ busy:false }); }
   },
-
+  async onEditProfile() {
+    if (this.data.busy || !this.accounts.getCurrent()) return;
+    this.setData({ busy:true });
+    try {
+      const identity = this.selectComponent('#accountIdentity');
+      const value = await identity.request(await this.accounts.getDisplayProfile(), { editing:true });
+      if (value) await this.accounts.saveDisplayProfile(value);
+      await this.refresh();
+    } catch (error) { wx.showToast({ title:error.message || '资料暂未保存', icon:'none' }); }
+    finally { this.setData({ busy:false }); }
+  },
   onLogout() {
     wx.showModal({
       title: "退出登录？",
-      content: "退出后会回到游客空间；当前账号的待同步内容仍保留在该账号空间。",
+      content: "退出后使用游客模式，不会自动重新登录。账号记录和待同步内容都会保留。",
       confirmText: "退出登录",
       success: (r) => {
         if (r.confirm) this.runAction("已退出登录", "logout");
@@ -257,205 +308,30 @@ Page({
     this.runAction("已开始同步", "trigger");
   },
 
-  async onPreviewMigration() {
-    if (this.data.busy) return;
-    wx.showModal({
-      title: "准备游客数据预览？",
-      content:
-        "预览会把游客历史上传到账号的临时迁移区；确认合并前不会发布，游客原副本会保留。",
-      confirmText: "上传并预览",
-      success: (r) => {
-        if (r.confirm) this.loadMigrationPreview();
-      },
-    });
-  },
+  toggleAdvanced() { this.setData({ advancedOpen: !this.data.advancedOpen }); },
 
-  async loadMigrationPreview() {
+  async onSaveGuestRecords() {
     if (this.data.busy) return;
-    this.setData({ busy: true, mapping: {}, migrationPreview: null });
+    this.setData({ busy: true });
     try {
-      const preview = unwrap(await this.accounts.migrateGuest());
-      const conflicts = Array.isArray(preview.conflicts)
-        ? preview.conflicts
-        : [];
-      const rows = conflicts
-        .filter(
-          (c) =>
-            !/^SESSION_/.test(c.type || "") && !/DELETED/.test(c.type || ""),
-        )
-        .map((c) => ({
-          id: c.sourceId,
-          name:
-            (c.cloud &&
-              (c.cloud.name || (c.cloud.data && c.cloud.data.name))) ||
-            c.type ||
-            "项目名称冲突",
-          targetId:
-            (c.cloud && (c.cloud.id || (c.cloud.data && c.cloud.data.id))) ||
-            "",
-          value: "",
-        }));
-      const sessions = preview.sessions || preview.sessionCount || 0;
-      const projectCount =
-        preview.projectCount == null ? rows.length : preview.projectCount;
-      this.setData({
-        migrationPreview: preview,
-        mappingRows: rows,
-        migrationSummary:
-          "预览：" +
-          projectCount +
-          " 个项目 · " +
-          (Array.isArray(sessions) ? sessions.length : sessions) +
-          " 条专注记录 · " +
-          conflicts.length +
-          " 项冲突",
-        sessionRows: conflicts
-          .filter(
-            (c) =>
-              /^SESSION_|ENTITY_DELETED$/.test(c.type) &&
-              c.cloud &&
-              c.cloud.status === "COMPLETED",
-          )
-          .map((c) => ({
-            id: c.sourceId,
-            label:
-              "记录 " + new Date(c.cloud.startedAtSec * 1000).toLocaleString(),
-            decision: "待选择",
-          })),
-        sessionMapping: {},
-      });
+      const { importGuestWithConfirmation, confirmGuestImport } = require("../../sync/login-flow");
+      const result = await importGuestWithConfirmation(this.accounts, confirmGuestImport, true);
+      if (result.imported) {
+        wx.showToast({ title:result.result && result.result.addedSessionCount === 0 && result.result.addedProjectCount === 0 ? '记录已整理，无需重复保存' : '之前的记录已保存', icon:'success' });
+      }
+      await this.refresh();
     } catch (error) {
-      wx.showModal({
-        title: "无法预览游客数据",
-        content: error.message || "请稍后重试",
-        showCancel: false,
-      });
-    } finally {
-      this.setData({ busy: false });
-    }
+      wx.showModal({ title: "之前的记录尚未保存", content: (error.message || "请稍后重试") + "。游客原记录仍在本机。", showCancel: false });
+    } finally { this.setData({ busy: false }); }
   },
 
-  onMappingInput(e) {
-    const id = e.currentTarget.dataset.id;
-    const value = String(e.detail.value || "").trim();
-    const mapping = Object.assign({}, this.data.mapping, { [id]: value });
-    const mappingRows = this.data.mappingRows.map((row) =>
-      row.id === id ? Object.assign({}, row, { value }) : row,
-    );
-    this.setData({ mapping, mappingRows });
-  },
+  openDataBackup() { wx.navigateTo({ url:'/pages/settings-detail/settings-detail?section=data' }); },
 
-  onMappingPick(e) {
-    const choice = this.data.projectChoices[Number(e.detail.value)],
-      id = e.currentTarget.dataset.id;
-    if (choice.id === "__new__") {
-      wx.showModal({
-        title: "另建项目保存",
-        editable: true,
-        placeholderText: "输入新项目名称",
-        success: async (r) => {
-          if (!r.confirm || !String(r.content || "").trim()) return;
-          this.setData({ busy: true });
-          try {
-            const project = await this.accounts.createMigrationTarget(
-              String(r.content).trim(),
-            );
-            this.setData({
-              mapping: { ...this.data.mapping, [id]: project.id },
-              mappingRows: this.data.mappingRows.map((row) =>
-                row.id === id ? { ...row, choiceName: project.name } : row,
-              ),
-            });
-          } catch (error) {
-            wx.showModal({
-              title: "创建未完成",
-              content: error.message,
-              showCancel: false,
-            });
-          } finally {
-            this.setData({ busy: false });
-          }
-        },
-      });
-      return;
-    }
-    this.setData({
-      mapping: { ...this.data.mapping, [id]: choice.id },
-      mappingRows: this.data.mappingRows.map((r) =>
-        r.id === id ? { ...r, choiceName: choice.name } : r,
-      ),
-    });
-  },
-  onSessionChoice(e) {
-    const id = e.currentTarget.dataset.id;
-    wx.showActionSheet({
-      itemList: ["保留云端已有记录", "将游客版本另存为新记录"],
-      success: (r) => {
-        const value =
-          r.tapIndex === 0 ? "skip" : require("../../core/ids").uuid();
-        this.setData({
-          sessionMapping: { ...this.data.sessionMapping, [id]: value },
-          sessionRows: this.data.sessionRows.map((row) =>
-            row.id === id
-              ? {
-                  ...row,
-                  decision:
-                    r.tapIndex === 0 ? "保留云端记录" : "游客版本另存为新记录",
-                }
-              : row,
-          ),
-        });
-      },
-    });
-  },
   onRecoveryPick(e) {
     const choice = this.data.recoveryChoices[Number(e.detail.value)];
     this.setData({
       recoveryProjectId: choice.id,
       recoveryChoiceName: choice.name,
-    });
-  },
-
-  onCommitMigration() {
-    if (!this.data.migrationPreview) return;
-    const mapping = {};
-    Object.keys(this.data.mapping).forEach((id) => {
-      const targetId = this.data.mapping[id];
-      if (targetId) mapping[id] = targetId;
-    });
-    wx.showModal({
-      title: "合并游客数据？",
-      content:
-        this.data.migrationSummary +
-        "\n未填写映射的项目将按原名作为独立项目导入，不会按同名自动合并。",
-      confirmText: "确认合并",
-      success: async (r) => {
-        if (!r.confirm) return;
-        this.setData({ busy: true });
-        try {
-          unwrap(
-            await this.accounts.commitGuestMigration(
-              mapping,
-              this.data.sessionMapping,
-            ),
-          );
-          this.setData({
-            migrationPreview: null,
-            mappingRows: [],
-            mapping: {},
-          });
-          wx.showToast({ title: "游客数据已合并", icon: "success" });
-          await this.refresh();
-        } catch (error) {
-          wx.showModal({
-            title: "合并未完成",
-            content: error.message || "请稍后重试",
-            showCancel: false,
-          });
-        } finally {
-          this.setData({ busy: false });
-        }
-      },
     });
   },
 
@@ -506,6 +382,10 @@ Page({
       }
       if (method === "exportRecovery" && delivered)
         this.setData({ exportedRecovery: true });
+      if (fileLabel === "data" && delivered) {
+        wx.showToast({ title: "数据已导出", icon: "success" });
+        return;
+      }
       wx.showModal({
         title: fileLabel === "recovery" ? "恢复副本已准备好" : "账号数据已导出",
         content: delivered
@@ -527,6 +407,9 @@ Page({
   onExportRecovery() {
     this.deliverExport("exportRecovery", "recovery");
   },
+  onExportData() {
+    this.deliverExport("exportLocalBackup", "data");
+  },
   async onExportArchived() {
     const spaces = await this.accounts.listRecoverySpaces();
     if (!spaces.length)
@@ -546,29 +429,31 @@ Page({
   onClearAccount() {
     if (!this.data.exportedRecovery) {
       wx.showModal({
-        title: "先保存恢复副本",
+        title: "删除前先备份",
         content:
-          "请先导出并保存包含待同步任务与冲突的恢复副本，再继续清空账号云端数据。",
-        showCancel: false,
+          "先保存一份备份，避免误删后无法找回。保存后再确认是否删除。",
+        confirmText: '保存备份',
+        cancelText: '取消',
+        success: result => { if (result.confirm) this.onExportRecovery(); },
       });
       return;
     }
     wx.showModal({
-      title: "清空账号云端数据？",
+      title: "删除全部记录？",
       content:
-        "云端数据将被清空并推进空间代次。本机旧数据会隔离保留，之后可导出恢复。",
+        "将删除这个账号的全部项目和专注记录，其他设备也会同步删除。账号仍可继续使用，登录前的游客记录不受影响。",
       confirmText: "继续",
       confirmColor: "#A84A32",
       success: (first) => {
         if (!first.confirm) return;
         wx.showModal({
           title: "最后确认",
-          content: "再次确认清空此账号的全部云端项目与专注记录？",
-          confirmText: "清空云端数据",
+          content: "确定删除全部项目和专注记录吗？需要找回时，请使用删除前保存的备份。",
+          confirmText: "确认删除",
           confirmColor: "#A84A32",
           success: (second) => {
             if (second.confirm)
-              this.runAction("云端数据已清空并隔离", "clearAccount");
+              this.runAction("账号记录已删除", "clearAccount");
           },
         });
       },
@@ -579,29 +464,41 @@ Page({
     const status = this.accounts && this.accounts.getStatus();
     if (!status || !Number.isFinite(status.pending) || status.pending > 0) {
       wx.showModal({
-        title: "暂不能重建本机资料",
-        content: "待同步数量尚未确认为零。请先同步或导出恢复副本。",
+        title: "请先完成保存",
+        content: "这台设备可能还有未保存的更改。请先联网保存，再重新下载记录。",
         showCancel: false,
       });
       return;
     }
     wx.showModal({
-      title: "重新下载账号资料？",
+      title: "重新下载记录？",
       content:
-        "联网后重新下载账号资料，旧本机副本保留用于恢复。此操作不释放旧副本占用的空间，也不删除云端或游客资料。",
-      confirmText: "重建资料",
+        "从账号重新下载已保存的记录，用于解决这台设备显示不完整的问题。不会删除账号记录。",
+      confirmText: "重新下载",
       success: (r) => {
         if (r.confirm)
-          this.runAction("已准备重新下载，旧副本已保留", "clearCache");
+          this.runAction("已开始重新下载", "clearCache");
       },
     });
   },
 
-  onRequestDeletion() {
+  async onRequestDeletion() {
+    if (this.data.busy) return;
+    this.setData({ busy: true });
+    try {
+      const status = await this.accounts.getDeletionRequest();
+      if (status.request) {
+        wx.showModal({ title: "注销申请处理中", content: "已收到你的注销申请，处理完成前账号仍可使用。", showCancel: false });
+        return;
+      }
+    } catch (error) {
+      wx.showModal({ title: "无法查询注销申请", content: error.message || "请稍后重试", showCancel: false });
+      return;
+    } finally { this.setData({ busy: false }); }
     wx.showModal({
       title: "提交账号注销申请？",
       content:
-        "这会向服务端提交注销申请，不会立即删除账号。服务端处理仍需遵循正式数据保留政策；该政策尚待确认。",
+        "注销会申请删除账号及其数据，需要审核处理，不会立即生效。只想清空记录，请选择“删除全部记录”。",
       confirmText: "提交申请",
       success: async (r) => {
         if (!r.confirm || this.data.busy) return;
@@ -616,8 +513,8 @@ Page({
               result &&
               (result.status === "pending_policy_review" ||
                 result.state === "pending_policy_review")
-                ? "服务端已收到申请，正在等待正式数据保留政策确认。账号当前尚未删除。"
-                : "服务端已收到申请，账号当前尚未删除。",
+                ? "已收到注销申请，等待审核处理。账号尚未删除。"
+                : "已收到注销申请，账号尚未删除。",
             showCancel: false,
           });
         } catch (error) {
@@ -647,10 +544,10 @@ Page({
       return;
     }
     wx.showActionSheet({
-      itemList: ["采用云端版本", "保留本地修改并重命名"],
+      itemList: ["使用账号已保存的内容", "保留这台设备的修改并改名"],
       success: (r) => {
         if (r.tapIndex === 0)
-          this.runAction("已采用云端版本", "resolveConflict", [id, "cloud"]);
+          this.runAction("已使用账号内容", "resolveConflict", [id, "cloud"]);
         else if (r.tapIndex === 1)
           wx.showModal({
             title: "本地项目新名称",

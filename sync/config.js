@@ -1,16 +1,14 @@
-// The loopback endpoint is enabled only inside the WeChat DevTools simulator.
-// It is never selected by preview devices or uploaded mini-program versions.
-// Production HTTPS endpoints belong here after a server is publicly configured.
+// DevTools and phones share the same account server by default.
+// Trial connectivity requires phone debugging and real-device acceptance.
+// Release selects no endpoint until a production domain is configured.
 const {
   isDevToolsDevelopment,
-  isPhoneDevelopment,
-  LAN_DEBUG_API_HOST,
+  isPhoneCloudTesting,
+  TEMP_CLOUD_DEBUG_API_HOST,
 } = require("./environment");
 
-const apiBaseUrl = isDevToolsDevelopment()
-  ? "http://127.0.0.1:3000/api/v1"
-  : isPhoneDevelopment()
-    ? "http://" + LAN_DEBUG_API_HOST + ":3000/api/v1"
+const apiBaseUrl = isDevToolsDevelopment() || isPhoneCloudTesting()
+    ? "https://" + TEMP_CLOUD_DEBUG_API_HOST + "/api/v1"
     : "";
 
 module.exports = {

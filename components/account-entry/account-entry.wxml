@@ -1,0 +1,14 @@
+<view wx:if="{{opened}}" class="entry-page theme-{{theme}}" catchtouchmove="noop">
+  <view class="entry-brand">YoTick</view>
+  <view class="entry-content">
+    <view class="entry-mark">✓</view>
+    <view class="entry-title">留一点时间，给自己</view>
+    <view class="entry-description">记录每一次专注，让进步慢慢发生</view>
+  </view>
+  <view class="entry-actions">
+    <button class="entry-login" bindtap="login">微信一键登录</button>
+    <view class="entry-hint">使用当前微信账号，自动保存专注记录</view>
+    <button class="entry-guest" bindtap="experience">先体验</button>
+    <view class="entry-note">游客记录保存在本机，登录后可选择迁移</view>
+  </view>
+</view>

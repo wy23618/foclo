@@ -31,5 +31,33 @@
     "requiresChunkedImport": true,
     "wireFitsCurrentCloudImport": true,
     "trueDeviceAcceptance": false
+  },
+  "devtoolsFileTier": {
+    "measuredAt": "2026-10-08",
+    "sampleProjects": 500,
+    "sampleSessions": 10000,
+    "samplePauses": 20000,
+    "expectedTotalSeconds": 15000000,
+    "initialStatisticsSamplesMs": [
+      137236,
+      127680,
+      128221
+    ],
+    "initialStatisticsMedianMs": 128221,
+    "initialIndexScanMs": 126070,
+    "boundedParallelReads": 8,
+    "optimizedSingleIndexScanMs": 20604,
+    "optimizedSingleServiceInitMs": 125,
+    "optimizedSingleStatisticsMs": 25353,
+    "optimizedActionsMs": {
+      "start": 523,
+      "pause": 217,
+      "resume": 198,
+      "stop": 259
+    },
+    "durableReadback": true,
+    "trueDeviceAcceptance": false,
+    "evidence": "LocalServer/devtools-scale-reopen-2026-10-08T07-16-27-105Z.json",
+    "scope": "Isolated WeChat DevTools wx file tier; not a mobile frame/latency claim"
   }
 }

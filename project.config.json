@@ -20,7 +20,7 @@
     },
     "packNpmRelationList": [],
     "compileWorklet": false,
-    "uploadWithSourceMap": true,
+    "uploadWithSourceMap": false,
     "packNpmManually": false,
     "minifyWXSS": true,
     "minifyWXML": true,
@@ -31,6 +31,10 @@
   },
   "packOptions": {
     "ignore": [
+      {
+        "type": "folder",
+        "value": ".git"
+      },
       {
         "type": "file",
         "value": "project.private.config.json"

@@ -69,7 +69,10 @@ if (-not $ownedApi -and (Get-NetTCPConnection -State Listen -LocalPort $apiPort 
 
 if ($ownedApi) {
   $configuredHost = (Get-Content -LiteralPath $envPath -ErrorAction SilentlyContinue | Where-Object { $_ -match '^HOST=' } | Select-Object -First 1) -replace '^HOST=', ''
-  if ($configuredHost -ne $listenHost) {
+  $configuredLoopback = [string]((Get-Content -LiteralPath $envPath -ErrorAction SilentlyContinue | Where-Object { $_ -match '^LOCAL_DEV_LOOPBACK=' } | Select-Object -First 1) -replace '^LOCAL_DEV_LOOPBACK=', '')
+  $desiredLoopback = if ($LanDebug) { 'true' } else { 'false' }
+  $hasLoopbackListener = Get-NetTCPConnection -State Listen -LocalAddress '127.0.0.1' -LocalPort $apiPort -ErrorAction SilentlyContinue | Where-Object { $_.OwningProcess -eq $ownedApi.ProcessId }
+  if ($configuredHost -ne $listenHost -or $configuredLoopback -ne $desiredLoopback -or ($LanDebug -and -not $hasLoopbackListener)) {
     Stop-Process -Id $ownedApi.ProcessId -Force
     Wait-Process -Id $ownedApi.ProcessId -Timeout 10 -ErrorAction SilentlyContinue
     Remove-Item -LiteralPath $pidPath -Force -ErrorAction SilentlyContinue
@@ -205,6 +208,13 @@ if ($hostLineIndex -ge 0) { $envLines[$hostLineIndex] = "HOST=$listenHost" }
 else { $envLines.Insert(0, "HOST=$listenHost") }
 [System.IO.File]::WriteAllLines($envPath, $envLines, [System.Text.UTF8Encoding]::new($false))
 
+$desiredLoopback = if ($LanDebug) { 'true' } else { 'false' }
+$loopbackLineIndex = -1
+for ($i = 0; $i -lt $envLines.Count; $i++) { if ($envLines[$i] -match '^LOCAL_DEV_LOOPBACK=') { $loopbackLineIndex = $i; break } }
+if ($loopbackLineIndex -ge 0) { $envLines[$loopbackLineIndex] = "LOCAL_DEV_LOOPBACK=$desiredLoopback" }
+else { $envLines.Add("LOCAL_DEV_LOOPBACK=$desiredLoopback") }
+[System.IO.File]::WriteAllLines($envPath, $envLines, [System.Text.UTF8Encoding]::new($false))
+
 Push-Location $serverRoot
 try {
   & npm run build
@@ -224,6 +234,7 @@ try {
     $ready = Invoke-RestMethod -Uri "http://${listenHost}:$apiPort/health/ready" -TimeoutSec 2
     if ($ownedApi) {
       Write-Output "YoTick local server is already running. Live: $($live.status); database ready: $($ready.status)."
+      & (Join-Path $PSScriptRoot 'start-backup.ps1')
       if ($LanDebug) {
         Write-Output "Temporary phone-debug address: http://${listenHost}:$apiPort; intended Wi-Fi network: $lanNetwork."
         $identity = [Security.Principal.WindowsIdentity]::GetCurrent()
@@ -256,6 +267,7 @@ try {
         }
       }
       Write-Output "Private local files are under $privateRoot."
+      & (Join-Path $PSScriptRoot 'start-backup.ps1')
       $configuredSecretLine = Get-Content -LiteralPath $envPath -Encoding UTF8 | Where-Object { $_ -like 'WECHAT_APP_SECRET=*' } | Select-Object -First 1
       if (-not $configuredSecretLine -or $configuredSecretLine -match 'not-configured|replace-me|placeholder') {
         Write-Output 'The WeChat AppSecret still needs configuration before real login testing.'

@@ -1,0 +1,18 @@
+.identity-overlay { position:fixed; inset:0; z-index:1200; display:flex; align-items:center; justify-content:center; padding:32rpx; box-sizing:border-box; color:var(--text-primary); }
+.identity-mask { position:absolute; inset:0; background:rgba(24,32,23,.45); }
+.identity-sheet { position:relative; width:100%; max-width:620rpx; max-height:88vh; overflow-y:auto; box-sizing:border-box; padding:34rpx 32rpx 18rpx; background:var(--bg-card); border-radius:30rpx; text-align:center; }
+.identity-eyebrow { color:var(--accent); font-size:22rpx; }
+.identity-title { font-size:36rpx; font-weight:600; margin-top:16rpx; }
+.identity-subtitle { color:var(--text-secondary); font-size:24rpx; line-height:1.5; margin-top:12rpx; }
+.identity-avatar { padding:0!important; width:132rpx!important; height:132rpx; border-radius:50%; background:var(--bg-control-soft); margin:28rpx auto 0!important; overflow:hidden; }
+.identity-avatar::after,.identity-confirm::after,.identity-cancel::after { border:0; }
+.identity-avatar image { width:100%; height:100%; }
+.avatar-placeholder { position:relative; width:100%; height:100%; }
+.avatar-head { position:absolute; width:36rpx; height:36rpx; border-radius:50%; background:var(--accent); opacity:.65; top:27rpx; left:48rpx; }
+.avatar-body { position:absolute; width:66rpx; height:39rpx; border-radius:40rpx 40rpx 15rpx 15rpx; background:var(--accent); opacity:.65; top:72rpx; left:33rpx; }
+.avatar-hint { color:var(--accent); font-size:22rpx; margin-top:12rpx; }
+.identity-nickname { background:var(--bg-control-soft); border-radius:16rpx; font-size:28rpx; height:86rpx; margin-top:24rpx; padding:0 18rpx; }
+.identity-note { color:var(--text-secondary); font-size:21rpx; line-height:1.6; text-align:left; margin:18rpx 0 24rpx; }
+.identity-confirm { width:100%!important; padding:20rpx!important; border-radius:18rpx; background:var(--action-primary); color:var(--text-on-accent); line-height:1.5; font-size:27rpx; }
+.identity-confirm[disabled] { opacity:.5; }
+.identity-cancel { background:transparent; color:var(--text-secondary); line-height:1.5; padding:20rpx!important; font-size:24rpx; margin:8rpx auto 0!important; }

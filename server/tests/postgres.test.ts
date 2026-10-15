@@ -1,7 +1,7 @@
 import { test, before, after } from "node:test";
 import assert from "node:assert/strict";
 import { randomUUID, randomBytes } from "node:crypto";
-import { readFile, mkdtemp, writeFile } from "node:fs/promises";
+import { readFile, mkdtemp, writeFile, rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { createRequire } from "node:module";
@@ -21,7 +21,8 @@ import { hashOpaqueToken } from "../src/auth.js";
 import { execFile } from "node:child_process";
 import { promisify } from "node:util";
 import { logicalBackup, restoreEmptyDatabase } from "../src/backup.js";
-import { fulfillAccountDeletion } from "../src/account-deletion.js";
+import { fulfillAccountDeletion, reconcileDeletionLedger } from "../src/account-deletion.js";
+import { readDeletionIntents } from "../src/deletion-ledger.js";
 import { applyMigrations } from "../src/migration-runner.js";
 import { fileURLToPath } from "node:url";
 const require = createRequire(import.meta.url);
@@ -31,6 +32,37 @@ let cluster: Awaited<ReturnType<typeof testPostgres>>,
   who: Identity;
 let app: any;
 const device = randomUUID();
+test("approved deletion survives rollback and older backup restore without deleting another account", async () => {
+  const ledger = await mkdtemp(join(tmpdir(), "yotick-ledger-pg-"));
+  await writeFile(join(ledger,"initialized"),"YOTICK_DELETION_LEDGER_V1\n");
+  const userId=randomUUID(),spaceId=randomUUID(),requestId=randomUUID();
+  await pool.query("INSERT INTO users(id) VALUES($1)",[userId]);
+  await pool.query("INSERT INTO spaces(id,user_id) VALUES($1,$2)",[spaceId,userId]);
+  await pool.query("INSERT INTO auth_identities(provider,app_id,subject,user_id) VALUES('wechat-mini','test-app',$1,$2)",[randomUUID(),userId]);
+  const oldBackup=JSON.parse(JSON.stringify(await logicalBackup(pool)));
+  await pool.query("INSERT INTO account_deletion_requests(id,user_id) VALUES($1,$2)",[requestId,userId]);
+  await pool.query("CREATE FUNCTION reject_sample_deletion() RETURNS trigger LANGUAGE plpgsql AS $$ BEGIN IF OLD.id='"+userId+"'::uuid THEN RAISE EXCEPTION 'injected deletion failure'; END IF; RETURN OLD; END $$; CREATE TRIGGER reject_sample_deletion BEFORE DELETE ON users FOR EACH ROW EXECUTE FUNCTION reject_sample_deletion();");
+  await assert.rejects(fulfillAccountDeletion(pool,requestId,"PURGE_REQUESTED_ACCOUNT",ledger),/injected deletion failure/);
+  assert.equal((await readDeletionIntents(ledger)).length,1);
+  assert.equal((await pool.query("SELECT count(*) FROM users WHERE id=$1",[userId])).rows[0].count,"1");
+  await pool.query("DROP TRIGGER reject_sample_deletion ON users; DROP FUNCTION reject_sample_deletion()");
+  await fulfillAccountDeletion(pool,requestId,"PURGE_REQUESTED_ACCOUNT",ledger);
+  await assert.rejects(reconcileDeletionLedger(pool,ledger),/ISOLATED_RESTORE_REQUIRED/);
+  const database="yotick_restore_ledger_"+randomUUID().replaceAll("-","").slice(0,12);
+  await pool.query("CREATE DATABASE "+database);
+  const restored=new pg.Pool({host:"127.0.0.1",port:55439,user:"postgres",password:"test-only-password",database});
+  try {
+    for(const file of ["001_initial.sql","002_auth.sql","003_deletion_requests.sql","004_device_sessions.sql","005_client_privileges.sql"])
+      await restored.query(await readFile(new URL("../migrations/"+file,import.meta.url),"utf8"));
+    await restoreEmptyDatabase(restored,oldBackup);
+    assert.equal((await restored.query("SELECT count(*) FROM users WHERE id=$1",[userId])).rows[0].count,"1");
+    assert.equal((await reconcileDeletionLedger(restored,ledger)).purged,1);
+    assert.equal((await reconcileDeletionLedger(restored,ledger)).purged,0);
+    for(const table of ["users","auth_identities","account_deletion_requests"])
+      assert.equal((await restored.query("SELECT count(*) FROM "+table+" WHERE "+(table==="users"?"id":"user_id")+"=$1",[userId])).rows[0].count,"0");
+    assert.equal((await restored.query("SELECT count(*) FROM users WHERE id=$1",[who.userId])).rows[0].count,"1");
+  } finally {await restored.end();await rm(ledger,{recursive:true,force:true});}
+});
 before(async () => {
   const dir = await mkdtemp(join(tmpdir(), "yotick-pg-"));
   cluster = await testPostgres(dir, 55439);
@@ -1017,6 +1049,17 @@ test("administrative deletion fulfills only requested account and revokes its id
   });
   assert.equal(response.statusCode, 200);
   const request = response.json();
+  const queried = await app.inject({ method: "GET", url: "/api/v1/account/deletion-requests", headers: auth.headers });
+  assert.equal(queried.statusCode, 200);
+  assert.equal(queried.json().request.id, request.id);
+  const unrelatedAuth = await tokens(who);
+  const unrelated = await app.inject({ method: "GET", url: "/api/v1/account/deletion-requests", headers: unrelatedAuth.headers });
+  assert.equal(unrelated.statusCode, 200);
+  assert.equal(unrelated.json().request, null);
+  assert.equal((await app.inject({ method: "GET", url: "/api/v1/account/deletion-requests" })).statusCode, 401);
+  const repeated = await app.inject({ method: "POST", url: "/api/v1/account/deletion-requests", headers: auth.headers,
+    payload: { confirmation: "REQUEST_ACCOUNT_DELETION" } });
+  assert.equal(repeated.json().id, request.id);
   await assert.rejects(
     () => fulfillAccountDeletion(pool, request.id, "wrong"),
     /CONFIRMATION_REQUIRED/,
@@ -1228,4 +1271,47 @@ test("migration preserves archived hierarchy and explicitly copies conflicting s
     new Set(facts.map((f) => f.data.durationSeconds)),
     new Set([30, 40]),
   );
+});
+
+test('automatic guest saving is idempotent, respects account deletions and retains account project names', async () => {
+  const identity = { ...who, userId:randomUUID(), spaceId:randomUUID(), generation:'1' };
+  await pool.query('INSERT INTO users(id) VALUES($1)', [identity.userId]);
+  await pool.query('INSERT INTO spaces(id,user_id) VALUES($1,$2)', [identity.spaceId,identity.userId]);
+  const auth = await tokens(identity), root = project('自动数学'), child = project('自动高数',root.id);
+  const s = { id:randomUUID(), projectId:child.id, status:'COMPLETED', startedAtSec:1800000000,
+    endedAtSec:1800000060, durationSeconds:60, targetSeconds:60, pauses:[], createdAtSec:1800000000,updatedAtSec:1800000060 };
+  const send = (method:string,path:string,payload:any) => app.inject({method,url:'/api/v1'+path,headers:auth.headers,payload});
+  const stage = async (projects:any[],sessions:any[]) => {
+    const id = randomUUID();
+    assert.equal((await send('POST','/imports',{ jobId:id,sourceId:'guest:test',generation:'1',chunkCount:1 })).statusCode,200);
+    assert.equal((await send('PUT','/imports/'+id+'/chunks/0',{projects,sessions})).statusCode,200);
+    const preview = (await send('POST','/imports/preview',{jobId:id})).json();
+    assert.equal(preview.mergePolicy,'KEEP_ACCOUNT');
+    return {id,body:{confirmation:'MERGE_GUEST_DATA',deviceId:device,sourceDigest:preview.digest,mergePolicy:'KEEP_ACCOUNT'}};
+  };
+  const first = await stage([root,child],[s]);
+  const result = await send('POST','/imports/'+first.id+'/commit',first.body);
+  assert.equal(result.statusCode,200,result.body);
+  assert.equal(result.json().addedProjectCount,2);
+  assert.equal(result.json().addedSessionCount,1);
+  assert.deepEqual((await send('POST','/imports/'+first.id+'/commit',first.body)).json(),result.json());
+  const second = await stage([root,child],[{...s,id:randomUUID()}]);
+  const repeated = await send('POST','/imports/'+second.id+'/commit',second.body);
+  assert.equal(repeated.statusCode,200,repeated.body);
+  assert.equal(repeated.json().addedSessionCount,0);
+  assert.equal(repeated.json().skippedSessionCount,1);
+  await pool.query('UPDATE study_sessions SET deleted_at=now() WHERE space_id=$1 AND id=$2',[identity.spaceId,s.id]);
+  await pool.query("UPDATE projects SET name=$3,data=jsonb_set(data,'{name}',to_jsonb($3::text)) WHERE space_id=$1 AND id=$2",[identity.spaceId,root.id,'账号新名称']);
+  const third = await stage([root,child],[s]);
+  const deleted = await send('POST','/imports/'+third.id+'/commit',third.body);
+  assert.equal(deleted.statusCode,200,deleted.body);
+  assert.equal(deleted.json().addedSessionCount,0);
+  assert.equal((await pool.query('SELECT name FROM projects WHERE space_id=$1 AND id=$2',[identity.spaceId,root.id])).rows[0].name,'账号新名称');
+  assert.equal((await pool.query('SELECT count(*) FROM study_sessions WHERE space_id=$1 AND deleted_at IS NULL',[identity.spaceId])).rows[0].count,'0');
+  await pool.query('UPDATE projects SET deleted_at=now() WHERE space_id=$1 AND id=$2',[identity.spaceId,root.id]);
+  const fourth = await stage([root,child],[{...s,id:randomUUID()}]);
+  const removedTree = await send('POST','/imports/'+fourth.id+'/commit',fourth.body);
+  assert.equal(removedTree.statusCode,200,removedTree.body);
+  assert.equal(removedTree.json().skippedProjectCount,2);
+  assert.equal(removedTree.json().addedSessionCount,0);
 });

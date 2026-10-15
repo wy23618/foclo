@@ -25,7 +25,9 @@ Page({
     const key = e.currentTarget.dataset.key;
     if (!this.data.groups.some(group => group.items.some(item => item.key === key))) return;
     if (key === 'guide') { wx.navigateTo({ url: '/pages/guide/guide' }); return; }
+    if (key === 'projects') { wx.navigateTo({ url: '/pages/manage/manage' }); return; }
     if (key === 'account') { wx.navigateTo({ url: '/pages/account/account' }); return; }
+    if (key === 'privacy') { wx.navigateTo({ url: '/pages/privacy/privacy' }); return; }
     wx.navigateTo({ url: '/pages/settings-detail/settings-detail?section=' + key });
   }
 });

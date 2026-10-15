@@ -2,6 +2,7 @@
   "navigationBarTitleText": "专注",
   "enablePullDownRefresh": false,
   "usingComponents": {
+    "account-entry": "/components/account-entry/account-entry",
     "segmented": "../../components/segmented/segmented",
     "project-sheet": "/components/project-sheet/project-sheet",
     "focus-ring": "/components/focus-ring/focus-ring",

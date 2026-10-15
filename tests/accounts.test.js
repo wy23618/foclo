@@ -4,6 +4,55 @@ const { createMemoryAdapter } = require("../storage/adapter");
 const { createAccounts } = require("../sync/accounts");
 const { uuid } = require("../core/ids");
 const local = require("../sync/local");
+
+test('DevTools cloud switch preserves old test cache and requires fresh cloud login', async () => {
+  const previousWx=global.wx;
+  const raw=createMemoryAdapter(),app={globalData:{}},ref={userId:uuid(),spaceId:uuid(),generation:'1'};
+  const {createAccountAdapter}=require('../storage/account-adapter');
+  const old=createAccountAdapter(raw,ref.spaceId+'@1');
+  await old.set('yotick/outbox/old',{operationId:'old',kind:'project.delete'});
+  await raw.set('yotick-global/current',ref);
+  await raw.set('yotick-global/credentials/'+ref.userId,{accessToken:'local-test'});
+  global.wx={getAccountInfoSync:()=>({miniProgram:{envVersion:'develop'}}),getSystemInfoSync:()=>({platform:'devtools'})};
+  let requests=0;
+  const accounts=createAccounts(raw,app,{baseUrl:'https://121.199.74.171/api/v1',transport:async()=>{requests++;return {};}});
+  try {
+    await accounts.init();
+    assert.equal(accounts.getCurrent(),null);
+    assert.equal(requests,0);
+    assert.deepEqual(await raw.get('yotick-global/previous-local-account'),ref);
+    assert.equal((await old.get('yotick/outbox/old')).kind,'project.delete');
+  }finally{global.wx=previousWx;await accounts.activate(null);}
+});
+test("successful retry clears the old offline message and error code", async () => {
+  const raw = createMemoryAdapter(), app = { globalData: {} };
+  let offline = true;
+  const accounts = createAccounts(raw, app, {
+    baseUrl: "https://test.invalid/api/v1",
+    transport: async () => {
+      if (offline) throw Object.assign(new Error("previous timeout"), { code: "NETWORK_ERROR" });
+      return { changes: [], cursor: "recovered", hasMore: false };
+    },
+  });
+  await accounts.init();
+  const ref = { userId: uuid(), spaceId: uuid(), generation: "1" };
+  await raw.set("yotick-global/credentials/" + ref.userId, { accessToken: "test", refreshToken: "test-refresh" });
+  try {
+    await accounts.activate(ref);
+    await accounts.trigger();
+    assert.equal(accounts.getStatus().state, "offline");
+    assert.equal(accounts.getStatus().message, "previous timeout");
+    assert.equal(accounts.getStatus().code, "NETWORK_ERROR");
+    offline = false;
+    await accounts.trigger();
+    assert.equal(accounts.getStatus().state, "synced");
+    assert.equal(accounts.getStatus().message, "");
+    assert.equal(accounts.getStatus().code, undefined);
+    assert.equal(accounts.getStatus().pending, 0);
+  } finally {
+    await accounts.activate(null);
+  }
+});
 test("switching accounts rejects delayed old response and preserves old outbox", async () => {
   const raw = createMemoryAdapter(),
     app = { globalData: {} },

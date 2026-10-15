@@ -209,7 +209,7 @@ Content-Type: application/json
 {"confirmation":"REQUEST_ACCOUNT_DELETION"}
 ```
 
-The result includes a request ID, `status: "pending_policy_review"`, and the request timestamp. A retention policy and fulfillment workflow remain release blockers; there is no status, cancel, or purge endpoint yet.
+The result includes a request ID, `status: "pending_policy_review"`, and the request timestamp. `GET /api/v1/account/deletion-requests` returns `{request: null}` or the authenticated account's latest request (`id`, `status`, `requestedAt`). Another account's request cannot be queried. Repeated submissions return the same pending request. A retention policy and operational fulfillment remain release requirements; no cancel or public purge endpoint exists.
 
 The isolated administrative fulfillment CLI exists at `npm run fulfill-deletion -- <request-id>`. It connects with `MIGRATION_DATABASE_URL` and requires `ACCOUNT_DELETION_CONFIRM` to equal that exact request ID. Only use it after the formal retention policy, applicant verification, and operational approval are in place; its transaction permanently removes the selected account and its data. This is an operator action, not a client API, and no real account deletion has been performed.
 
@@ -217,4 +217,4 @@ The isolated administrative fulfillment CLI exists at `npm run fulfill-deletion 
 
 `GET /health/live` only reports that the process is alive. `GET /health/ready` checks PostgreSQL connectivity and applied migration version at least 5; it returns 503 if either check fails.
 
-The current login and refresh rate limits are in-memory per server process, so they do not coordinate across multiple instances or survive restarts. The account-deletion endpoint only records a pending request. An administrative CLI fulfillment path exists, but a formal retention policy and operational authorization still must be configured before its use. The service has no client route to query or cancel a deletion request.
+The current login and refresh rate limits are in-memory per server process, so they do not coordinate across multiple instances or survive restarts. Account-deletion POST records a pending request; GET reads that account's latest request. An administrative CLI fulfillment path exists, but the formal operator/contact, retention handling and authorization must be configured before production use. There is no client route to cancel a deletion request or purge an account.

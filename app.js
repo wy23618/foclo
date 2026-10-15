@@ -8,6 +8,7 @@ App({
     ready: false,
     readyPromise: null,
     fullChartPayload: null,
+    guestSession: false,
   },
 
   onLaunch() {

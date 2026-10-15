@@ -1,0 +1,26 @@
+[Unit]
+Description=Create an encrypted YoTick PostgreSQL backup
+After=postgresql.service
+Requires=postgresql.service
+
+[Service]
+Type=oneshot
+User=root
+Group=root
+UMask=0077
+ExecStart=/usr/local/bin/node /opt/yotick/current/deploy/linux/backup/yotick-backup.mjs
+PrivateTmp=true
+ProtectSystem=strict
+ProtectHome=true
+ReadWritePaths=/var/lib/yotick-backups
+ReadOnlyPaths=/etc/yotick/backup.key
+NoNewPrivileges=true
+PrivateDevices=true
+ProtectKernelTunables=true
+ProtectKernelModules=true
+ProtectControlGroups=true
+RestrictSUIDSGID=true
+LockPersonality=true
+MemoryMax=512M
+TasksMax=32
+TimeoutStartSec=2h

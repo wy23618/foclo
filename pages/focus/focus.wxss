@@ -1,4 +1,11 @@
 /* pages/focus/focus.wxss */
+.account-save-status { text-align: center; color: var(--text-secondary); font-size: 22rpx; padding: 8rpx 20rpx; }
+.welcome-deck { height:310rpx; margin-top:24rpx; }
+.welcome-mini-card { padding:22rpx 24rpx; box-sizing:border-box; height:100%; border-radius:24rpx; background:var(--bg-control-soft); text-align:center; }
+.welcome-card-symbol { display:block; color:var(--accent); font-size:58rpx; line-height:1.2; margin-bottom:18rpx; }
+.welcome-card-title { display:block; font-size:29rpx; font-weight:600; margin-bottom:12rpx; }
+.welcome-card-copy { display:block; color:var(--text-secondary); font-size:24rpx; line-height:1.7; }
+.welcome-progress { font-size:21rpx; color:var(--text-secondary); text-align:center; padding:18rpx 0; }
 
 /* ---------------- 顶部品牌与统计入口 ---------------- */
 .top-row {

@@ -10,4 +10,4 @@
 
 拉取每页最多 100 条且序列化响应不超过 240 KiB；每个 snapshot/export 每页最多 50 条且同样受 240 KiB 上限约束。单个大于页上限的实体返回明确错误。快照按 space 最多 10 个未过期副本，保留 24 小时；导入任务最多 5 个活跃 job/space、7 天、每个 job 总计 8 MiB，单块最多 256 KiB，来源最多 500 项目与 10,000 条记录。导入预览后可用项目 `mapping`、会话 `sessionMapping`（目标 UUID 或 `skip`）解决冲突；响应分别给 source 与已应用 counts。拉取分页遵守签名游标和固定上界；全量快照从不可变 staging 读取，最后游标接续增量。恢复后的 restore_epoch 变化触发全量重建，保留未上传及冲突数据。事件时间为 epoch 整秒、UTC+8 统计；服务接收时间不替代用户历史。
 
-参考 api.openapi.yaml、api-examples.md、deployment.md、backup-recovery.md 与 architecture-decisions.md。production 数据库需应用最小权限角色；migration 005 撤销 PUBLIC/anon/authenticated 的访问，不自动创建或授权应用角色。账号删除目前只有申请 endpoint 和隔离管理员 CLI fulfillment；正式保留政策与审批仍待确定，不应将其视作已上线的注销体验。协议变更增加版本和兼容策略；未知协议返回升级提示。App 身份绑定、页面、商店发布与跨设备接力计时不在本次实现范围。开发者工具模拟器已完成实际微信登录和本机首次同步，手机与公网验收仍未完成。
+参考 api.openapi.yaml、api-examples.md、deployment.md、backup-recovery.md 与 architecture-decisions.md。production 数据库需应用最小权限角色；migration 005 撤销 PUBLIC/anon/authenticated 的访问，不自动创建或授权应用角色。账号删除目前只有申请 endpoint 和隔离管理员 CLI fulfillment；正式保留政策与审批仍待确定，不应将其视作已上线的注销体验。协议变更增加版本和兼容策略；未知协议返回升级提示。App 身份绑定、页面、商店发布与跨设备接力计时不在本次实现范围。2026-10-08 已完成真实手机微信登录、热点内上传及不可达恢复补传，并核对电脑模拟器读取/删除；用户确认平板基础操作正常。公网正式版本、App 身份绑定及高级故障验收仍未完成。

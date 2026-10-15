@@ -490,6 +490,30 @@ paths:
         '401': {$ref: '#/components/responses/AuthRequired'}
         '409': {$ref: '#/components/responses/ProtocolConflict'}
   /api/v1/account/deletion-requests:
+    get:
+      tags: [Auth]
+      operationId: getAccountDeletionRequest
+      summary: Read the authenticated account's latest deletion request
+      security: [bearerAuth: []]
+      responses:
+        '200':
+          description: Latest request or null; never another account's request
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [request]
+                properties:
+                  request:
+                    oneOf:
+                      - type: 'null'
+                      - type: object
+                        required: [id, status, requestedAt]
+                        properties:
+                          id: {$ref: '#/components/schemas/Uuid'}
+                          status: {const: pending_policy_review}
+                          requestedAt: {type: string, format: date-time}
+        '401': {$ref: '#/components/responses/AuthRequired'}
     post:
       tags: [Auth]
       operationId: requestAccountDeletion

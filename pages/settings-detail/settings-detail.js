@@ -14,11 +14,11 @@ const SECTIONS = {
   focus: { title: '专注与休息', rows: ['计时习惯', '默认倒计时', '常用时长', '结束确认', '休息安排'] },
   display: { title: '外观与屏幕', rows: ['外观主题', '屏幕常亮', '极简模式与锁定'] },
   stats: { title: '目标与统计', rows: ['统计默认范围', '显示今日目标', '时段图满格', '每周起始日'] },
-  data: { title: '项目与数据', rows: ['项目管理', '恢复默认设置'] },
+  data: { title: '数据与备份', rows: ['项目管理', '恢复默认设置'] },
   help: { title: '帮助与关于', rows: ['使用帮助', '关于 YoTick'] }
 };
 Page({
-  data: { loading: true, page: 'focus', title: '专注与休息', prefs: DEFAULTS, lightThemes: LIGHT_THEMES, minuteOptions: [], commonIndexes: [14,29,44,59], defaultMinuteIndex: 29, shortOptions: [], longOptions: [], cycleOptions: [], slotScaleOptions:SCALE_LABELS, slotScaleIndex:0 },
+  data: { loading: true, moreDataOpen: false, page: 'focus', title: '专注与休息', prefs: DEFAULTS, lightThemes: LIGHT_THEMES, minuteOptions: [], commonIndexes: [14,29,44,59], defaultMinuteIndex: 29, shortOptions: [], longOptions: [], cycleOptions: [], slotScaleOptions:SCALE_LABELS, slotScaleIndex:0 },
   onLoad(options) {
     const page = options && SECTIONS[options.section] ? options.section : 'focus';
     const title = SECTIONS[page].title;
@@ -57,7 +57,8 @@ Page({
       options.longOptions = Array.from({ length: 120 }, (_, i) => (i + 1) + ' 分钟');
       options.cycleOptions = Array.from({ length: 7 }, (_, i) => (i + 2) + ' 轮');
     }
-    const patch = Object.assign({ loading: false, prefs, appVersion, defaultMinuteIndex: prefs.defaultMinutes - 1, commonIndexes: prefs.commonMinutes.map(n => n - 1), slotScaleIndex:SCALE_MINUTES.indexOf(prefs.timeSlotScaleMinutes) }, require('../../utils/theme').pageThemeData(themeClass), options);
+    const hasAccount = !!(app.globalData.accounts && app.globalData.accounts.getCurrent());
+    const patch = Object.assign({ loading: false, prefs, appVersion, hasAccount, defaultMinuteIndex: prefs.defaultMinutes - 1, commonIndexes: prefs.commonMinutes.map(n => n - 1), slotScaleIndex:SCALE_MINUTES.indexOf(prefs.timeSlotScaleMinutes) }, require('../../utils/theme').pageThemeData(themeClass), options);
     Object.keys(patch).forEach(key => {
       if (JSON.stringify(patch[key]) === JSON.stringify(this.data[key])) delete patch[key];
     });
@@ -92,6 +93,7 @@ Page({
   noop() {},
   onRow(e) {
     const row = e.currentTarget.dataset.row;
+    if (row === '数据维护') return wx.navigateTo({ url:'/pages/account/account?tools=1' });
     if (row === '项目管理') { wx.navigateTo({ url: '/pages/manage/manage' }); return; }
     if (row === '恢复默认设置') { this.resetDefaults(); return; }
     if (row === '备份本机数据') return this.exportBackup();
@@ -134,14 +136,32 @@ Page({
     const key = e.currentTarget.dataset.key, value = Number(e.detail.value) + Number(e.currentTarget.dataset.offset || 1);
     this.save({ [key]: value });
   },
+  toggleMoreData() { this.setData({ moreDataOpen: !this.data.moreDataOpen }); },
   getFileName(prefix, extension) { const d=new Date();return prefix+'-'+d.getFullYear()+String(d.getMonth()+1).padStart(2,'0')+String(d.getDate()).padStart(2,'0')+'-'+Date.now()+'.'+extension; },
-  writeAndShareFile(name, content, doneTitle) {
-    if (!wx.env || !wx.env.USER_DATA_PATH || !wx.getFileSystemManager) { wx.showToast({ title: '当前微信环境不支持文件导出', icon: 'none' }); return; }
+  async writeAndShareFile(name, content, doneTitle) {
+    if (!wx.env || !wx.env.USER_DATA_PATH || !wx.getFileSystemManager)
+      throw new Error('当前微信环境无法生成备份文件，请在手机微信中使用');
     const path=wx.env.USER_DATA_PATH+'/'+name,fs=wx.getFileSystemManager();
-    fs.writeFile({filePath:path,data:content,encoding:'utf8',success:()=>{
-      if(typeof wx.shareFileMessage!=='function'){wx.showModal({title:'文件已生成',content:'当前微信版本未开放文件分享，请更新微信后重试。',showCancel:false});return;}
-      wx.shareFileMessage({filePath:path,fileName:name,success:()=>wx.showToast({title:doneTitle,icon:'success'}),fail:()=>wx.showToast({title:'未完成文件分享',icon:'none'})});
-    },fail:()=>wx.showToast({title:'文件生成失败，请检查本机空间',icon:'none'})});
+    await new Promise((resolve,reject)=>{
+      const timer=setTimeout(()=>reject(new Error('生成文件超时，请重试')),10000);
+      try { fs.writeFile({filePath:path,data:content,encoding:'utf8',
+        success:()=>{clearTimeout(timer);resolve();},
+        fail:()=>{clearTimeout(timer);reject(new Error('文件生成失败，请检查手机剩余空间'));}
+      }); } catch(error) {clearTimeout(timer);reject(error);}
+    });
+    wx.hideLoading();
+    const send=await new Promise((resolve,reject)=>wx.showModal({
+      title:'文件已生成',content:'请将文件发送到微信聊天（例如文件传输助手）并保存。只生成文件还不算完成备份。',
+      confirmText:'发送文件',cancelText:'稍后发送',success:r=>resolve(r.confirm),fail:reject
+    }));
+    if (!send) return;
+    if(typeof wx.shareFileMessage!=='function') {
+      wx.showModal({title:'暂时无法发送',content:'当前环境不支持文件分享，请在手机微信中打开小程序并更新微信后重试。',showCancel:false});return;
+    }
+    await new Promise(resolve=>wx.shareFileMessage({filePath:path,fileName:name,
+      success:()=>{wx.showToast({title:doneTitle,icon:'success'});resolve();},
+      fail:error=>{wx.showModal({title:'文件尚未发送',content:/cancel/i.test(error.errMsg||'')?'你取消了发送，可以重新点击保存备份。':'微信未能发送文件，请稍后重试。原记录没有变化。',showCancel:false});resolve();}
+    }));
   },
   async exportBackup() {
     if(this.fileBusy)return;this.fileBusy=true;wx.showLoading({title:'正在整理本机数据'});
@@ -149,11 +169,10 @@ Page({
       const env=await app.globalData.service.createBackup();if(!env.ok){wx.hideLoading();wx.showToast({title:env.error.message,icon:'none'});return;}
       const backup=env.data,content=JSON.stringify(backup),size=unescape(encodeURIComponent(content)).length;
       if(size>10*1024*1024){wx.hideLoading();wx.showToast({title:'备份超过 10 MB，暂不支持导出',icon:'none'});return;}
-      const name=this.getFileName('YoTick-backup','json');
-      wx.getFileSystemManager().writeFile({filePath:wx.env.USER_DATA_PATH+'/'+name,data:content,encoding:'utf8',success:()=>{
-        wx.hideLoading();wx.showModal({title:'备份已准备好',content:`${backup.projects.length} 个项目 · ${backup.sessions.length} 条专注记录\n生成时间：${new Date(backup.exportedAtSec*1000).toLocaleString()}\n文件大小：${(size/1024).toFixed(1)} KB`,confirmText:'分享备份',success:r=>{if(r.confirm){if(typeof wx.shareFileMessage!=='function'){wx.showToast({title:'当前微信版本不支持分享文件',icon:'none'});return;}wx.shareFileMessage({filePath:wx.env.USER_DATA_PATH+'/'+name,fileName:name,success:()=>wx.showToast({title:'备份已交付',icon:'success'}),fail:()=>wx.showToast({title:'未完成分享，备份未交付',icon:'none'})});}}});
-      },fail:()=>{wx.hideLoading();wx.showToast({title:'备份文件生成失败，请检查本机空间',icon:'none'});}});
-    } catch(e) { wx.hideLoading();wx.showToast({title:e.message||'备份失败',icon:'none'}); }
+      const name=this.getFileName('YoTick-data','json');
+      wx.hideLoading();
+      await this.writeAndShareFile(name, content, '备份文件已发送');
+    } catch(e) { wx.hideLoading();wx.showModal({title:'备份尚未完成',content:e.message||'备份失败，请稍后重试',showCancel:false}); }
     finally { this.fileBusy=false; }
   },
   importBackup() {
@@ -170,7 +189,8 @@ Page({
         if(!preview.ok){this.fileBusy=false;wx.showModal({title:'无法恢复备份',content:preview.error.message,showCancel:false});return;}
         const d=preview.data;
         try{const info=wx.getStorageInfoSync();if(info&&Number.isFinite(info.limitSize)&&Number.isFinite(info.currentSize)&&(info.limitSize-info.currentSize)*1024<d.estimatedWriteBytes){this.fileBusy=false;wx.showModal({title:'本机空间不足',content:'预计需要约 '+Math.ceil(d.estimatedWriteBytes/1024)+' KB 的本机空间，请先清理空间后重试。原数据未修改。',showCancel:false});return;}}catch(e){}
-        wx.showModal({title:'确认合并备份？',content:`将新增 ${d.importedProjects} 个项目、${d.importedSessions} 条专注记录；跳过 ${d.skippedProjects} 个相同项目、${d.skippedSessions} 条相同记录。备份中的设置会应用到本机。备份中包含的已删除记录也会重新导入。`,confirmText:'合并恢复',success:async confirm=>{
+        const destination = app.globalData.accounts && app.globalData.accounts.getCurrent() ? '当前微信账号；新增内容会自动上传到账号' : '这台设备的游客记录；不会自动上传';
+        wx.showModal({title:'找回备份记录？',content:`保存位置：${destination}。将新增 ${d.importedProjects} 个项目、${d.importedSessions} 条专注记录；跳过 ${d.skippedProjects} 个相同项目、${d.skippedSessions} 条相同记录。备份中的设置也会恢复，已删除的记录可能重新出现。`,confirmText:'确认恢复',success:async confirm=>{
           if(!confirm.confirm){this.fileBusy=false;return;}
           wx.showLoading({title:'正在合并数据'});
           const result=await app.globalData.service.importBackup({operationId:uuid(),backup});wx.hideLoading();this.fileBusy=false;
@@ -205,12 +225,16 @@ Page({
   },
   async clearAllData() {
     if(this.fileBusy)return;
+    if(app.globalData.accounts && app.globalData.accounts.getCurrent()) {
+      wx.navigateTo({ url:'/pages/account/account?tools=1' });
+      return;
+    }
     if(require('../../utils/rest-break').read()){wx.showToast({title:'休息计时进行中，不能清空数据',icon:'none'});return;}
     const backup=await app.globalData.service.createBackup();if(!backup.ok){wx.showToast({title:backup.error.message,icon:'none'});return;}
     const d=backup.data;
-    wx.showModal({title:'清空本机数据？',content:`将删除 ${d.projects.length} 个项目和 ${d.sessions.length} 条专注记录，并清除所有设置。此操作无法撤销。建议先使用“备份本机数据”。`,confirmText:'继续',confirmColor:THEME_COLORS.light.dangerText,success:first=>{
+    wx.showModal({title:'清空当前记录？',content:`将删除当前使用的 ${d.projects.length} 个项目和 ${d.sessions.length} 条专注记录，并清除设置。此操作无法撤销。建议先使用“保存一份备份”。`,confirmText:'继续',confirmColor:THEME_COLORS.light.dangerText,success:first=>{
       if(!first.confirm)return;
-      wx.showModal({title:'最后确认',content:'确认永久清空本机全部项目、记录与设置？',confirmText:'永久清空',confirmColor:THEME_COLORS.light.dangerText,success:async second=>{
+      wx.showModal({title:'最后确认',content:'确认永久清空当前使用的项目、记录与设置？',confirmText:'永久清空',confirmColor:THEME_COLORS.light.dangerText,success:async second=>{
         if(!second.confirm)return;
         const current=app.globalData.service.peekCurrent();if(current.ok&&current.data.state!=='IDLE'){wx.showToast({title:'专注进行中，不能清空',icon:'none'});return;}
         const env=await app.globalData.service.clearAllData({operationId:uuid()});if(!env.ok){wx.showToast({title:env.error.message,icon:'none'});return;}

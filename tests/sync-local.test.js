@@ -20,6 +20,39 @@ async function fixture() {
   assert.equal((await service.init()).ok, true);
   return { raw, adapter, clock, service };
 }
+test("frozen rejected uploads refresh conflict cloud versions without losing proposals or a saved resolution", async () => {
+  const f = await fixture();
+  const p = await f.service.createProject({ operationId: uuid(), name: "本地提议" });
+  const id = p.data.project.id, task = (await local.pending(f.adapter))[0];
+  await f.adapter.set(local.itemKey(task.operationId), { ...task, status: "conflict", frozen: { operationId: task.operationId } });
+  const old = { entityType: "project", entityId: id, serverVersion: "1", data: { ...p.data.project, name: "旧云端" } };
+  const conflictId = uuid(), resolvingId = uuid();
+  const conflict = { id: conflictId, code: "VERSION_CONFLICT", cloud: old, local: task, operationIds: [task.operationId] };
+  await f.adapter.set(local.conflictKey(conflictId), conflict);
+  await f.adapter.set(local.conflictKey(resolvingId), { ...conflict, id: resolvingId, resolving: "cloud", resolutionChanges: [old] });
+  await f.adapter.set(local.shadowKey("project", id), old);
+  const worker = createWorker({ service: f.service, request: async () => {}, deviceId: uuid() });
+  const fresh = { ...old, serverVersion: "2", data: { ...old.data, name: "最新云端" } };
+  await worker.apply([fresh], "cursor2");
+  const updated = await f.adapter.get(local.conflictKey(conflictId));
+  assert.equal(updated.cloud.data.name, "最新云端");
+  assert.deepEqual(updated.local, task);
+  assert.deepEqual(updated.cloudAtConflict, old);
+  assert.equal((await f.adapter.get("yotick/projects"))[id].name, "本地提议");
+  assert.equal((await f.adapter.get(local.conflictKey(resolvingId))).cloud.data.name, "旧云端");
+  // Repair a stale conflict left by an older client whose cursor already advanced.
+  await f.adapter.set(local.conflictKey(conflictId), conflict);
+  await worker.apply([], "cursor2");
+  assert.equal((await f.adapter.get(local.conflictKey(conflictId))).cloud.serverVersion, "2");
+  await worker.apply([{ ...fresh, serverVersion: "3", deleted: true }], "cursor3");
+  const deletedConflict = await f.adapter.get(local.conflictKey(conflictId));
+  assert.equal(deletedConflict.code, "ENTITY_DELETED");
+  assert.equal(deletedConflict.cloud.deleted, true);
+  assert.deepEqual(deletedConflict.local, task);
+  assert.deepEqual(deletedConflict.cloudAtConflict, old);
+  assert.equal((await f.adapter.get(local.conflictKey(resolvingId))).cloud.data.name, "旧云端");
+  worker.stop();
+});
 test("timer commands and automatic settlement remain offline; only completion queues session", async () => {
   const f = await fixture(),
     p = await f.service.createProject({ operationId: uuid(), name: "数学" });
@@ -130,7 +163,7 @@ test("device preferences excluded; consecutive offline changes retain order and 
     startupMode: "remember",
   });
 });
-test("slow network never blocks a local timer command; frozen upload survives lost response", async () => {
+test("slow network never blocks start, pause, resume, or stop; completion queues once", async () => {
   const f = await fixture(),
     p = await f.service.createProject({ operationId: uuid(), name: "音乐" });
   let resolve;
@@ -141,17 +174,56 @@ test("slow network never blocks a local timer command; frozen upload survives lo
     request: async () => network,
   });
   const sync = worker.trigger();
-  const start = await Promise.race([
+  const within = async (promise) => {
+    let timer;
+    try {
+      return await Promise.race([
+        promise,
+        new Promise((_, reject) => {
+          timer = setTimeout(
+            () => reject(new Error("local command waited network")),
+            500,
+          );
+        }),
+      ]);
+    } finally {
+      clearTimeout(timer);
+    }
+  };
+  const start = await within(
     f.service.start({ operationId: uuid(), projectId: p.data.project.id }),
-    new Promise((_, reject) =>
-      setTimeout(() => reject(new Error("local command waited network")), 500),
-    ),
-  ]);
+  );
   assert.equal(start.ok, true);
+  f.clock.now += 10;
+  const pause = await within(
+    f.service.pause({ operationId: uuid(), sessionId: start.data.sessionId }),
+  );
+  assert.equal(pause.ok, true);
+  f.clock.now += 20;
+  const resume = await within(
+    f.service.resume({ operationId: uuid(), sessionId: start.data.sessionId }),
+  );
+  assert.equal(resume.ok, true);
+  f.clock.now += 5;
+  const stop = await within(
+    f.service.stop({ operationId: uuid(), sessionId: start.data.sessionId }),
+  );
+  assert.equal(stop.ok, true);
+  const completed = (await local.pending(f.adapter)).filter(
+    (task) => task.kind === "session.createCompleted",
+  );
+  assert.equal(completed.length, 1);
+  assert.equal(completed[0].payload.durationSeconds, 15);
+  assert.equal(completed[0].payload.pauses[0].durationSeconds, 20);
   worker.stop();
   resolve({ changes: [], hasMore: false, cursor: "cursor" });
   await sync;
-  assert.equal((await local.pending(f.adapter)).length, 1);
+  assert.equal(
+    (await local.pending(f.adapter)).filter(
+      (task) => task.kind === "session.createCompleted",
+    ).length,
+    1,
+  );
 });
 test("pull preserves dirty local project and commits conflict with cursor", async () => {
   const f = await fixture(),

@@ -23,9 +23,9 @@
     <view class="tl {{activeKey ? 'dim' : ''}}">
       <view
         wx:for="{{segments}}" wx:key="key"
-        class="seg {{activeKey === item.key ? 'on' : ''}}"
+        class="seg {{activeKey === item.groupKey ? 'on' : ''}}"
         style="left:{{item.left}}%;width:{{item.width}}%;background:{{item.color}}"
-        data-key="{{item.key}}" bindtap="onPick" />
+        data-key="{{item.groupKey}}" bindtap="onPick" />
     </view>
     <view class="ax">
       <text

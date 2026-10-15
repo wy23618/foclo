@@ -1,4 +1,7 @@
-const LAN_DEBUG_API_HOST = "192.168.199.9";
+const LAN_DEBUG_API_HOST = "10.22.4.17";
+// Temporary public HTTPS endpoint for internal development/trial phone checks.
+// Release builds never select this address.
+const TEMP_CLOUD_DEBUG_API_HOST = "121.199.74.171";
 
 function getMiniProgramEnvironment() {
   try {
@@ -27,9 +30,19 @@ function isPhoneDevelopment() {
   );
 }
 
+function isPhoneCloudTesting() {
+  const env = getMiniProgramEnvironment();
+  return (
+    (env?.envVersion === "develop" || env?.envVersion === "trial") &&
+    (env.platform === "ios" || env.platform === "android")
+  );
+}
+
 module.exports = {
   LAN_DEBUG_API_HOST,
+  TEMP_CLOUD_DEBUG_API_HOST,
   getMiniProgramEnvironment,
   isDevToolsDevelopment,
   isPhoneDevelopment,
+  isPhoneCloudTesting,
 };

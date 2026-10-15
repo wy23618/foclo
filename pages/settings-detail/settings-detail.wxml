@@ -51,22 +51,20 @@
     </view>
   </view>
   <view wx:elif="{{page === 'data'}}" class="detail-content">
-    <view class="detail-group-title">项目</view>
+    <view class="data-note">{{hasAccount ? '当前使用微信账号记录。更改先存在这台设备，联网后自动保存到账号。' : '当前使用游客记录，仅保存在这台设备。登录后可选择保存到账号。'}}</view>
     <view class="setting-card detail-card">
-      <view class="setting-row" data-row="项目管理" bindtap="onRow"><view class="row-copy"><text class="row-title">管理项目</text></view><view class="chevron"></view></view>
+      <view class="setting-row" data-row="备份本机数据" bindtap="onRow"><view class="row-copy"><text class="row-title">保存一份备份</text><text class="row-summary">{{hasAccount ? '备份当前账号在这台设备上的项目和记录' : '备份这台设备的游客项目和记录'}}</text></view><view class="chevron"></view></view>
+      <view class="setting-row" data-row="从备份恢复" bindtap="onRow"><view class="row-copy"><text class="row-title">从备份找回记录</text><text class="row-summary">选择以前保存的 YoTick 备份文件</text></view><view class="chevron"></view></view>
     </view>
-    <view class="detail-group-title">保存数据</view>
-    <view class="setting-card detail-card">
-      <view class="setting-row" data-row="备份本机数据" bindtap="onRow"><view class="row-copy"><text class="row-title">备份到文件</text></view><view class="chevron"></view></view>
-      <view class="setting-row" data-row="从备份恢复" bindtap="onRow"><view class="row-copy"><text class="row-title">从文件恢复</text></view><view class="chevron"></view></view>
-      <view class="setting-row" data-row="导出统计表" bindtap="onRow"><view class="row-copy"><text class="row-title">导出统计表</text><text class="row-summary">用于查看，不能恢复数据</text></view><view class="chevron"></view></view>
-    </view>
-    <view class="detail-group-title">重置</view>
-    <view class="setting-card detail-card">
-      <view class="setting-row" data-row="恢复默认设置" bindtap="onRow"><view class="row-copy"><text class="row-title">恢复默认设置</text></view><view class="chevron"></view></view>
-      <view class="setting-row danger-row" data-row="清空全部数据" bindtap="onRow"><view class="row-copy"><text class="row-title">清空全部数据</text></view><view class="chevron"></view></view>
-    </view>
-    <view class="data-note">数据会先保存在本机。当前开发版只有这台电脑上的开发者工具能连接同步服务；换设备或卸载前请先备份。</view>
+    <view class="detail-group-title" bindtap="toggleMoreData">其他操作 {{moreDataOpen ? '−' : '+'}}</view>
+    <block wx:if="{{moreDataOpen}}">
+      <view class="setting-card detail-card">
+        <view class="setting-row" data-row="导出统计表" bindtap="onRow"><view class="row-copy"><text class="row-title">保存统计表格</text><text class="row-summary">用于查看和分析，不能用来恢复记录</text></view><view class="chevron"></view></view>
+        <view class="setting-row" data-row="恢复默认设置" bindtap="onRow"><view class="row-copy"><text class="row-title">恢复默认设置</text><text class="row-summary">只重置偏好设置，保留项目和记录</text></view><view class="chevron"></view></view>
+        <view wx:if="{{!hasAccount}}" class="setting-row danger-row" data-row="清空全部数据" bindtap="onRow"><view class="row-copy"><text class="row-title">清空游客记录</text><text class="row-summary">只删除这台设备上的游客记录</text></view><view class="chevron"></view></view>
+        <view wx:if="{{hasAccount}}" class="setting-row" data-row="数据维护" bindtap="onRow"><view class="row-copy"><text class="row-title">账号数据与注销</text><text class="row-summary">删除全部记录、申请注销账号</text></view><view class="chevron"></view></view>
+      </view>
+    </block>
   </view>
   <view wx:elif="{{page === 'help'}}" class="detail-content">
     <view class="setting-card detail-card">

@@ -84,6 +84,14 @@ export function registerRoutes(
       config.cursorSecret,
     ),
   );
+  app.get("/api/v1/account/deletion-requests", async (r) => {
+    const who = await authenticate(pool, config, r);
+    const row = (await pool.query(
+      "SELECT id,status,requested_at FROM account_deletion_requests WHERE user_id=$1 ORDER BY requested_at DESC LIMIT 1",
+      [who.userId],
+    )).rows[0];
+    return { request: row ? { id: row.id, status: row.status, requestedAt: row.requested_at } : null };
+  });
   app.post("/api/v1/account/deletion-requests", async (r) => {
     const who = await authenticate(pool, config, r);
     requireValue(

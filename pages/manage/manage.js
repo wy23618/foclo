@@ -124,11 +124,12 @@ Page({
     const row = this.findRow(e.currentTarget.dataset.id);
     if (!row) return;
     const labels = row.archived
-      ? ['恢复项目', '重命名', '永久删除']
-      : ['重命名', '归档项目', '永久删除'];
+      ? ['恢复项目', '重命名', '颜色与简称', '永久删除']
+      : ['重命名', '颜色与简称', '归档项目', '永久删除'];
     wx.showActionSheet({ itemList: labels, success: result => {
       const action = labels[result.tapIndex];
       if (action === '重命名') this.onRename(row);
+      else if (action === '颜色与简称') this.openAppearanceById(e);
       else if (action === '归档项目') this.onArchive(row.projectId);
       else if (action === '恢复项目') this.onRestore(row.projectId);
       else if (action === '永久删除') this.onDelete(row.projectId);

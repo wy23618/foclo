@@ -2,6 +2,7 @@
 // keys and the handful of synchronous UI stores continue to use the raw KV tier.
 
 const DEFAULT_MAX_BYTES = 96 * 1024 * 1024;
+const { readInBatches } = require("../core/bounded-read");
 const ROOT_NAME = "yotick-facts-v1";
 const TEMP_DIR_NAME = ".yotick-write-tmp";
 const FILE_PREFIXES = ["yotick-space/", "yotick-legacy-snapshot/"];
@@ -227,6 +228,12 @@ function createFileTierAdapter(raw, wxApi, options) {
       if (isMissing(error)) return;
       throw error;
     }
+    let files = [];
+    async function flushFiles() {
+      const sizes = await readInBatches(files, statSize);
+      for (let i = 0; i < files.length; i++) result.set(files[i], sizes[i]);
+      files = [];
+    }
     for (const name of names) {
       if (
         !name ||
@@ -243,11 +250,14 @@ function createFileTierAdapter(raw, wxApi, options) {
       // Data files always have an explicit .json suffix; extensionless entries
       // are directories. This avoids depending on a platform-specific dirent API.
       if (name.slice(-5) === ".json") {
-        result.set(childPath, await statSize(childPath));
+        files.push(childPath);
+        if (files.length === 8) await flushFiles();
       } else {
+        await flushFiles();
         await scanDirectory(childPath, childRelative, result);
       }
     }
+    await flushFiles();
   }
 
   async function rebuildIndex() {

@@ -238,6 +238,28 @@ function createWorker({
             { t: "remove", k: local.itemKey(ack.operationId) },
             { t: "remove", k: "yotick/outbox-state/" + ack.operationId },
           );
+      // A rejected frozen upload was recorded before the following pull. Its
+      // conflict must follow the authoritative shadow, even on an empty pull
+      // after restarting an older client. Never change an already chosen cloud
+      // resolution, and retain the original conflict snapshot for recovery.
+      if (tasks.some((t) => t.status === "conflict")) {
+        const shadows = new Map(ops.filter((op) => op.t === "set" && op.k.startsWith("yotick/shadow/"))
+          .map((op) => [op.k, op.v]));
+        const keys = (await ctx.adapter.keys()).filter((key) => key.startsWith("yotick/conflicts/"));
+        for (const key of keys) {
+          const conflict = await ctx.adapter.get(key);
+          if (!conflict?.cloud?.entityType || conflict.resolving) continue;
+          const cloud = conflict.cloud;
+          const shadowKey = local.shadowKey(cloud.entityType, cloud.entityId);
+          const latest = shadows.get(shadowKey) || await ctx.adapter.get(shadowKey);
+          if (!latest || BigInt(latest.serverVersion || "0") <= BigInt(cloud.serverVersion || "0")) continue;
+          ops.push({ t: "set", k: key, v: {
+            ...conflict, cloud: latest,
+            cloudAtConflict: conflict.cloudAtConflict || cloud,
+            code: latest.deleted ? "ENTITY_DELETED" : conflict.code,
+          } });
+        }
+      }
       const s = await ctx.adapter.get(local.STATE);
       ops.push({
         t: "set",

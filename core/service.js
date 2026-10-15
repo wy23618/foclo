@@ -12,6 +12,7 @@ const timer = require("./timer");
 const treeMod = require("./tree");
 const statistics = require("./statistics");
 const repo = require("./repository");
+const { readInBatches } = require("./bounded-read");
 
 const SCHEMA_VERSION = 1;
 const CLOCK_BACK_TOLERANCE = 60; // 回退超过 60 秒视为时钟异常
@@ -417,8 +418,8 @@ function createService(adapter, options) {
     if (state.active) idSet.add(state.active.id);
     const out = [];
     const ids = Array.from(idSet);
-    for (let i = 0; i < ids.length; i++) {
-      const s = await loadSessionById(ids[i]);
+    const loaded = await readInBatches(ids, loadSessionById);
+    for (const s of loaded) {
       if (s) out.push(s);
     }
     return out;

@@ -22,9 +22,14 @@ function focusClock(sec,mode){return mode==='stopwatch'?format.pad2(Math.floor(s
 Page({
   data: {
     ready: false,
+    accountSaveText: '游客记录仅存本机 · 微信登录自动保存',
+    accountHasLogin: false,
     focusNavHeight: 78,
     activeTab: 0, statsNavHidden: false,
     welcomeOpen: false,
+    identityOpen: false,
+    welcomeStep: 0,
+    welcomeCards: require('../../utils/user-guide').QUICK_STEPS,
     completionVisible:false,restPrompt:false,restState:null,restRemaining:0,restClock:'00:00',restRound:0,restDuration:0,goalEnabled:false,goalMinutes:120,goalProgress:0,goalProgressStyle:'width:0%;',progress:1,keepScreenOn:false,confirmEnd:true,immersive:false,screenLocked:false,todayOpen:false,todayDate:'',todayText:'0秒',customOpen:false,customMinutes:'30',minuteOptions:[],minuteIndex:29,minuteWheelValue:[29],
     cur: null,
     blocked: null,
@@ -58,8 +63,20 @@ Page({
     this.isShell = true;
     const initialTab = Math.min(2, Math.max(0, Number(q && q.tab) || 0));
     this.setData({ activeTab: initialTab });
-    app.globalData.readyPromise.then(() => {
+    app.globalData.readyPromise.then(async () => {
+      const accounts = app.globalData.accounts;
+      const current = app.globalData.service.peekCurrent();
+      const activeTimer = !!(current.ok && (current.data.sessionId || current.data.activeSession)) || !!restStore.read();
+      const action = require('../../sync/login-entry').entryAction({
+        account: accounts.getCurrent(), status:accounts.getStatus().state,
+        guestSession:app.globalData.guestSession,
+        activeTimer,
+      });
+      if (action === 'login') {
+        await this.loginWechat(true);
+      }
       this.setData({ ready: true });
+      this.watchAccountSaving();
       if (this.data.activeTab === 0) this.refresh();
     });
   },
@@ -88,11 +105,75 @@ Page({
   },
 
   onUnload() {
+    if (this.unsubscribeAccount) this.unsubscribeAccount();
     this.visible=false;
     this.stopTick();
     sound.stop();
     wx.setKeepScreenOn({keepScreenOn:false});
     this.stopRestTick();
+  },
+
+  watchAccountSaving() {
+    const accounts = app.globalData.accounts;
+    if (!accounts || this.unsubscribeAccount) return;
+    const update = (status) => {
+      const hasLogin = !!accounts.getCurrent();
+      const labels = {
+        syncing: '正在自动保存', synced: '已保存到微信账号',
+        offline: '已暂存本机 · 联网后自动同步', pending: '已暂存本机 · 等待同步',
+        'auth-required': '记录已暂存本机 · 点击重新登录',
+        conflict: '记录已保留 · 点击处理同步冲突', failed: '记录已暂存本机 · 点击查看同步问题',
+        quarantined: '账号资料需要处理 · 点击查看',
+        'upgrade-required': '本机资料升级需要处理 · 点击查看',
+      };
+      this.setData({ accountHasLogin: hasLogin,
+        accountSaveText: labels[status.state] || (hasLogin ? '记录自动保存' : '游客记录仅存本机 · 微信登录自动保存') });
+    };
+    this.unsubscribeAccount = accounts.subscribe(update);
+    update(accounts.getStatus());
+  },
+
+  openAccountSaving() {
+    if (this.data.accountHasLogin) wx.navigateTo({ url: '/pages/account/account' });
+    else this.loginWechat();
+  },
+  onIdentityVisibility(e) { this.setData({ identityOpen:!!e.detail.opened }); },
+  async loginWechat(initial = false) {
+    if (this.loggingIn) return;
+    this.loggingIn = true;
+    wx.showLoading({ title:'正在连接微信', mask:true });
+    try {
+      const { loginAndImport, confirmGuestImport } = require('../../sync/login-flow');
+      const result = await loginAndImport(app.globalData.accounts, async summary => {
+        wx.hideLoading();
+        const agreed = await confirmGuestImport(summary);
+        if (agreed) wx.showLoading({ title:'正在迁移记录', mask:true });
+        return agreed;
+      }, async () => {
+        wx.hideLoading();
+          const entry = this.selectComponent('#accountEntry');
+          if (!entry) throw new Error('登录入口暂不可用');
+          const agreed = await entry.request();
+          if (agreed) wx.showLoading({ title:'正在连接微信', mask:true });
+          return agreed;
+      });
+      if (result.cancelled) return;
+      app.globalData.guestSession = false;
+    } catch (error) {
+      if (!app.globalData.accounts.getCurrent()) app.globalData.guestSession = true;
+      wx.hideLoading();
+      if (initial && !error.loggedIn) wx.showToast({ title:'暂时使用游客模式，记录保存在本机', icon:'none' });
+        else wx.showModal({ title:error.loggedIn ? '游客记录尚未迁移' : '微信登录未完成',
+        content:(error.message || '请稍后重试') + '。本机原记录仍保留。', showCancel:false });
+    } finally {
+      wx.hideLoading();
+      this.loggingIn = false;
+    }
+  },
+  onWelcomeCardChange(e) { this.setData({ welcomeStep: e.detail.current }); },
+  nextWelcomeCard() {
+    if (this.data.welcomeStep < 2) this.setData({ welcomeStep: this.data.welcomeStep + 1 });
+    else this.dismissWelcome();
   },
 
   stopTick() {
@@ -216,6 +297,7 @@ Page({
   },
 
   async maybeShowWelcome() {
+    if (this.loggingIn) return;
     // The base page below the focus shell must never flash a second welcome.
     if (!this.isShell || !this.visible || this.welcomeChecking || app.globalData.guideWelcomeChecked || !guideWelcome.canPresentWelcome(this.data)) return;
     this.welcomeChecking = true;

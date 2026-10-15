@@ -5,6 +5,21 @@ const local = require("./local");
 const bytes = (value) =>
   unescape(encodeURIComponent(JSON.stringify(value))).length;
 const KEY = "yotick/import/current";
+async function guestSummary(raw) {
+  const guest = createAccountAdapter(raw, "guest");
+  const meta = await guest.get("yotick/meta");
+  const projects = Object.values((await guest.get("yotick/projects")) || {});
+  const keys = (await guest.keys()).filter((k) => k.startsWith("yotick/s/"));
+  // The repository has one ACTIVE session at meta.activeSessionId; all other
+  // session keys are completed facts. Count keys without reading years of files.
+  const sessionCount = keys.filter((key) => key !== "yotick/s/" + (meta && meta.activeSessionId)).length;
+  return {
+    projectCount: projects.length,
+    sessionCount,
+    signature: JSON.stringify([meta && meta.id, meta && meta.dataRevision]),
+    hasData: projects.length > 0 || sessionCount > 0,
+  };
+}
 async function prepare(raw, accountAdapter) {
   let state = await accountAdapter.get(KEY);
   if (state && state.status !== "committed") return state;
@@ -67,6 +82,7 @@ async function prepare(raw, accountAdapter) {
     status: "prepared",
     projectCount: snapshot.projects.length,
     sessionCount: snapshot.sessions.length,
+    guestSignature: (await guestSummary(raw)).signature,
   };
   await accountAdapter.set(KEY, state);
   return state;
@@ -126,17 +142,20 @@ async function upload(
   await adapter.set(KEY, state);
   return preview;
 }
-async function commit(adapter, request, deviceId, mapping, sessionMapping) {
+async function commit(adapter, request, deviceId, mapping, sessionMapping, options = {}) {
   const state = await adapter.get(KEY);
   if (!state?.preview) throw new Error("请先预览迁移");
+  if (options.automatic && state.preview.mergePolicy !== 'KEEP_ACCOUNT')
+    throw new Error('自动保存服务尚未更新，登录前的记录已保留，请稍后再试');
   const result = await request("POST", "/imports/" + state.id + "/commit", {
     confirmation: "MERGE_GUEST_DATA",
     deviceId,
     sourceDigest: state.preview.digest,
     mapping: mapping || {},
     sessionMapping: sessionMapping || {},
+    ...(options.automatic ? { mergePolicy:'KEEP_ACCOUNT' } : {}),
   });
   await adapter.set(KEY, { ...state, status: "committed", result });
   return result;
 }
-module.exports = { prepare, upload, commit };
+module.exports = { prepare, upload, commit, guestSummary };

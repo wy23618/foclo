@@ -41,6 +41,12 @@ function normalize(raw) {
     title: raw.title || raw.parentPath || '',
     start,
     end,
+    studyIntervals: Array.isArray(raw.studyIntervals)
+      ? raw.studyIntervals.map((interval) => ({
+          start: Math.max(start, interval.startedAtSec * 1000),
+          end: Math.min(end, interval.endedAtSec * 1000),
+        })).filter((interval) => Number.isFinite(interval.start) && Number.isFinite(interval.end) && interval.end > interval.start)
+      : [{ start, end: Math.min(end, start + (raw.durationSec != null ? raw.durationSec * 1000 : end - start)) }],
     durationSec:
       raw.durationSec != null ? raw.durationSec : Math.round((end - start) / 1000),
   };
@@ -104,14 +110,21 @@ function buildAxis(groups) {
     });
   }
 
-  const segments = groups.map((g) => {
-    const s = Math.max(toMin(g.start), lo);
-    const e = Math.min(toMin(g.end), hi);
-    return {
-      key: g.key,
-      left: +(((s - lo) / range) * 100).toFixed(2),
-      width: +((Math.max(e - s, 0) / range) * 100).toFixed(2),
-    };
+  const segments = [];
+  groups.forEach((g) => {
+    // 列表仍按原规则合并；横条分别绘制，不能把暂停或记录之间的空档填色。
+    g.items.forEach((record) => record.studyIntervals.forEach((interval) => {
+      const s = Math.max(toMin(interval.start), lo);
+      const e = Math.min(toMin(interval.end), hi);
+      if (e <= s) return;
+      segments.push({
+        key: g.key + '-s' + segments.length,
+        groupKey: g.key,
+        project: g.project,
+        left: +(((s - lo) / range) * 100).toFixed(2),
+        width: +(((e - s) / range) * 100).toFixed(4),
+      });
+    }));
   });
 
   return { ticks, segments };
@@ -135,8 +148,8 @@ function buildTimeline(rawRecords, colorMap) {
   const maxSec = Math.max.apply(null, groups.map((g) => g.durationSec));
   const total = records.reduce((s, r) => s + r.durationSec, 0);
 
-  const colored = segments.map((seg, i) =>
-    Object.assign({}, seg, { color: colorOf(groups[i].project) })
+  const colored = segments.map((seg) =>
+    Object.assign({}, seg, { color: colorOf(seg.project) })
   );
 
   const rows = groups.map((g) => ({
