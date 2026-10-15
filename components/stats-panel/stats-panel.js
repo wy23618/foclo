@@ -19,7 +19,7 @@ Component({
     selectedProjectId:'',selectedDetail:null,expandedDetailChildIds:[],timeSlots:[],slotScaleText:'1小时',slotScaleFixed:0,slotScaleIndex:0,slotScaleOptions:SCALE_LABELS,selectedTimeSlot:-1,selectedSlot:null,
     avgSessionText:'0秒',goalPercentText:'0'
   },
-  lifetimes:{attached(){this.isAttached=true;this.race=createRace();this.dashboard=buildDashboard([],[]);this.setData({startDate:view.today(),endDate:view.today(),themeClass:this.properties.theme});if(this.properties.opened)this.activate();}},
+  lifetimes:{attached(){this.isAttached=true;this.race=createRace();this.dashboard=buildDashboard([],[]);this.setData({startDate:view.today(),endDate:view.today(),themeClass:this.properties.theme});if(this.properties.opened)wx.nextTick(()=>{if(this.isAttached&&this.properties.opened)this.activate();});},detached(){this.isAttached=false;}},
   pageLifetimes:{show(){if(this.properties.opened&&this.wasPageHidden){if(getApp().globalData.closeStatsPickerOnReturn){getApp().globalData.closeStatsPickerOnReturn=false;this.closeSubjects();}this.activate();}this.wasPageHidden=false;},hide(){this.wasPageHidden=true;}},
   methods:{
     onPanelScroll(e){this.panelScrollPosition=e.detail.scrollTop||0;},
@@ -31,8 +31,13 @@ Component({
     onThemeChange(theme){if(this.isAttached&&theme)this.setData({themeClass:theme});},
     onOpenedChange(opened){
       if(!this.isAttached)return;
-      if(opened){this.triggerEvent('navhiddenchange',{hidden:!!(this.data.rangeOpen||this.data.chartFull)});this.activate();}
-      else this.triggerEvent('navhiddenchange',{hidden:false});
+      // Property observers can run while the parent page is still applying its
+      // setData patch. Defer child updates/events until that render has settled.
+      wx.nextTick(()=>{
+        if(!this.isAttached||!!this.properties.opened!==!!opened)return;
+        if(opened){this.triggerEvent('navhiddenchange',{hidden:!!(this.data.rangeOpen||this.data.chartFull)});this.activate();}
+        else this.triggerEvent('navhiddenchange',{hidden:false});
+      });
     },
   onNavHeightChange(e){this.setData({filterTop:e.detail.height});},
   async activate(){

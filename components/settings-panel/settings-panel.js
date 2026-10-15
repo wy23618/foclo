@@ -5,11 +5,11 @@ Component({
   options:{styleIsolation:'apply-shared'},
   properties:{opened:{type:Boolean,value:false,observer:'onOpenedChange'},theme:{type:String,value:'light',observer:'onThemeChange'}},
   data:{activated:false,groups:buildSettingsGroups(null),themeClass:'light'},
-  lifetimes:{attached(){this.isAttached=true;this.setData({themeClass:this.properties.theme});if(this.properties.opened)this.activate();}},
+  lifetimes:{attached(){this.isAttached=true;this.setData({themeClass:this.properties.theme});if(this.properties.opened)wx.nextTick(()=>{if(this.isAttached&&this.properties.opened)this.activate();});},detached(){this.isAttached=false;}},
   pageLifetimes:{show(){if(this.properties.opened&&this.wasPageHidden)this.activate();this.wasPageHidden=false;},hide(){this.wasPageHidden=true;}},
   methods:{
     onThemeChange(theme){if(this.isAttached&&theme)this.setData({themeClass:theme});},
-    onOpenedChange(opened){if(opened&&this.isAttached)this.activate();},
+    onOpenedChange(opened){if(opened&&this.isAttached)wx.nextTick(()=>{if(this.isAttached&&this.properties.opened)this.activate();});},
     async activate(){
       if(!this.data.activated)this.setData({activated:true});
       const app=getApp();
