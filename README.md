@@ -15,7 +15,7 @@
 
 使用微信开发者工具导入项目，或访问由所有者发布的微信小程序版本。当前仓库没有公开体验码；[演示素材目录](docs/media/README.md) 记录截图与体验码位置。
 
-API 已部署到 Cloudflare：[`https://api.foclo.hellovian.com`](https://api.foclo.hellovian.com)，备用地址为 `https://foclo-api.hellovian.workers.dev`。原 PostgreSQL 账号、项目、专注记录、同步状态和删除标记已迁移到 Cloudflare Durable Object。小程序所有者已确认配置微信 request 合法域名；切换后的真实设备登录和同步验收、前端上传与微信审核仍待完成，详见 [Cloudflare 指南](docs/CLOUDFLARE.md)。网页访问 API 不会展示小程序 UI。
+API 已部署到 Cloudflare：[`https://api.foclo.hellovian.com`](https://api.foclo.hellovian.com)，备用地址为 `https://foclo-api.hellovian.workers.dev`。原 PostgreSQL 账号、项目、专注记录、同步状态和删除标记已迁移到 Cloudflare Durable Object。小程序所有者已确认配置微信 request 合法域名；切换后的真实设备登录和同步验收、前端上传与微信审核仍待完成，详见 [Cloudflare 指南](docs/CLOUDFLARE.md) 和 [小程序上传及验收指南](docs/miniprogram-upload.md)。网页访问 API 不会展示小程序 UI。
 
 ## 本地开发
 
