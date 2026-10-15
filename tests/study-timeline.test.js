@@ -6,7 +6,9 @@ const { uuid } = require('../core/ids');
 const { recordsInRange } = require('../core/statistics');
 const { buildTimeline } = require('../utils/studyTimeline');
 
-const at = (hour, minute = 0) => new Date(2026, 9, 13, hour, minute).getTime() / 1000;
+// The product's business day uses Asia/Shanghai regardless of the CI runner's
+// local timezone. Construct these fixtures in that fixed timezone as UTC math.
+const at = (hour, minute = 0) => Date.UTC(2026, 9, 13, hour - 8, minute) / 1000;
 const day = { start: at(0), end: at(24) };
 const session = (overrides = {}) => Object.assign({
   id: 's', projectId: 'english', status: 'COMPLETED',
