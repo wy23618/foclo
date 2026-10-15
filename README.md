@@ -15,7 +15,7 @@
 
 使用微信开发者工具导入项目，或访问由所有者发布的微信小程序版本。当前仓库没有公开体验码；[演示素材目录](docs/media/README.md) 记录截图与体验码位置。
 
-API 默认部署地址规划为 `https://foclo-api.hellovian.workers.dev`。实际上线、微信 request 合法域名及真机验证状态见 [Cloudflare 指南](docs/CLOUDFLARE.md)。网页访问 API 不会展示小程序 UI。
+API 已部署到 Cloudflare：[`https://api.foclo.hellovian.com`](https://api.foclo.hellovian.com)，备用地址为 `https://foclo-api.hellovian.workers.dev`。微信 request 合法域名、当前数据迁移和真机登录验收仍需完成，详见 [Cloudflare 指南](docs/CLOUDFLARE.md)。网页访问 API 不会展示小程序 UI。
 
 ## 本地开发
 
@@ -96,7 +96,9 @@ git push
 - [x] 离线计时、项目、记录与学习统计
 - [x] 微信认证、账号隔离、同步与冲突恢复
 - [x] Cloudflare 后端适配及隔离运行时验收
-- [ ] 完成首次 Cloudflare 发布、数据迁移与微信端连接验收
+- [x] Cloudflare API 部署、Durable Object 与 HTTPS 健康检查
+- [ ] 获取当前正式数据源一致性备份并迁移
+- [ ] 配置微信 request 合法域名，验收真机登录与跨设备同步
 - [ ] 补充公开截图、体验码与上手演示
 - [ ] 改善跨设备恢复提示与长期备份运维
 

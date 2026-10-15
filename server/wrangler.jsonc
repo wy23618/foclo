@@ -5,6 +5,7 @@
   "compatibility_date": "2026-10-15",
   "compatibility_flags": ["nodejs_compat"],
   "workers_dev": true,
+  "routes": [{"pattern":"api.foclo.hellovian.com","custom_domain":true}],
   "rules": [{"type":"Text","globs":["**/*.sql"],"fallthrough":true}],
   "durable_objects": {"bindings":[{"name":"FOCLO_DB","class_name":"FocloDatabase"}]},
   "migrations": [{"tag":"v1","new_sqlite_classes":["FocloDatabase"]}]

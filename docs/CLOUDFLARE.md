@@ -2,9 +2,9 @@
 
 ## 当前状态（2026-10-15）
 
-本地前端 103 项、原后端 29 项验收通过。新增 Workers 运行时测试已验证认证、幂等同步、冲突回滚、快照、导入、刷新令牌重试、账号隔离和注销。Cloudflare 打包通过；首次线上部署、真实微信登录和迁移尚未确认。
+本地前端 103 项、原后端 29 项验收通过。新增 Workers 运行时测试已验证认证、幂等同步、冲突回滚、快照、导入、刷新令牌重试、账号隔离和注销。2026-10-15 已部署 Cloudflare Worker、配置小程序登录 secrets，并验证两种 HTTPS 地址、健康检查及匿名鉴权。
 
-默认 API 目标：`https://foclo-api.hellovian.workers.dev`。此为部署目标，不代表已上线。
+正式 API 地址：[`https://api.foclo.hellovian.com`](https://api.foclo.hellovian.com)。备用地址：`https://foclo-api.hellovian.workers.dev`。两个地址的 `/health/ready` 均返回 200，匿名 `/api/v1/me` 返回 401。
 
 ## 架构
 
@@ -31,18 +31,18 @@ npm run deploy
 - GET `/health/live` 与 `/health/ready` 应返回 200。
 - GET `/api/v1/me` 在匿名状态应返回 401；不能仅凭 200 健康检查宣布登录和同步成功。
 - 在微信平台配置合法 request 域名，完成真实设备登录、离线记录上传、重试和另一设备读取。
-- 在数据迁移验收完成前，保持现有 `sync/config.js` 地址，避免已有用户连接空库。
+- 当前小程序仍保留既有 API 地址；数据迁移验收前不要切换，避免已有用户连接空库。
 - 前端包通过微信开发者工具上传、审核、发布，不由 Cloudflare 或 GitHub Actions 自动绕过。
 
 ## 现有数据迁移
 
 新增云库与原 PostgreSQL 正式库隔离。迁移须先一致性备份，转换 UUID、bigint、JSON、时间和 bytea 数据，校验账号与记录数量、同步版本、幂等回执及密钥，然后在独立新库完成恢复测试。禁止直接导入 PostgreSQL dump 到 SQLite，禁止在 Git 中提交任何 dump。
 
-当前未运行真实用户数据迁移，也未切换正式客户端。需要修改现有正式数据时由所有者明确批准；回滚时保留两端数据和迁移记录。
+Foclo Worker 的 Durable Object 当前为空库。没有执行真实用户数据迁移，也没有切换正式客户端。当前本地 `.env` 指向的 PostgreSQL 不在线；历史云端备份日期较旧，无法证明覆盖当前用户数据，因此没有用旧备份覆盖或代替现有数据库。取得当前源库一致性备份后可导入这个空 Worker；在此之前保持当前小程序客户端地址。需要修改现有正式数据时由所有者明确批准；回滚时保留两端数据和迁移记录。
 
 ## 自动发布
 
-仓库的 `.github/workflows/deploy.yml` 在 pull request 执行检查，在 `main` 的 push / 手动运行检查通过后执行正式发布。请勿同时启用两个互相覆盖的发布系统。
+仓库的 `.github/workflows/deploy.yml` 在 pull request 执行检查，在 `main` 的 push / 手动运行检查通过后执行正式发布。检查工作流已上传；GitHub Actions 发布还需添加下列 secrets。请勿同时启用两个互相覆盖的发布系统。
 
 需要在 GitHub 仓库 Settings → Secrets and variables → Actions 配置：
 
