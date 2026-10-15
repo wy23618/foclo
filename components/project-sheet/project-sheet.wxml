@@ -3,7 +3,7 @@
     <view class="picker-field-label">{{editorLabel}}</view>
     <block wx:if="{{editorMode !== 'delete'}}">
       <input class="picker-name-input" value="{{newName}}" bindinput="inputName" maxlength="120" placeholder="输入项目名称" adjust-position confirm-type="done" bindconfirm="create" disabled="{{creating}}"/>
-      <view class="picker-form-actions"><button class="picker-cancel" bindtap="cancelNew" disabled="{{creating}}">取消</button><button class="picker-create-entry" bindtap="create" loading="{{creating}}" disabled="{{creating}}">{{editorMode === 'rename' ? '保存' : '添加'}}</button></view>
+      <view class="picker-form-actions"><button class="picker-cancel" bindtap="cancelNew" disabled="{{creating}}">取消</button><button class="picker-create-entry {{creating ? 'is-disabled' : ''}}" bindtap="create" loading="{{creating}}" disabled="{{creating}}">{{editorMode === 'rename' ? '保存' : '添加'}}</button></view>
     </block>
     <block wx:else>
       <view class="picker-delete-message">{{deleteText}}</view>

@@ -19,7 +19,7 @@ Component({
     selectedProjectId:'',selectedDetail:null,expandedDetailChildIds:[],timeSlots:[],slotScaleText:'1小时',slotScaleFixed:0,slotScaleIndex:0,slotScaleOptions:SCALE_LABELS,selectedTimeSlot:-1,selectedSlot:null,
     avgSessionText:'0秒',goalPercentText:'0'
   },
-  lifetimes:{attached(){this.isAttached=true;this.race=createRace();this.dashboard=buildDashboard([],[]);this.setData({startDate:view.today(),endDate:view.today(),themeClass:this.properties.theme});if(this.properties.opened)wx.nextTick(()=>{if(this.isAttached&&this.properties.opened)this.activate();});},detached(){this.isAttached=false;}},
+  lifetimes:{attached(){this.isAttached=true;this.race=createRace();this.dashboard=buildDashboard([],[]);setTimeout(()=>{if(!this.isAttached)return;this.setData({startDate:view.today(),endDate:view.today(),themeClass:this.properties.theme});if(this.properties.opened&&!this.data.activated)this.activate();},50);},detached(){this.isAttached=false;}},
   pageLifetimes:{show(){if(this.properties.opened&&this.wasPageHidden){if(getApp().globalData.closeStatsPickerOnReturn){getApp().globalData.closeStatsPickerOnReturn=false;this.closeSubjects();}this.activate();}this.wasPageHidden=false;},hide(){this.wasPageHidden=true;}},
   methods:{
     onPanelScroll(e){this.panelScrollPosition=e.detail.scrollTop||0;},
@@ -28,18 +28,17 @@ Component({
       if(this.data.panelScrollTop===next)this.setData({panelScrollTop:Math.max(0,next-1)},()=>this.setData({panelScrollTop:next}));
       else this.setData({panelScrollTop:next});
     },
-    onThemeChange(theme){if(this.isAttached&&theme)this.setData({themeClass:theme});},
+    onThemeChange(theme){if(this.isAttached&&theme)setTimeout(()=>{if(this.isAttached&&theme===this.properties.theme&&theme!==this.data.themeClass)this.setData({themeClass:theme});},50);},
     onOpenedChange(opened){
       if(!this.isAttached)return;
-      // Property observers can run while the parent page is still applying its
-      // setData patch. Defer child updates/events until that render has settled.
-      wx.nextTick(()=>{
+      // Property observers can run while the parent page is applying its
+      // setData patch. Use a later task so child updates start after that render.
+      setTimeout(()=>{
         if(!this.isAttached||!!this.properties.opened!==!!opened)return;
-        if(opened){this.triggerEvent('navhiddenchange',{hidden:!!(this.data.rangeOpen||this.data.chartFull)});this.activate();}
-        else this.triggerEvent('navhiddenchange',{hidden:false});
-      });
+        if(opened&&!this.data.activated)this.activate();
+      },50);
     },
-  onNavHeightChange(e){this.setData({filterTop:e.detail.height});},
+  onNavHeightChange(e){const height=e.detail.height;if(!Number.isFinite(height)||height===this.data.filterTop)return;setTimeout(()=>{if(this.isAttached&&this.data.filterTop!==height)this.setData({filterTop:height});},50);},
   async activate(){
     const revisiting=this.data.activated;
     if(!revisiting)this.setData({activated:true});
@@ -103,7 +102,19 @@ Component({
   },
   onChartSelectParent(e){this.applyChartSelection(e.detail);},
   showAllProjects(){require('../../utils/show-all-projects')(this);},
-  onChartExpandState(e){const {expandable,allExpanded}=e.detail,nextExpandable=!!expandable,nextExpanded=!!allExpanded;if(this.data.chartExpandable!==nextExpandable||this.data.chartAllExpanded!==nextExpanded)this.setData({chartExpandable:nextExpandable,chartAllExpanded:nextExpanded});},
+  onChartExpandState(e){
+    const {expandable,allExpanded}=e.detail;
+    this.pendingChartExpandState={chartExpandable:!!expandable,chartAllExpanded:!!allExpanded};
+    if(this.chartExpandUpdateScheduled)return;
+    this.chartExpandUpdateScheduled=true;
+    setTimeout(()=>{
+      this.chartExpandUpdateScheduled=false;
+      const patch=this.pendingChartExpandState;
+      this.pendingChartExpandState=null;
+      if(!this.isAttached||!patch)return;
+      if(this.data.chartExpandable!==patch.chartExpandable||this.data.chartAllExpanded!==patch.chartAllExpanded)this.setData(patch);
+    },50);
+  },
   toggleChartAll(){const chart=this.selectComponent('#distributionChart');if(chart)chart.toggleAll();},
   onChartSelectChild(e){this.applyChartSelection(e.detail);},
   applyChartSelection(detail){
