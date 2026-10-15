@@ -3,11 +3,11 @@
     <view class="picker-field-label">{{editorLabel}}</view>
     <block wx:if="{{editorMode !== 'delete'}}">
       <input class="picker-name-input" value="{{newName}}" bindinput="inputName" maxlength="120" placeholder="输入项目名称" adjust-position confirm-type="done" bindconfirm="create" disabled="{{creating}}"/>
-      <view class="picker-form-actions"><button class="picker-cancel" bindtap="cancelNew" disabled="{{creating}}">取消</button><button class="picker-create-entry {{creating ? 'is-disabled' : ''}}" bindtap="create" loading="{{creating}}" disabled="{{creating}}">{{editorMode === 'rename' ? '保存' : '添加'}}</button></view>
+      <view class="picker-form-actions"><button class="picker-action-button picker-cancel" bindtap="cancelNew" disabled="{{creating}}">取消</button><button class="picker-action-button picker-create-entry {{creating ? 'is-disabled' : ''}}" bindtap="create" loading="{{creating}}" disabled="{{creating}}">{{editorMode === 'rename' ? '保存' : '添加'}}</button></view>
     </block>
     <block wx:else>
       <view class="picker-delete-message">{{deleteText}}</view>
-      <view class="picker-form-actions"><button class="picker-cancel" bindtap="cancelNew" disabled="{{creating}}">取消</button><button class="picker-delete-confirm" bindtap="confirmDelete" loading="{{creating}}" disabled="{{creating}}">确认删除</button></view>
+      <view class="picker-form-actions"><button class="picker-action-button picker-cancel" bindtap="cancelNew" disabled="{{creating}}">取消</button><button class="picker-action-button picker-delete-confirm" bindtap="confirmDelete" loading="{{creating}}" disabled="{{creating}}">确认删除</button></view>
     </block>
   </view>
 </template>
@@ -44,7 +44,7 @@
           <view class="picker-row-main" data-id="{{item.projectId}}" bindtap="rowTap" hover-class="picker-row-pressed" aria-role="button" aria-label="{{item.startable ? '选择' : '展开'}}{{item.name}}"><view class="picker-dot" style="background:{{item.color}}"></view><text class="picker-row-name">{{item.name}}</text><text wx:if="{{createdId===item.projectId}}" class="picker-new-label">新建</text><view wx:if="{{selected===item.projectId}}" class="picker-check"></view></view>
           <view class="picker-more {{menuId === item.projectId ? 'picker-more-active' : ''}}" data-id="{{item.projectId}}" catchtap="toggleMenu" hover-class="picker-row-pressed" aria-role="button" aria-label="管理{{item.name}}"><view></view><view></view><view></view></view>
         </view>
-        <view wx:if="{{menuId === item.projectId}}" class="picker-row-menu"><button data-id="{{item.projectId}}" bindtap="newProject" disabled="{{creating}}">＋ 添加项目</button><button data-id="{{item.projectId}}" bindtap="renameProject" disabled="{{creating}}">改名</button><button class="picker-delete-entry" data-id="{{item.projectId}}" bindtap="askDelete" disabled="{{creating}}">删除</button></view>
+        <view wx:if="{{menuId === item.projectId}}" class="picker-row-menu"><button class="picker-row-menu-button" data-id="{{item.projectId}}" bindtap="newProject" disabled="{{creating}}">＋ 添加项目</button><button class="picker-row-menu-button" data-id="{{item.projectId}}" bindtap="renameProject" disabled="{{creating}}">改名</button><button class="picker-row-menu-button picker-delete-entry" data-id="{{item.projectId}}" bindtap="askDelete" disabled="{{creating}}">删除</button></view>
         <template wx:if="{{newOpen && editorId === item.projectId}}" is="inlineEditor" data="{{editorId, editorMode, editorLabel, newName, creating, deleteText}}"/>
       </view>
       <view wx:if="{{!loading && !error && !rows.length}}" class="picker-empty"><view class="picker-empty-title">还没有项目</view><view>点击“新建项目”，添加你的专注内容</view></view>

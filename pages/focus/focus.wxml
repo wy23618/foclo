@@ -35,7 +35,7 @@
       </view>
     </view>
 
-    <view wx:if="{{cur.state!=='IDLE'}}" class="run-footer"><view>今日累计 {{todayText}}</view></view>
+    <view wx:if="{{cur.state!=='IDLE'}}" class="run-footer"><view class="focus-run-footer-total">今日累计 {{todayText}}</view></view>
     </view>
     <view class="focus-dock">
     <!-- 倒计时将时长与模式合为一个控制区；正计时只显示模式 -->
@@ -58,8 +58,8 @@
     </view>
 
 <view wx:if="{{cur.state!=='IDLE'}}" class="runtime-tools">
-  <button class="runtime-tool" hover-class="runtime-tool-pressed" bindtap="openImmersive"><view class="runtime-icon runtime-icon-minimal"></view><text>极简显示</text></button>
-  <button class="runtime-tool" hover-class="runtime-tool-pressed" bindtap="lockScreen"><view class="runtime-icon runtime-icon-lock"></view><text>防误触</text></button>
+  <button class="runtime-tool" hover-class="runtime-tool-pressed" bindtap="openImmersive"><view class="runtime-icon runtime-tool-icon runtime-icon-minimal"></view><text>极简显示</text></button>
+  <button class="runtime-tool" hover-class="runtime-tool-pressed" bindtap="lockScreen"><view class="runtime-icon runtime-tool-icon runtime-icon-lock"></view><text>防误触</text></button>
 </view>
     <!-- 操作 -->
     <view class="actions">
@@ -96,7 +96,7 @@
 <main-nav selected="{{activeTab}}" theme="{{themeClass}}" inline="{{true}}" hidden="{{statsNavHidden||customOpen||todayOpen||immersive||screenLocked||welcomeOpen||identityOpen}}" bindchange="switchMainTab"/>
 <view wx:if="{{restPrompt}}" class="focus-overlay rest-overlay theme-{{themeClass}}"><view class="focus-mask"></view><view class="focus-sheet rest-sheet"><view class="rest-icon">☕</view><view class="title-sm">这一轮完成了</view><view class="rest-description">已保存专注记录 · 第 {{restRound}} 轮</view><view class="rest-duration">{{restLong ? '长休息' : '短休息'}} · {{restDuration / 60}} 分钟</view><view class="two-col rest-actions"><button class="btn btn-ghost" bindtap="skipRest">跳过</button><button class="btn btn-primary" bindtap="startRest">开始休息</button></view></view></view>
 <view wx:if="{{restState}}" class="focus-overlay rest-overlay theme-{{themeClass}}"><view class="focus-mask"></view><view class="focus-sheet rest-sheet"><view class="rest-icon">☕</view><view class="title-sm">{{restState === 'PAUSED' ? '休息已暂停' : '休息中'}}</view><view class="rest-clock num">{{restClock}}</view><view class="rest-description">休息单独计时，不计入专注统计</view><view class="two-col rest-actions"><button wx:if="{{restState === 'RUNNING'}}" class="btn btn-ghost" bindtap="pauseRest">暂停</button><button wx:else class="btn btn-ghost" bindtap="resumeRest">继续</button><button class="btn btn-danger" bindtap="skipRest">跳过休息</button></view></view></view>
-<view wx:if="{{customOpen}}" class="focus-overlay theme-{{themeClass}}" catchtouchmove="noop"><view class="focus-mask" bindtap="closeCustom"></view><view class="focus-sheet"><view class="title-sm">自定义专注时长</view><picker-view class="minute-wheel" immediate-change="{{true}}" indicator-style="height:50rpx" value="{{minuteWheelValue}}" bindchange="minutePick"><picker-view-column><view wx:for="{{minuteOptions}}" wx:key="*this" class="minute-option">{{item}}</view></picker-view-column></picker-view><view class="minute-entry"><input type="number" value="{{customMinutes}}" bindinput="minuteInput" maxlength="4"/><text>分钟（1–1440）</text></view><view class="two-col"><button class="btn btn-ghost" bindtap="closeCustom">取消</button><button class="btn btn-primary" bindtap="confirmCustom">确定</button></view></view></view>
+<view wx:if="{{customOpen}}" class="focus-overlay theme-{{themeClass}}" catchtouchmove="noop"><view class="focus-mask" bindtap="closeCustom"></view><view class="focus-sheet"><view class="title-sm">自定义专注时长</view><picker-view class="minute-wheel" immediate-change="{{true}}" indicator-style="height:50rpx" value="{{minuteWheelValue}}" bindchange="minutePick"><picker-view-column><view wx:for="{{minuteOptions}}" wx:key="*this" class="minute-option">{{item}}</view></picker-view-column></picker-view><view class="minute-entry"><input class="minute-entry-input" type="number" value="{{customMinutes}}" bindinput="minuteInput" maxlength="4"/><text>分钟（1–1440）</text></view><view class="two-col"><button class="btn btn-ghost" bindtap="closeCustom">取消</button><button class="btn btn-primary" bindtap="confirmCustom">确定</button></view></view></view>
 <view wx:if="{{todayOpen}}" class="focus-overlay theme-{{themeClass}}"><view class="focus-mask" bindtap="closeToday"></view><scroll-view scroll-y class="focus-sheet today-sheet"><view class="row-between"><view class="title-sm">今日专注明细</view><view bindtap="closeToday">✕</view></view><day-detail date="{{todayDate}}" controls="{{false}}" bindrecorddeleted="onRecordDeleted"/></scroll-view></view>
 <view wx:if="{{immersive}}" class="zen theme-{{themeClass}}"><view class="zen-path">{{projectPath||cur.projectName}}</view><view class="flip-clock"><view wx:for="{{clockParts}}" wx:key="key" class="flip-group"><view class="flip-face flip-turn-{{item.turn}} num">{{item.value}}</view><view class="flip-unit">{{item.unit}}</view></view></view><view>{{pillText}} · {{captionText}}</view><view class="zen-controls"><button class="btn btn-ghost" bindtap="closeImmersive">退出极简</button><button wx:if="{{cur.state==='STUDYING'}}" class="btn btn-primary" bindtap="onPause">暂停</button><button wx:else class="btn btn-primary" bindtap="onResume">继续</button></view></view>
 <view wx:if="{{screenLocked}}" class="screen-lock theme-{{themeClass}}" catchtap="noop" catchtouchmove="noop" bindlongpress="unlockScreen"><view class="lock-indicator"><view class="runtime-icon runtime-icon-lock"></view><text>已开启防误触</text></view><view class="locked-clock num">{{bigText}}</view><view>长按屏幕解除</view></view>
@@ -112,7 +112,7 @@
       <swiper-item wx:for="{{welcomeCards}}" wx:key="number"><view class="welcome-mini-card"><text class="welcome-card-symbol">{{item.symbol}}</text><text class="welcome-card-title">{{item.title}}</text><text class="welcome-card-copy">{{item.text}}</text></view></swiper-item>
     </swiper>
     <view class="welcome-progress">{{welcomeStep + 1}} / 3 · 左右滑动看看</view>
-    <view class="guide-welcome-actions"><button class="guide-welcome-skip" bindtap="dismissWelcome" hover-class="guide-welcome-pressed">直接开始</button><button class="guide-welcome-learn" bindtap="nextWelcomeCard" hover-class="guide-welcome-pressed">{{welcomeStep===2 ? '我会了，开始' : '下一张 →'}}</button></view>
+    <view class="guide-welcome-actions"><button class="guide-welcome-button guide-welcome-skip" bindtap="dismissWelcome" hover-class="guide-welcome-pressed">直接开始</button><button class="guide-welcome-button guide-welcome-learn" bindtap="nextWelcomeCard" hover-class="guide-welcome-pressed">{{welcomeStep===2 ? '我会了，开始' : '下一张 →'}}</button></view>
     <view class="guide-welcome-note">以后在设置里也能找到这些卡片</view>
   </scroll-view>
 </view>

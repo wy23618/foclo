@@ -1,6 +1,7 @@
 /* app.json window 默认背景是启动 fallback，须与 --bg-page 和
  * utils/theme.js 的 light.pageBackground 同步。JSON 不支持注释。 */
 @import "themes/palette.wxss";
+@import "themes/page-palette.wxss";
 
 /* app.wxss — Foclo 全局设计系统
  * 暖米纸底 · 森林绿主色 · 柔和白卡 · 大数字 · 圆角留白
