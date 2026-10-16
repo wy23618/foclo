@@ -9,13 +9,12 @@ const GROUPS = [
   ] },
   { title: '账号与数据', items: [
     { key: 'account', title: '账号与同步', hint: '可选登录，跨设备保存记录' },
-    { key: 'data', title: '数据与备份', hint: '备份、恢复与数据管理' },
-    { key: 'privacy', title: '隐私政策', hint: '数据用途、同步范围和管理方式' }
+    { key: 'data', title: '数据与备份', hint: '备份、恢复与数据管理' }
   ] },
   { title: '帮助', items: [
     { key: 'guide', title: '使用指南', hint: '项目、计时与统计，按步骤说明' },
     { key: 'feedback', title: '反馈与建议', hint: '哪里不好用，或希望增加什么功能' },
-    { key: 'help', title: '帮助与关于', hint: '使用说明、版本信息' }
+    { key: 'help', title: '帮助与关于', hint: '使用说明、版本信息与隐私政策' }
   ] }
 ];
 const { lightThemeName } = require('./light-theme-options');

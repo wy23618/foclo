@@ -15,7 +15,7 @@ const SECTIONS = {
   display: { title: '外观与屏幕', rows: ['外观主题', '屏幕常亮', '极简模式与锁定'] },
   stats: { title: '目标与统计', rows: ['统计默认范围', '显示今日目标', '时段图满格', '每周起始日'] },
   data: { title: '数据与备份', rows: ['项目管理', '恢复默认设置'] },
-  help: { title: '帮助与关于', rows: ['使用帮助', '关于 Foclo'] }
+  help: { title: '帮助与关于', rows: ['使用帮助', '关于 Foclo', '隐私政策'] }
 };
 Page({
   data: { loading: true, moreDataOpen: false, page: 'focus', title: '专注与休息', prefs: DEFAULTS, lightThemes: LIGHT_THEMES, minuteOptions: [], commonIndexes: [14,29,44,59], defaultMinuteIndex: 29, shortOptions: [], longOptions: [], cycleOptions: [], slotScaleOptions:SCALE_LABELS, slotScaleIndex:0 },
@@ -93,6 +93,7 @@ Page({
   noop() {},
   onRow(e) {
     const row = e.currentTarget.dataset.row;
+    if (row === '隐私政策') return wx.navigateTo({ url: '/pages/privacy/privacy' });
     if (row === '数据维护') return wx.navigateTo({ url:'/pages/account/account?tools=1' });
     if (row === '项目管理') { wx.navigateTo({ url: '/pages/manage/manage' }); return; }
     if (row === '恢复默认设置') { this.resetDefaults(); return; }

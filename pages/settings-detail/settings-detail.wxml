@@ -71,6 +71,7 @@
       <view class="setting-row" data-row="使用帮助" bindtap="onRow"><view class="row-copy"><text class="row-title">使用指南</text><text class="row-summary">专注、项目、统计与数据保存</text></view><view class="chevron"></view></view>
       <view class="setting-row" data-row="复制反馈信息" bindtap="onRow"><view class="row-copy"><text class="row-title">复制反馈信息</text><text class="row-summary">设备和版本信息，不含项目与专注记录</text></view><view class="chevron"></view></view>
       <view class="setting-row" data-row="关于 Foclo" bindtap="onRow"><view class="row-copy"><text class="row-title">关于 Foclo</text><text class="row-summary">版本 {{appVersion || '以当前构建为准'}} · 本机数据说明</text></view><view class="chevron"></view></view>
+      <view class="setting-row" data-row="隐私政策" bindtap="onRow"><view class="row-copy"><text class="row-title">隐私政策</text><text class="row-summary">个人信息的使用与管理</text></view><view class="chevron"></view></view>
     </view>
   </view>
 </view>

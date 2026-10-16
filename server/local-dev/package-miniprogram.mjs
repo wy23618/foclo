@@ -5,8 +5,10 @@ import { fileURLToPath } from 'node:url';
 import { createHash } from 'node:crypto';
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../..');
-const destination = process.argv[2] && path.resolve(process.argv[2]);
-if (!destination) throw new Error('Specify a new output directory.');
+const stamp = new Date().toISOString().replace(/[-:]/g, '').replace(/\.\d{3}Z$/, 'Z');
+const destination = process.argv[2]
+  ? path.resolve(process.argv[2])
+  : path.resolve(root, `../Foclo-upload-${stamp}`);
 const relativeDestination = path.relative(root, destination);
 if (!relativeDestination || (!relativeDestination.startsWith('..' + path.sep) && !path.isAbsolute(relativeDestination)))
   throw new Error('Output must be outside the source project.');
@@ -76,7 +78,7 @@ for (const page of app.pages) {
 resolveLocal('app.json', app.sitemapLocation);
 const config = JSON.parse(files.get('project.config.json').toString('utf8'));
 if (config.setting.uploadWithSourceMap !== false) throw new Error('Source-map upload must be disabled.');
-config.projectname = path.basename(destination);
+config.projectname = 'Foclo';
 files.set('project.config.json', Buffer.from(JSON.stringify(config, null, 2) + '\n'));
 
 fs.mkdirSync(destination, { recursive: true });
@@ -94,7 +96,7 @@ const evidence = {
   files: manifest.length, bytes: manifest.reduce((sum, file) => sum + file.bytes, 0),
   pages: app.pages.length, validatedReferences: references,
   excluded: ['server', 'tests', 'docs', '.git', 'project.private.config.json', '.env', 'node_modules', 'backups', 'database contents'],
-  scope: 'Runtime source only; no local storage or server DB was read or deleted. Development, trial and release builds use the configured Foclo Cloudflare API. Real-device account and sync acceptance remains required after the owner uploads the mini program.',
+  scope: 'Runtime source only; no local storage or server DB was read or deleted. Development, trial and release builds use the configured Foclo Cloudflare API. This package is generated from the canonical Git source; edit the source repository, then generate a fresh package for each WeChat upload.',
   manifest,
 };
 fs.writeFileSync(destination + '.manifest.json', JSON.stringify(evidence, null, 2) + '\n', { flag: 'wx' });

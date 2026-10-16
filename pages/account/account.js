@@ -271,7 +271,7 @@ Page({
       }, () => new Promise(resolve => {
         wx.showModal({
           title:'开启账号同步？',
-          content:'微信登录使用微信账号标识识别你，不读取手机号、聊天或通讯录。登录后，项目、专注记录和账号设置会自动保存，方便你换设备继续使用。头像昵称可选。详情见「设置 > 隐私政策」。',
+          content:'微信登录使用微信账号标识识别你，不读取手机号、聊天或通讯录。登录后，项目、专注记录和账号设置会自动保存，方便你换设备继续使用。头像昵称可选。详情见「设置 > 帮助与关于 > 隐私政策」。',
           confirmText:'登录同步', cancelText:'先不用',
           success:result => {
             if (result.confirm) wx.showLoading({ title:'正在连接微信', mask:true });
