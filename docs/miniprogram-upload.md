@@ -2,21 +2,23 @@
 
 ## 当前发布边界
 
-Foclo 小程序前端由微信开发者工具上传和发布；GitHub Actions 只自动部署 Cloudflare API，不会替你上传小程序。当前源码在本仓库根目录，项目 AppID 为 `wx6ed8386f53a1801b`。请在微信开发者工具中选择名称为 **Foclo** 的当前项目。
+Foclo 小程序前端由微信开发者工具上传和发布；GitHub Actions 自动部署 Cloudflare API，不会替你上传小程序。`D:\Projects\codex coding\Foclo` 是小程序的日常编辑目录，也是 `wy23618/foclo` 仓库的稀疏 Git 工作区，只显示小程序前端文件。项目 AppID 为 `wx6ed8386f53a1801b`。
 
 小程序 API 已指向 `https://api.foclo.hellovian.com/api/v1`，微信 request 合法域名为 `https://api.foclo.hellovian.com`。Cloudflare Worker 已就绪，原 PostgreSQL 数据已迁移到 `FOCLO_DB` Durable Object；16 张业务表、账号身份、项目与专注记录、同步回执及删除标记均已核对。旧 PostgreSQL 和加密备份保留在原服务器作为回退来源。迁移详情及回退约束见 [Cloudflare 部署与迁移说明](CLOUDFLARE.md)。
 
 ## 上传步骤
 
-仓库根目录是唯一的源码修改位置；不要在生成的上传包里单独改代码。仓库还包含服务器、测试和运维资料，因此每次上传前都从当前源码生成一份新的、仅含小程序运行文件的包。在仓库根目录执行：
+以后只在 `Foclo` 目录修改小程序代码。该目录直接连接 GitHub 上的同一个仓库，不需要再生成第二份上传目录。修改后在 `Foclo` 目录运行：
 
 ```sh
-node server/local-dev/package-miniprogram.mjs
+git add .
+git commit -m "描述本次修改"
+git push origin main
 ```
 
-每次命令都会在源码目录旁创建一个新的 `Foclo-upload-时间戳` 文件夹，并输出其完整路径。打包器使用运行文件白名单，检查页面和模块引用并生成 SHA-256 清单；不会读取或删除本机存储、服务端数据库或备份，也不会复制 `.env`、私有项目配置、服务器、测试和文档。每次运行后，在微信开发者工具中导入本次输出的新目录（项目名称仍显示为 Foclo），不要继续上传旧目录。
+改代码前可在同一目录运行 `git pull --ff-only` 获取 GitHub 最新版本。`Foclo` 工作区只包含小程序文件；服务器、测试与运维文件仍保留在完整开发仓库及 GitHub 中。项目配置会在微信上传时排除 Git 元数据和非小程序目录。
 
-日常流程：在完整 Git 源码仓库修改并提交代码；需要更新 Cloudflare API 时 `git push`；需要更新微信小程序时运行上面的打包命令，在开发者工具中打开新输出目录、编译验收，再由项目所有者点击“上传”。Git push 不会自动发布微信小程序。
+`git push` 会触发 GitHub Actions 验证并部署 Cloudflare API。要发布小程序，还需在当前 `Foclo` 开发者工具窗口编译检查，然后由项目所有者点击“上传”。这一步不会自动发生。
 
 1. 在微信开发者工具中选择名称为 Foclo 的独立上传项目，确认 AppID 与上方一致。
 2. 编译并检查首页、统计页和账号/同步状态页没有运行错误。

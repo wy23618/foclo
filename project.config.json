@@ -82,6 +82,10 @@
       {
         "type": "file",
         "value": "SECURITY.md"
+      },
+      {
+        "type": "file",
+        "value": ".gitattributes"
       }
     ],
     "include": [
