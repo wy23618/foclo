@@ -110,7 +110,7 @@ Page({
     if (row === '显示今日目标') return this.save({ dailyGoalEnabled: !this.data.prefs.dailyGoalEnabled });
     if (row === '每周起始日') return this.choose('weekStartsSunday', ['周一', '周日'], [false, true]);
     if (row === '使用帮助') return wx.navigateTo({ url: '/pages/guide/guide' });
-    if (row === '关于 Foclo') return wx.showModal({ title: 'Foclo', content: '专注计时与本地统计工具\n版本：' + (this.data.appVersion || '以当前构建为准') + '\n专注与记录会先保存在本机。当前开发版的同步服务只供同一台电脑上的开发者工具连接。', showCancel: false });
+    if (row === '关于 Foclo') return wx.showModal({ title: 'Foclo', content: '专注计时与学习统计工具\n版本：' + (this.data.appVersion || '以当前构建为准') + '\n项目和专注记录先保存在本机；登录后自动同步到当前账号，方便换设备继续使用。头像与昵称可选，仅用于本机展示。', showCancel: false });
   },
   selectTheme(e) {
     const theme = e.currentTarget.dataset.theme;
