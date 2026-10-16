@@ -1,0 +1,47 @@
+<page-meta page-style="{{themePageStyle}}"/>
+<view class="privacy-page theme-{{themeClass}}">
+  <view class="policy-title">Foclo 用户服务协议</view>
+  <view class="policy-meta">更新日期：2026年10月16日</view>
+  <view class="policy-intro">欢迎使用 Foclo。本协议说明专注计时、项目管理、统计及账号同步服务的使用规则。请在使用相关功能前阅读，尤其留意“记录保存与备份”和“免责声明与责任边界”。个人信息的处理方式另见《隐私政策》。</view>
+
+  <view class="policy-section">
+    <view class="section-title">一、服务与账号</view>
+    <view class="policy-paragraph">Foclo 是帮助你记录时间、整理项目和回顾专注情况的工具。统计结果基于已有记录计算，用于个人回顾与安排，不作为考试、考勤、绩效或其他重要事项的唯一依据。</view>
+    <view class="policy-paragraph">你可以使用本机游客记录，也可以通过微信登录使用账号同步。请妥善管理微信账号和使用设备，确认当前登录身份后再进行恢复、删除等操作。游客记录保存到账号前，会提示你确认。</view>
+  </view>
+  <view class="policy-section">
+    <view class="section-title">二、记录保存与备份</view>
+    <view class="policy-paragraph">项目和专注记录以本机保存为基础。登录后，相关记录和账号设置通过网络同步，便于在其他设备接续使用，并在可用副本存在时辅助恢复。离线更改会在恢复连接后继续同步。</view>
+    <view class="policy-paragraph policy-important">账号同步不等同于独立、永久的历史备份，也不承诺能够恢复任意时间点的全部内容。重要记录请定期通过“设置 → 数据与备份 → 保存一份备份”导出，并将文件另行妥善保存。</view>
+    <view class="policy-paragraph">清除微信或小程序数据、设备故障或更换、使用不同账号，以及删除和注销等操作，可能影响记录访问或保存。删除可能同步到同一账号的其他设备；已导出的备份由你保管。恢复备份前请核对当前空间与预览内容，备份只能反映导出时已有的记录。</view>
+  </view>
+  <view class="policy-section">
+    <view class="section-title">三、合理使用</view>
+    <view class="policy-paragraph">请依法使用 Foclo，尊重他人的隐私和知识产权，避免在项目名称、昵称或反馈中填写无关的敏感信息。不得利用漏洞、恶意请求或其他手段干扰服务、访问他人账号或破坏数据。</view>
+    <view class="policy-paragraph">使用指南中的演示使用固定示例数据。演示修改仅在当前体验中生效，不会写入你的日常记录。你的项目内容和记录所享有的合法权益仍归你所有；Foclo 的界面、程序和标识等权益归相应权利人所有。</view>
+  </view>
+  <view class="policy-section">
+    <view class="section-title">四、免责声明与责任边界</view>
+    <view class="policy-paragraph policy-important">设备与存储异常、网络中断、微信运行环境变化、第三方服务故障或不可抗力，可能造成计时偏差、同步延迟、服务中断或部分记录不可用。Foclo 会在合理范围内排查、修复并协助恢复，但无法保证服务始终连续、完全无误，或在所有情况下找回全部记录。</view>
+    <view class="policy-paragraph policy-important">因用户主动清理、删除、注销、账号或设备保管不当等原因，且不存在 Foclo 依法应承担责任的情形时，由此产生的记录缺失风险由用户承担。若本机、同步端及用户备份均无可用副本，可能无法恢复。</view>
+    <view class="policy-paragraph">服务发生异常时，请尽量保留现场信息并通过反馈联系，以便核查。对于服务中断或记录异常引发的损失，将依据适用法律、具体原因及各方过错确定责任。因 Foclo 故意或重大过失造成的财产损失，以及其他依法不能免除的责任，不适用上述责任限制。</view>
+  </view>
+  <view class="policy-section">
+    <view class="section-title">五、未成年人使用</view>
+    <view class="policy-paragraph">未成年人请在监护人指导下阅读本协议并合理安排使用时间。不满十四周岁用户涉及个人信息处理的，应由监护人依法同意；监护人可通过本页邮箱联系处理相关事项。</view>
+  </view>
+  <view class="policy-section">
+    <view class="section-title">六、服务与协议更新</view>
+    <view class="policy-paragraph">Foclo 可能为维护、兼容或功能调整更新服务。影响记录访问或用户重要权益的调整，会在可行范围内提前提示，并提供必要的备份、导出或处理说明。协议更新将在本页公布；需要另行确认或同意的事项，将按适用要求办理。</view>
+  </view>
+  <view class="policy-section">
+    <view class="section-title">七、联系我们</view>
+    <view class="policy-paragraph">如有问题、建议或争议，可通过“设置 → 反馈与建议”或以下邮箱联系。我们会在收到后 15 个工作日内回复，并根据实际情况协商处理。</view>
+    <view class="policy-contact"><text selectable="true">联系邮箱：1781567344@qq.com</text></view>
+  </view>
+  <view class="policy-links">
+    <button class="policy-link" bindtap="openPrivacy" hover-class="link-pressed">隐私政策</button>
+    <button class="policy-link" bindtap="openBackup" hover-class="link-pressed">数据与备份</button>
+    <button class="policy-link" open-type="feedback" hover-class="link-pressed">反馈与建议</button>
+  </view>
+</view>

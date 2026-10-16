@@ -1,0 +1,27 @@
+<view class="container appearance-page theme-{{themeClass}}">
+  <view wx:if="{{loading}}" class="appearance-loading">正在读取项目…</view>
+  <view wx:else class="appearance-sheet">
+      <view class="appearance-heading"><view><view class="appearance-kicker">颜色与简称</view><view class="appearance-title ellipsis">{{appearanceName}}</view></view></view>
+      <view class="appearance-preview"><view class="appearance-preview-caption">图表预览</view><view class="appearance-preview-row"><view class="appearance-preview-dot" style="background:{{appearancePreviewColor}}"></view><view class="appearance-preview-name ellipsis">{{appearanceShortName || appearanceName}}</view><view class="appearance-preview-line" style="background:{{appearancePreviewColor}}"></view></view></view>
+      <view class="appearance-label-row"><view class="appearance-label">颜色</view><view class="appearance-default {{appearanceColor === '' ? 'appearance-default-on' : ''}}" bindtap="chooseAppearanceDefault">{{appearanceColor === '' ? '正在使用默认色' : '恢复默认色'}}</view></view>
+      <view class="appearance-palette">
+        <view wx:for="{{visiblePalette}}" wx:key="*this" class="appearance-swatch-slot" data-color="{{item}}" bindtap="chooseAppearanceColor"><view class="appearance-swatch {{appearanceColor === item ? 'appearance-swatch-on' : ''}}" style="background:{{item}}"></view></view>
+      </view>
+      <view class="appearance-more" bindtap="toggleAppearancePalette">{{appearancePaletteExpanded ? '收起颜色 ︿' : '查看全部 24 色 ﹀'}}</view>
+      <view class="appearance-mixer-toggle" bindtap="toggleAppearanceMixer"><view class="appearance-mixer-icon" style="background:{{appearancePreviewColor}}"></view><text>自由调色</text><text class="appearance-mixer-caret">{{appearanceMixerOpen ? '收起 ︿' : '打开 ﹀'}}</text></view>
+      <view wx:if="{{appearanceMixerOpen}}" class="appearance-mixer">
+        <view class="appearance-mixer-hint">在色盘上拖动，或调整红、绿、蓝</view>
+        <view class="appearance-color-square" style="background-color:{{mixHueColor}}" bindtouchstart="startMixSquare" catchtouchmove="moveMixSquare" bindtouchend="endMixSquare" bindtouchcancel="endMixSquare"><view class="appearance-color-cursor" style="left:{{mixX}}%;top:{{mixY}}%"></view></view>
+        <view class="appearance-hue-track" bindtouchstart="startMixHue" catchtouchmove="moveMixHue" bindtouchend="endMixHue" bindtouchcancel="endMixHue"><view class="appearance-hue-cursor" style="left:{{mixHueX}}%"></view></view>
+        <view class="appearance-channel"><text class="appearance-channel-name">红</text><slider data-channel="red" min="0" max="255" step="1" value="{{mixRed}}" activeColor="#C65F61" backgroundColor="{{mixerTrack}}" block-color="#FFFFFF" block-size="18" bindchanging="changeRGB" bindchange="changeRGB"/><text class="appearance-channel-value">{{mixRed}}</text></view>
+        <view class="appearance-channel"><text class="appearance-channel-name">绿</text><slider data-channel="green" min="0" max="255" step="1" value="{{mixGreen}}" activeColor="#5B9567" backgroundColor="{{mixerTrack}}" block-color="#FFFFFF" block-size="18" bindchanging="changeRGB" bindchange="changeRGB"/><text class="appearance-channel-value">{{mixGreen}}</text></view>
+        <view class="appearance-channel"><text class="appearance-channel-name">蓝</text><slider data-channel="blue" min="0" max="255" step="1" value="{{mixBlue}}" activeColor="#5E83BD" backgroundColor="{{mixerTrack}}" block-color="#FFFFFF" block-size="18" bindchanging="changeRGB" bindchange="changeRGB"/><text class="appearance-channel-value">{{mixBlue}}</text></view>
+      </view>
+      <view class="appearance-label">自选色码 <text>例如 #425B42</text></view>
+      <input class="appearance-input appearance-hex-input" value="{{appearanceHexInput}}" maxlength="7" placeholder="输入 6 位色码" cursor-spacing="30" adjust-position="true" bindinput="inputAppearanceHex"/>
+      <view wx:if="{{appearanceHexError}}" class="appearance-error">{{appearanceHexError}}</view>
+      <view class="appearance-label">简称 <text>选填 · 最多 8 字</text></view>
+      <input class="appearance-input" value="{{appearanceShortName}}" maxlength="8" placeholder="留空时显示完整名称" cursor-spacing="30" adjust-position="true" bindinput="inputAppearanceShortName"/>
+  </view>
+  <view wx:if="{{!loading}}" class="appearance-footer"><button class="appearance-save" bindtap="saveAppearance">保存</button></view>
+</view>

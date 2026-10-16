@@ -1,0 +1,7 @@
+# Foclo 森绿 F × 时钟
+
+使用内置 image_gen 工具，以 01-forest-f.png 为参考进行编辑。保留原版，时钟版本保存为 05-forest-f-clock.png。
+
+## 完整生成提示词
+
+Use case: precise-object-edit / logo-brand. Edit the attached first Foclo avatar, rather than inventing a different logo. User likes this exact elegant ivory F on forest-green square and wants clock elements added. Preserve the dark forest green background, warm ivory lettering, the bold rounded F silhouette, its overall scale and centered placement, flat clean graphic style and generous negative space. Integrate ONE minimalist clock into the circular cutout at the upper-right tip of the F's top horizontal arm. Refine and enlarge that existing round cutout slightly so it becomes an intentional, readable dark-green clock face nested within the cream arm. Add two clean warm-ivory clock hands and a tiny central pivot, with hands at approximately 10:10. At most four very short hour marks, only if legible; prioritize a bold simple shape that reads as a clock at avatar size. The clock must feel built into the original F, never a pasted floating notification badge. Maintain optical balance, professional restraint, and excellent small-size clarity. Do not add a second giant clock or an outer ring around the F. No additional letters, numerals, words, decorative objects, drop shadows, gradients, 3D, presentation board or watermark. Output ONE standalone opaque square avatar, full green background to all edges, no pre-rounded outer boundary. Final finish: premium polished minimalist brand mark.

@@ -1,0 +1,14 @@
+{
+  "navigationBarTitleText": "专注",
+  "enablePullDownRefresh": false,
+  "usingComponents": {
+    "account-entry": "/components/account-entry/account-entry",
+    "project-sheet": "/components/project-sheet/project-sheet",
+    "focus-ring": "/components/focus-ring/focus-ring",
+    "day-detail": "/components/day-detail/day-detail",
+    "safe-nav": "/components/safe-nav/safe-nav",
+    "main-nav": "/components/main-nav/main-nav"
+  },
+  "pageOrientation": "auto",
+  "navigationStyle": "custom"
+}

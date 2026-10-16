@@ -1,21 +1,25 @@
 function openHeatmap() {
-  if (this.data.heatmapOpen || this.openingHeatmap || this.data.chartObscured) return;
+  if (this.data.heatmapOpen || this.data.scopeOpen || this.openingHeatmap || this.openingSubjectPicker || this.data.chartObscured) return;
   this.openingHeatmap = true;
-  const chart = this.selectComponent('#distributionChart');
+  const chart = this.selectComponent && this.selectComponent('#distributionChart');
   const open = () => {
-    this.openingHeatmap = false;
+    this.pageOverlayKind = 'heatmap';
     this.setData({ heatmapOpen: true, chartObscured: !!chart }, () => {
-      if (this.triggerEvent) this.triggerEvent('navhiddenchange', { hidden: !!(this.data.rangeOpen || this.data.chartFull) });
+      this.openingHeatmap = false;
+      if (this.triggerEvent) this.triggerEvent('navhiddenchange', { hidden: true });
     });
   };
-  if (chart && chart.data.drawReady) chart.captureSnapshot(() => open());
+  if (chart && chart.captureSnapshot) chart.captureSnapshot(() => open());
   else open();
 }
 function closeHeatmap() {
-    this.setData({ heatmapOpen: false, chartObscured: false }, () => {
+  this.setData({ heatmapOpen: false, chartObscured: false }, () => {
     if (this.triggerEvent) this.triggerEvent('navhiddenchange', {
       hidden: !!(this.data.scopeOpen || this.data.rangeOpen || this.data.chartFull)
     });
   });
 }
-module.exports = { openHeatmap, closeHeatmap };
+function afterHeatmapLeave() {
+  if (this.data.heatmapOpen) closeHeatmap.call(this);
+}
+module.exports = { openHeatmap, closeHeatmap, afterHeatmapLeave };

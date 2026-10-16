@@ -47,3 +47,9 @@ test("privacy disclosure matches every account preference allowed to sync", () =
     "visual theme preferences must stay device-local",
   );
 });
+
+test("privacy contact section uses the shared contact channel and reply commitment", () => {
+  assert.ok(markup.includes("隐私联系邮箱：1781567344@qq.com"));
+  assert.ok(markup.includes("15 个工作日内回复"));
+  assert.ok(!markup.includes("张文阳"));
+});

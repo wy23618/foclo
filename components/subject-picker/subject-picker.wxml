@@ -1,5 +1,4 @@
-<view class="picker theme-{{theme}}">
-  <page-container show="{{opened}}" position="bottom" duration="{{0}}" z-index="{{600}}" overlay="{{true}}" close-on-slide-down="{{false}}" custom-style="height:100%;width:100%;background:transparent;overflow:visible" overlay-style="background:rgba(24,32,23,.4)" bindclickoverlay="close" bindbeforeleave="onBeforeLeave" bindafterleave="onAfterLeave">
+<view wx:if="{{opened}}" class="picker theme-{{theme}}">
     <view class="picker-stage" bindtap="close" catchtouchmove="noop">
       <view class="dialog" catchtap="noop">
         <view class="head">
@@ -24,5 +23,4 @@
         <view class="footer"><view class="footer-close" bindtap="close" hover-class="row-pressed" aria-role="button" aria-label="关闭选择">关闭</view></view>
       </view>
     </view>
-  </page-container>
 </view>

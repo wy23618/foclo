@@ -1,7 +1,6 @@
 {
   "navigationBarTitleText": "记录",
   "usingComponents": {
-    "segmented": "../../components/segmented/segmented",
     "empty-state": "../../components/empty-state/empty-state"
   }
 }

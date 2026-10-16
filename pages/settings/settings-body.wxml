@@ -1,7 +1,20 @@
-<view wx:if="{{activated}}" class="settings-panel theme-{{themeClass}}" style="display:{{opened ? 'block' : 'none'}}">
-<safe-nav theme="{{themeClass}}" title="设置"/>
+<safe-nav theme="{{themeClass}}" title="设置" back-text="‹ 返回" bindback="goBack"/>
 <view class="container with-tabbar settings-home theme-{{themeClass}}">
-  <view class="settings-intro">调整你常用的专注方式</view>
+  <view class="settings-account-card" bindtap="openAccount" hover-class="settings-account-pressed" hover-stay-time="90">
+    <view class="settings-account-avatar">
+      <image wx:if="{{settingsAvatar}}" src="{{settingsAvatar}}" mode="aspectFill"/>
+      <text wx:else>F</text>
+    </view>
+    <view class="settings-account-copy">
+      <view class="settings-account-name-row">
+        <text class="settings-account-name">{{settingsAccountName}}</text>
+        <text wx:if="{{settingsAccountStatus}}" class="settings-account-status">{{settingsAccountStatus}}</text>
+      </view>
+      <text class="settings-account-hint">{{settingsAccountHint}}</text>
+    </view>
+    <view class="settings-account-action">{{settingsAccountAction}}<view class="settings-account-arrow"></view></view>
+  </view>
+  <view class="settings-intro">调整专注习惯、外观与记录管理。</view>
   <view wx:for="{{groups}}" wx:key="title" class="settings-group">
     <view class="settings-group-title">{{item.title}}</view>
     <view class="settings-card">
@@ -25,4 +38,4 @@
     </view>
   </view>
 </view>
-</view>
+<main-nav demo-session="{{demoSession}}" selected="{{2}}" theme="{{themeClass}}"/>

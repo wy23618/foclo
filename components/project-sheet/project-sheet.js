@@ -1,9 +1,10 @@
+const demoContext = require('../../utils/demo-context');
 const { colorOf } = require('../../utils/color');
 const { uuid } = require('../../core/ids');
 const { pickerMetrics } = require('../../utils/window-layout');
 
 Component({
-  properties: { opened: Boolean, selected: String, theme: { type: String, value: 'light' }, topInset: { type: Number, value: 0 }, bottomNav: { type: Boolean, value: false } },
+  properties: { demoSession: { type: String, value: '' },  opened: Boolean, selected: String, theme: { type: String, value: 'light' }, topInset: { type: Number, value: 0 }, bottomNav: { type: Boolean, value: false } },
   data: { selectionName: '', rows: [], recent: [], pickerScale: .5, overlayTop: 0, overlayBottom: 0, cardMaxHeight: 480, bodyMaxHeight: 320, bodyHeight: 85, cardHeight: 240, listScrollTop: 0, loading: false, error: '', newOpen: false, newName: '', editorMode: '', editorId: '', editorLabel: '', menuId: '', deleteText: '', creating: false, createdId: '' },
   pageLifetimes: { resize() { if (this.properties.opened) { this.measureLayout(); if (this.all) this.renderRows(); } } },
   observers: {
@@ -35,8 +36,8 @@ Component({
       this.measureLayout();
       const token = this.token = (this.token || 0) + 1;
       this.setData({ loading: true, error: '' });
-      await getApp().globalData.readyPromise;
-      const result = await getApp().globalData.service.getPickerData();
+      await demoContext.appFor(this).globalData.readyPromise;
+      const result = await demoContext.appFor(this).globalData.service.getPickerData();
       if (token !== this.token) return;
       if (!result.ok) { this.setData({ loading: false, error: result.error.message }); return; }
       this.all = result.data.treeRows;
@@ -183,7 +184,7 @@ Component({
       if (this.busy || !this.byId[id] || !this.byId[id].startable) return false;
       this.busy = true;
       try {
-        const result = await getApp().globalData.service.savePrefs({ lastProjectId: id });
+        const result = await demoContext.appFor(this).globalData.service.savePrefs({ lastProjectId: id });
         if (!result.ok) { wx.showToast({ title: result.error.message, icon: 'none' }); return false; }
         this.triggerEvent('selected', { projectId: id });
         return true;
@@ -214,7 +215,7 @@ Component({
       const token = this.token;
       this.busy = true;
       try {
-        const result = await getApp().globalData.service.getManageData();
+        const result = await demoContext.appFor(this).globalData.service.getManageData();
         if (token !== this.token || !this.properties.opened) return;
         if (!result.ok) { wx.showToast({ title: result.error.message, icon: 'none' }); return; }
         const row = result.data.active.concat(result.data.archived).find(item => item.projectId === id);
@@ -228,7 +229,7 @@ Component({
       this.busy = true;
       this.setData({ creating: true });
       try {
-        const result = await getApp().globalData.service.deleteProject({ operationId: uuid(), projectId: this.data.editorId });
+        const result = await demoContext.appFor(this).globalData.service.deleteProject({ operationId: uuid(), projectId: this.data.editorId });
         if (!result.ok) { wx.showToast({ title: result.error.message, icon: 'none' }); return; }
         this.setData({ newOpen: false, editorMode: '', editorId: '', menuId: '', createdId: '' });
         this.triggerEvent('changed');
@@ -247,7 +248,7 @@ Component({
       this.busy = true;
       this.setData({ creating: true });
       try {
-        const service = getApp().globalData.service;
+        const service = demoContext.appFor(this).globalData.service;
         const result = renaming
           ? await service.renameProject({ operationId: uuid(), projectId: parentId, name })
           : await service.createProject({ operationId: uuid(), name, parentId: parentId || null });

@@ -1,0 +1,2 @@
+@import "../project-appearance/project-appearance.wxss";
+@import "./scene.wxss";

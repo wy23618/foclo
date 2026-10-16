@@ -1,0 +1,2 @@
+@import "../chart-full/chart-full.wxss";
+@import "./scene.wxss";

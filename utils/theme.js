@@ -38,7 +38,7 @@ function pageThemeData(theme, backgroundRole) {
   return { themeClass: theme, themePageStyle: 'background-color:' + colors[backgroundRole || 'pageBackground'] + ';color:' + colors.textPrimary + ';' };
 }
 async function applyPageTheme(page) {
-  const app = getApp();
+  const app = page.runtimeApp || getApp();
   if (!app.globalData.ready && app.globalData.readyPromise) await app.globalData.readyPromise;
   const service = app.globalData.service;
   if (!service) return;

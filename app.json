@@ -14,7 +14,18 @@
     "pages/day-stats/day-stats",
     "pages/chart-full/chart-full",
     "pages/account/account",
-    "pages/privacy/privacy"
+    "pages/privacy/privacy",
+    "pages/terms/terms",
+    "pages/guide-demo/focus",
+    "pages/guide-demo/stats",
+    "pages/guide-demo/settings",
+    "pages/guide-demo/settings-detail",
+    "pages/guide-demo/manage",
+    "pages/guide-demo/project-stats",
+    "pages/guide-demo/day-stats",
+    "pages/guide-demo/records",
+    "pages/guide-demo/project-appearance",
+    "pages/guide-demo/chart-full"
   ],
   "window": {
     "navigationBarBackgroundColor": "#F5F7EF",

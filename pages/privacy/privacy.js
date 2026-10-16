@@ -11,11 +11,12 @@ Page({
     wx.setNavigationBarColor(navigationBarOptions(themeClass));
   },
   openAccount() { wx.navigateTo({ url: '/pages/account/account' }); },
+  openTerms() { wx.navigateTo({ url: '/pages/terms/terms' }); },
   openPrivacyContract() {
     if (typeof wx.openPrivacyContract !== 'function') {
-      wx.showToast({ title: '微信平台隐私指引暂未配置', icon: 'none' });
+      wx.showToast({ title: '平台指引暂时无法打开', icon: 'none' });
       return;
     }
-    wx.openPrivacyContract({ fail: () => wx.showToast({ title: '微信平台隐私指引暂未配置', icon: 'none' }) });
+    wx.openPrivacyContract({ fail: () => wx.showToast({ title: '平台指引暂时无法打开', icon: 'none' }) });
   }
 });

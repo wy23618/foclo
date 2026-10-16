@@ -1,4 +1,4 @@
 {
-  "navigationBarTitleText": "账号与登录",
+  "navigationBarTitleText": "账号与同步",
   "usingComponents": { "account-identity": "/components/account-identity/account-identity" }
 }

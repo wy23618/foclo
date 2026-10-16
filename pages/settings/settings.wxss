@@ -1,5 +1,17 @@
 .settings-home { min-height: 100vh; box-sizing: border-box; }
-.settings-intro { color: var(--text-secondary); font-size: 25rpx; margin: 18rpx 4rpx 32rpx; }
+.settings-account-card { display:flex; align-items:center; gap:20rpx; margin:18rpx 0 0; padding:24rpx 22rpx; box-sizing:border-box; background:var(--bg-card); border:1rpx solid var(--border); border-radius:26rpx; box-shadow:0 6rpx 20rpx rgba(32,48,71,.045); }
+.settings-account-pressed { opacity:.82; transform:scale(.992); }
+.settings-account-avatar { width:88rpx; height:88rpx; flex:none; display:flex; align-items:center; justify-content:center; overflow:hidden; border-radius:50%; color:var(--accent); background:var(--accent-soft); }
+.settings-account-avatar image { width:100%; height:100%; }
+.settings-account-avatar text { font-size:38rpx; font-weight:700; }
+.settings-account-copy { flex:1; min-width:0; display:flex; flex-direction:column; gap:6rpx; }
+.settings-account-name-row { display:flex; align-items:center; gap:10rpx; min-width:0; }
+.settings-account-name { max-width:100%; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; color:var(--text-primary); font-size:28rpx; font-weight:700; }
+.settings-account-status { flex:none; padding:5rpx 11rpx; border-radius:999rpx; color:var(--accent); background:var(--accent-soft); font-size:19rpx; }
+.settings-account-hint { color:var(--text-secondary); font-size:21rpx; line-height:1.45; }
+.settings-account-action { flex:none; display:flex; align-items:center; gap:10rpx; padding:13rpx 15rpx; border-radius:999rpx; color:var(--accent); background:var(--accent-soft); font-size:21rpx; font-weight:650; }
+.settings-account-arrow { width:11rpx; height:11rpx; border-top:2rpx solid currentColor; border-right:2rpx solid currentColor; transform:rotate(45deg); }
+.settings-intro { color: var(--text-secondary); font-size: 24rpx; margin: 28rpx 4rpx 22rpx; }
 .settings-group { margin-bottom: 24rpx; }
 .settings-group-title { color: var(--text-muted); font-size: 23rpx; font-weight: 600; margin: 0 8rpx 12rpx; }
 .settings-card { background: var(--bg-card); border: 1rpx solid var(--border); border-radius: 24rpx; padding: 0 28rpx; }

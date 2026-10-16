@@ -1,7 +1,8 @@
 {
   "navigationBarTitleText": "专注热力图",
   "usingComponents": {
-    "safe-nav": "/components/safe-nav/safe-nav"
+    "safe-nav": "/components/safe-nav/safe-nav",
+    "heatmap-card": "/components/heatmap-card/heatmap-card"
   },
   "navigationStyle": "custom"
 }

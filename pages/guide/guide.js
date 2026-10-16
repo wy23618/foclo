@@ -1,32 +1,55 @@
-const { QUICK_STEPS, CHAPTERS } = require('../../utils/user-guide');
-const { resolveTheme, navigationBarOptions, pageThemeData, THEME_COLORS } = require('../../utils/theme');
+const { GUIDE_CARDS } = require('../../utils/user-guide');
+const { applyPageTheme } = require('../../utils/theme');
+
+const PREVIEW_LEVELS = { 2: 1, 4: 2, 6: 1, 7: 3, 9: 2, 10: 1, 12: 1, 13: 2, 14: 1, 16: 3, 17: 2, 19: 1, 20: 2, 22: 1, 23: 2, 25: 1, 27: 2, 28: 1, 30: 2 };
+const PREVIEW_HEATMAP = Array.from({ length: 35 }, (_, index) => {
+  const day = index - 2;
+  return { day: day > 0 && day <= 31 ? String(day) : '', level: PREVIEW_LEVELS[day] || 0 };
+});
+
+const PREVIEW_BARS = [
+  { label: '7时', height: 25 }, { label: '9时', height: 55 }, { label: '11时', height: 38 },
+  { label: '14时', height: 82 }, { label: '16时', height: 48 }, { label: '20时', height: 66 }
+];
+
 Page({
-  data: { themeClass:'light', quickSteps:QUICK_STEPS, chapters:CHAPTERS, opened:{}, cardIndex:0 },
+  data: {
+    themeClass: 'light',
+    cards: GUIDE_CARDS,
+    selectedId: '',
+    selected: null,
+    previewOpen: false,
+    demoOpening: false,
+    previewHeatmap: PREVIEW_HEATMAP,
+    previewBars: PREVIEW_BARS
+  },
   onLoad(options) {
-    const chapter = options && options.chapter;
-    if (CHAPTERS.some(item => item.id === chapter)) this.setData({ opened:{ [chapter]:true } });
+    const id = options && options.chapter;
+    const card = GUIDE_CARDS.find(item => item.id === (id === 'focus' ? 'runtime' : id));
+    if (card) this.setData({ selectedId: card.id, selected: card });
   },
-  async onShow() {
-    const app = getApp();
-    if (!app.globalData.ready) await app.globalData.readyPromise;
-    const prefs = await app.globalData.service.getPrefs();
-    const themeClass = resolveTheme(prefs.theme || 'system', prefs.lightTheme);
-    const colors = THEME_COLORS[themeClass] || THEME_COLORS.light;
-    this.setData(Object.assign({}, pageThemeData(themeClass), { indicatorColor:colors.chartMuted, indicatorActiveColor:colors.focusProgress }));
-    wx.setNavigationBarColor(navigationBarOptions(themeClass));
+  onShow() { wx.setNavigationBarTitle({ title: '使用指南' }); applyPageTheme(this); },
+  onUnload() { require('../../utils/demo-context').discardPreparedFeature(); },
+  openPreview(e) {
+    if (this.openingDemo) return;
+    const id = e && e.currentTarget && e.currentTarget.dataset.id;
+    const card = GUIDE_CARDS.find(item => item.id === id);
+    if (!card) return;
+    this.setData({ selectedId: card.id, selected: card, previewOpen: true });
+    require('../../utils/demo-context').prepareFeature(card.id).catch(() => {});
   },
-  onCardChange(e) { this.setData({ cardIndex:e.detail.current }); },
-  toggleChapter(e) {
-    const id = e.currentTarget.dataset.id;
-    if (CHAPTERS.some(item => item.id === id)) this.setData({ ['opened.' + id]:!this.data.opened[id] });
+  closePreview() { if (!this.openingDemo) this.setData({ previewOpen: false }); },
+  async tryDemo() {
+    const card = GUIDE_CARDS.find(item => item.id === this.data.selectedId);
+    if (!card || this.openingDemo) return;
+    this.openingDemo = true;
+    this.setData({ demoOpening: true });
+    await require('../../utils/demo-context').openFeature(card.id, {
+      success: () => this.setData({ previewOpen: false }),
+      fail: () => wx.showToast({ title: '暂时无法打开演示，请重试', icon: 'none' }),
+      complete: () => { this.openingDemo = false; this.setData({ demoOpening: false }); }
+    });
   },
-  startFocus() {
-    const pages = getCurrentPages();
-    const shellIndex = pages.findIndex(page => page.route === 'pages/focus/focus');
-    if (shellIndex >= 0 && shellIndex < pages.length - 1) {
-      const shell = pages[shellIndex];
-      shell.switchMainTab({ detail:{ tab:0 } });
-      wx.navigateBack({ delta:pages.length - 1 - shellIndex });
-    } else wx.reLaunch({ url:'/pages/focus/focus' });
-  }
+  startFocus() { require('../../utils/main-navigation').openMainTab(0); },
+  noop() {}
 });

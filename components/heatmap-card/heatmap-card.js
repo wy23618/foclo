@@ -1,14 +1,16 @@
+const demoContext = require('../../utils/demo-context');
 const time = require('../../core/time');
 const format = require('../../utils/format');
 const view = require('../../utils/view-data');
 const heatColor = require('../../utils/heat-color');
 Component({
   options: { styleIsolation: 'apply-shared' },
-  properties: {
+  properties: { demoSession: { type: String, value: '' },
     opened: { type: Boolean, value: false, observer: 'onOpened' },
     theme: { type: String, value: 'light', observer: 'onThemeChange' },
     scopeId: { type: String, value: '' },
-    topInset: { type: Number, value: 0 }
+    topInset: { type: Number, value: 0 },
+    standalone: { type: Boolean, value: false }
   },
   data: { monthKey:'',currentMonth:'',monthTitle:'',scopeName:'全部项目',scopeOptions:[],scopeIndex:0,
     grid:[],weekHead:[],monthTotalText:'0秒',activeDays:0,canGoNext:false,loading:true,error:'',
@@ -25,17 +27,17 @@ Component({
       this.setData({grid});
     },
     async open(){
-      const token=++this.seq,currentMonth=view.today().slice(0,7);
+      const token=++this.seq,currentMonth=demoContext.todayFor(this).slice(0,7);
       this.scope=this.properties.scopeId||'';
       const keepGrid=this.gridMonthKey===currentMonth&&this.gridScope===(this.scope||'');
       this.setData({monthKey:currentMonth,currentMonth,grid:keepGrid?this.data.grid:[],loading:true,error:''});
-      const app=getApp();await app.globalData.readyPromise;
+      const app=demoContext.appFor(this);await app.globalData.readyPromise;
       if(token!==this.seq||!this.properties.opened)return;
       wx.nextTick(()=>this.createSelectorQuery().select('.month-stage').boundingClientRect(rect=>{if(rect&&rect.width)this.stageWidth=rect.width;}).exec());
-      this.load();
+      return this.load();
     },
     async load(){
-      const token=++this.seq,monthKey=this.data.monthKey,app=getApp();
+      const token=++this.seq,monthKey=this.data.monthKey,app=demoContext.appFor(this);
       this.setData({loading:true,error:''});await app.globalData.readyPromise;
       const prefsPromise=app.globalData.service.getPrefs();
       const resultPromise=app.globalData.service.getHeatmap({monthKey,scopeProjectId:this.scope||null});
@@ -66,15 +68,15 @@ Component({
       cells.forEach(c=>{lookup[c.date]=c;});
       const flat=Array.from({length:count},(_,i)=>{
         const date=time.dayKeyOfIndex(p.startIndex-offset+i),c=lookup[date];
-        return c?{...c,shortText:format.heatDurationText(c.seconds),isToday:date===view.today(),heatStyle:heatColor.heatStyle(c.seconds,this.properties.theme)}:
+        return c?{...c,shortText:format.heatDurationText(c.seconds),isToday:date===demoContext.todayFor(this),heatStyle:heatColor.heatStyle(c.seconds,this.properties.theme)}:
           {date,day:Number(date.slice(-2)),outside:true};
       });
       const grid=[];for(let i=0;i<count;i+=7)grid.push(flat.slice(i,i+7));
-      return {monthKey,currentMonth:view.today().slice(0,7),grid,
+      return {monthKey,currentMonth:demoContext.todayFor(this).slice(0,7),grid,
         weekHead:sunday?['日','一','二','三','四','五','六']:['一','二','三','四','五','六','日'],
         monthTitle:p.year+'年'+p.month+'月',scopeName:scopeName||this.data.scopeName||'全部项目',
         monthTotalText:format.durationText(cells.reduce((n,c)=>n+c.seconds,0)),
-        activeDays:cells.filter(c=>c.seconds>0).length,canGoNext:monthKey<view.today().slice(0,7)};
+        activeDays:cells.filter(c=>c.seconds>0).length,canGoNext:monthKey<demoContext.todayFor(this).slice(0,7)};
     },
     cacheMonthPage(page){
       if(!this.monthPageCache)this.monthPageCache=new Map();
@@ -84,7 +86,7 @@ Component({
     monthPageShell(monthKey){
       const p=time.parseMonthKey(monthKey);if(!p)return null;
       const sunday=!!this.weekStartsSunday,weekday=time.weekdayOfDayIndex(p.startIndex),offset=sunday?(weekday+1)%7:weekday;
-      const today=view.today(),count=Math.max(35,Math.ceil((offset+p.days)/7)*7),flat=Array.from({length:count},(_,i)=>{
+      const today=demoContext.todayFor(this),count=Math.max(35,Math.ceil((offset+p.days)/7)*7),flat=Array.from({length:count},(_,i)=>{
         const dayIndex=p.startIndex-offset+i,date=time.dayKeyOfIndex(dayIndex),outside=dayIndex<p.startIndex||dayIndex>=p.startIndex+p.days;
         return {date,day:Number(date.slice(-2)),seconds:0,shortText:'',outside,isFuture:date>today,isToday:date===today,
           heatStyle:outside||date>today?'':heatColor.heatStyle(0,this.properties.theme)};
@@ -100,7 +102,7 @@ Component({
       if(!this.dragPreviewTasks)this.dragPreviewTasks={};
       if(this.dragPreviewTasks[key])return;
       const task=(async()=>{
-        const app=getApp();await app.globalData.readyPromise;
+        const app=demoContext.appFor(this);await app.globalData.readyPromise;
         const result=await app.globalData.service.getHeatmap({monthKey,scopeProjectId:this.scope||null});
         if(!result.ok)return null;
         const page=this.makeMonthPage(monthKey,result.data.cells,!!this.weekStartsSunday,result.data.scopeName);
@@ -141,9 +143,9 @@ Component({
     },
     async loadScopeOptions(force){
       if(this.scopeLoaded&&!force)return;
-      if(this.scopeLoading)return;
+      if(this.data.scopeLoading)return;
       this.setData({scopeLoading:!this.scopeLoaded,scopeError:''});
-      const app=getApp();await app.globalData.readyPromise;
+      const app=demoContext.appFor(this);await app.globalData.readyPromise;
       const result=await app.globalData.service.getManageData();
       if(!this.attachedReady)return;
       if(!result.ok){this.setData({scopeLoading:false,scopeError:this.scopeLoaded?'':result.error.message});return;}
@@ -186,10 +188,10 @@ Component({
       const index=Math.max(0,(this.data.scopeOptions||[]).findIndex(item=>item.id===id));
       this.scope=id;this.setData({scopeIndex:index,scopeName:option.name,selectedScopeId:id,recentScopes:recent,scopePickerOpen:false,scopeQuery:''});this.load();
     },
-    moveMonth(delta){const key=time.shiftMonthKey(this.data.monthKey,delta);if(!key||key>view.today().slice(0,7))return;
+    moveMonth(delta){const key=time.shiftMonthKey(this.data.monthKey,delta);if(!key||key>demoContext.todayFor(this).slice(0,7))return;
       this.pendingTransition=delta>0?'next':'prev';this.setData({monthKey:key});this.load();},
     prevMonth(){this.moveMonth(-1);},nextMonth(){this.moveMonth(1);},
-    pickMonth(e){const key=e.detail.value;if(!time.parseMonthKey(key)||key>view.today().slice(0,7))return;
+    pickMonth(e){const key=e.detail.value;if(!time.parseMonthKey(key)||key>demoContext.todayFor(this).slice(0,7))return;
       this.pendingTransition='';this.setData({monthKey:key});this.load();},
     touchStart(e){
       if(this.data.dragAnimating||this.data.loading||!this.data.grid.length)return;
@@ -203,7 +205,7 @@ Component({
       if(!start.horizontal){if(absX<7||absX<absY*1.2)return;start.horizontal=true;this.suppressTap=true;setTimeout(()=>{this.suppressTap=false;},450);}
       const direction=dx<0?'next':'prev',delta=direction==='next'?1:-1,target=time.shiftMonthKey(this.data.monthKey,delta);
       const width=this.stageWidth||Math.max(280,(wx.getWindowInfo?wx.getWindowInfo():wx.getSystemInfoSync()).windowWidth-28);
-      if(!target||(direction==='next'&&target>view.today().slice(0,7))){
+      if(!target||(direction==='next'&&target>demoContext.todayFor(this).slice(0,7))){
         this.dragTargetMonth='';this.setData({dragDirection:'',dragOffset:0,dragPreview:null,dragPreviewLoading:false,dragPreviewOffset:0,dragAnimating:false});return;
       }
       if(this.dragTargetMonth!==target||this.data.dragDirection!==direction){
@@ -222,8 +224,8 @@ Component({
       this.settleDrag(commit&&!!this.data.dragPreview);
     },
     touchCancel(){this.gesture=null;if(this.data.dragDirection)this.settleDrag(false);},
-    onCellTap(e){if(this.suppressTap)return;const c=e.currentTarget.dataset.cell;if(this.data.loading||!c||c.outside||c.isFuture||c.date>view.today())return;
-      this.returningFromDay=true;wx.navigateTo({url:'/pages/day-stats/day-stats?date='+c.date+'&scope='+encodeURIComponent(this.scope||''),
+    onCellTap(e){if(this.suppressTap)return;const c=e.currentTarget.dataset.cell;if(this.data.loading||!c||c.outside||c.isFuture||c.date>demoContext.todayFor(this))return;
+      this.returningFromDay=true;demoContext.navigateFor(this, {url:'/pages/day-stats/day-stats?date='+c.date+'&scope='+encodeURIComponent(this.scope||''),
         fail:()=>{this.returningFromDay=false;}});},
     close(){this.triggerEvent('close');},noop(){}
   }

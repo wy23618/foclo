@@ -1,42 +1,68 @@
 <page-meta page-style="{{themePageStyle}}"/>
 <view class="privacy-page theme-{{themeClass}}">
-  <view class="privacy-hero">
-    <view class="privacy-eyebrow">Foclo · 隐私说明</view>
-    <view class="privacy-title">记录是为了你自己使用</view>
-    <view class="privacy-intro">登录同步的目的，是让你换设备后还能接着使用自己的项目和专注记录。游客可以只在本机使用。</view>
+  <view class="policy-title">Foclo 隐私政策</view>
+  <view class="policy-meta">更新日期：2026年10月16日</view>
+  <view class="policy-intro">Foclo 以本机记录为基础，提供专注计时、项目管理、学习统计和账号同步。本政策说明使用这些功能时涉及的信息、处理目的，以及你管理记录的方式。你可以按自己的需要选择游客使用或账号同步。</view>
+
+  <view class="policy-section">
+    <view class="section-title">一、我们处理哪些信息</view>
+    <view class="privacy-row"><view class="row-title">账号登录</view><view class="row-copy">微信登录凭证用于获取账号标识 OpenID，并关联 Foclo 账号。登录服务还会处理应用生成的设备随机标识、请求客户端信息、登录会话及其有效期，用于识别设备和维持登录状态。</view></view>
+    <view class="privacy-row"><view class="row-title">项目与专注记录</view><view class="row-copy">项目资料包括名称、简称、颜色、层级、排序和归档状态；专注记录包括开始与结束时间、实际与目标时长、暂停时间与时长。同步版本、操作回执和删除标记用于保持设备间记录一致，并处理同步重试与恢复。</view></view>
+    <view class="privacy-row"><view class="row-title">会同步的账号设置</view><view class="row-copy">启动方式、默认和常用专注时长、结束确认、每日目标、休息设置和每周起始日随账号保存，便于在其他设备延续使用习惯。</view></view>
+    <view class="privacy-row"><view class="row-title">仅保存在本机的设置</view><view class="row-copy">主题、浅色主题和屏幕显示等设备偏好仅保存在当前设备。头像与昵称由你主动选填，按账号保存在本机，用于账号页展示。</view></view>
+    <view class="privacy-row"><view class="row-title">服务运行信息</view><view class="row-copy">连接服务时会处理 IP 地址、请求路径和处理结果等信息。相关日志按安全维护、故障处理及法定要求所需的时间保留，无需继续保留时清理。</view></view>
+    <view class="privacy-row"><view class="row-title">主动提交的反馈</view><view class="row-copy">通过微信反馈入口或邮件提交的问题、截图和你主动提供的联系方式，用于核查问题、回复和改进服务。请仅提供处理问题所需的信息。</view></view>
   </view>
-  <view class="privacy-summary"><view class="summary-mark">✓</view><view class="summary-copy"><view class="notice-title">先看这三件事</view><view>不登录，记录留在本机。登录后，项目和专注记录会同步到你的微信账号，方便换设备继续使用。头像和昵称不是登录条件，由你主动选择，只保存在本机。</view></view></view>
-  <view class="privacy-notice"><view class="notice-mark">!</view><view class="notice-copy"><view class="notice-title">正式提审前还有配置项</view><view>需在微信小程序后台填写并发布《用户隐私保护指引》，声明实际使用的隐私接口；运营主体、联系渠道、正式服务器区域及删除处理方式也须与本页一致。当前联调版本不能替代这些正式信息。</view></view></view>
-  <view class="privacy-card">
-    <view class="section-heading"><view class="section-index">01</view><view class="section-title">本机与同步数据</view></view>
-    <view class="privacy-row"><view class="row-title">游客使用</view><view class="row-copy">项目和计时记录先保存在本机。游客使用不需要登录；登录前的记录不会自动上传，只有你确认“保存之前的记录”后才会导入账号。</view></view>
-    <view class="privacy-row"><view class="row-title">为什么同步</view><view class="row-copy">同步是为了让你在自己的设备间延续使用。已登录且网络服务可用时，项目、专注记录和账号设置会由程序自动保存到当前账号；离线修改会留在本机，联网后再尝试保存。服务端按账号处理，不提供公开展示或内容推荐。</view></view>
-    <view class="privacy-row"><view class="row-title">账号标识与头像昵称</view><view class="row-copy">登录时，微信登录凭证用于取得 OpenID 以识别账号；本服务不读取手机号、聊天或通讯录。头像和昵称不是登录条件，仅在你主动选择时用于本机展示，不上传到服务器。</view></view>
-    <view class="privacy-row"><view class="row-title">同步的记录</view><view class="row-copy">项目名称、简称、颜色、层级、排序和归档状态；专注记录的开始/结束时间、实际与目标时长，以及每次暂停的时间和时长。服务器还保存同步版本与操作回执，用于跨设备同步和恢复。</view></view>
-    <view class="privacy-row"><view class="row-title">会同步的账号设置</view><view class="row-copy">启动方式、默认和常用专注时长、结束确认、每日目标、休息设置和每周起始日会同步到账号。</view></view>
-    <view class="privacy-row"><view class="row-title">服务运行信息</view><view class="row-copy">为保障登录、同步和排查故障，服务器会处理 IP、请求路径、状态码和耗时。Nginx 访问日志每日轮转，最多保留14份；系统日志最长保留14天或达到100 MiB。日志会隐藏微信登录码、Cookie、访问令牌和刷新令牌，不用于广告或用户画像。</view></view>
-    <view class="privacy-row"><view class="row-title">仅保存在本机的设置</view><view class="row-copy">主题、浅色主题和屏幕显示等设备偏好仅保存在当前设备，不会同步到账号。</view></view>
+
+  <view class="policy-section">
+    <view class="section-title">二、如何使用与同步</view>
+    <view class="privacy-row"><view class="row-title">本机使用</view><view class="row-copy">游客模式下，项目与专注记录保存在当前设备。登录前的游客记录由你选择是否保存到账号；确认后上传并导入，原游客副本继续保留。重复或已删除内容按账号现有记录整理。</view></view>
+    <view class="privacy-row"><view class="row-title">账号同步</view><view class="row-copy">项目与专注记录先保存到本机。登录后，项目、专注记录和上述账号设置自动同步至 Foclo 服务端，便于换设备接续使用和辅助恢复记录。离线修改先保存在本机，恢复连接后继续同步；重要记录可通过“数据与备份”另行导出保存。</view></view>
+    <view class="policy-paragraph">使用指南使用随程序提供的固定样例，演示中的调整仅影响本次体验，不读取或修改你的日常项目与专注记录。</view>
   </view>
-  <view class="privacy-card">
-    <view class="section-heading"><view class="section-index">02</view><view class="section-title">账号、导出与注销</view></view>
-    <view class="privacy-row"><view class="row-title">游客与账号记录</view><view class="row-copy">首次登录会询问是否将本机游客记录保存到当前微信账号。确认后才会上传；账号里已有的相同或已删除内容会跳过，重复项目按现有账号内容合并处理。暂不导入会保留本机记录，之后仍可手动保存。</view></view>
-    <view class="privacy-row"><view class="row-title">备份文件</view><view class="row-copy">“数据与备份”可以保存当前使用的项目和记录：游客模式备份游客记录，登录后备份当前账号在这台设备上的记录。恢复时也会加入当前使用的记录；登录后恢复的新增内容会同步到当前账号。文件不会随之后的修改自动更新。</view></view>
-    <view class="privacy-row"><view class="row-title">注销申请</view><view class="row-copy">账号页可申请注销或删除账号记录。提交申请不代表删除已经完成；处理进度和结果应以运营者后续反馈为准。</view></view>
+
+  <view class="policy-section">
+    <view class="section-title">三、服务提供方与存储位置</view>
+    <view class="privacy-row"><view class="row-title">微信</view><view class="row-copy">微信提供账号登录、头像昵称选择及小程序反馈入口，相关信息由微信按对应功能处理。你主动填写的头像昵称在 Foclo 中按账号保存在本机展示。</view></view>
+    <view class="privacy-row"><view class="row-title">云端服务器</view><view class="row-copy">Foclo 使用 Cloudflare 提供的云端服务器承载账号同步服务。相关服务会处理网络请求、账号标识和同步内容；存储位置由其服务分配，相关信息可能在中国境外存储或处理。涉及跨境处理时，将按适用要求履行告知、同意及其他义务。</view></view>
+    <view class="policy-paragraph">第三方参与处理的范围取决于你使用的功能。新增信息处理目的、扩大处理范围或增加需要另行授权的第三方处理时，将向你说明，并按适用要求取得同意。</view>
   </view>
-  <view class="privacy-card">
-    <view class="section-heading"><view class="section-index">03</view><view class="section-title">服务器与保存期限</view></view>
-    <view class="privacy-row"><view class="row-title">当前云端位置</view><view class="row-copy">当前联调账号数据保存在阿里云杭州开发服务器。正式环境及服务器配置变更时，应同步更新本说明和微信后台隐私保护指引。</view></view>
-    <view class="privacy-row"><view class="row-title">保存与删除</view><view class="row-copy">账号记录用于持续提供同步服务，保留至账号注销或你提出删除并完成处理。当前服务器备份未配置自动过期清理，备份副本的删除可能晚于在线记录；运营者处理机制和联系渠道须在正式运营前明确。</view></view>
+
+  <view class="policy-section">
+    <view class="section-title">四、保存期限与记录保护</view>
+    <view class="privacy-row"><view class="row-title">本机与账号记录</view><view class="row-copy">本机记录由你管理。账号记录在提供同步服务期间保存，可通过删除记录或申请注销进行管理；退出登录不会自动删除。同步回执和删除标记保留至完成同步校验、防止重复导入所需的时间。</view></view>
+    <view class="privacy-row"><view class="row-title">日志与历史副本</view><view class="row-copy">运行日志按安全维护、故障处理及法定要求所需的时间保留。迁移数据与备份用于核对和必要恢复，不再需要时清理。历史副本清理与在线删除分别处理，可通过本页联系方式查询或申请处理。</view></view>
+    <view class="policy-paragraph">Foclo 使用登录鉴权和账号隔离等措施管理记录访问。设备、网络和第三方服务仍可能发生异常。账号同步提供接续使用与辅助恢复能力，重要记录建议另行导出备份；相关使用边界见《用户服务协议》。</view>
   </view>
-  <view class="privacy-card privacy-card-last">
-    <view class="section-heading"><view class="section-index">04</view><view class="section-title">退出与本机副本</view></view>
-    <view class="privacy-row"><view class="row-copy">退出登录后回到独立的游客记录，账号记录不会变成游客记录，也不会被删除。重新登录同一微信可继续使用账号记录。删除账号中的项目或记录会同步到同一账号的其他设备，但不会删除游客原副本或你已保存的备份文件；删除后请勿用旧备份重新恢复不需要的记录。</view></view>
-    <view class="privacy-footnote">当前代码未接入广告或分析 SDK。头像和昵称可随时不填，不影响计时、记录与统计。</view>
+
+  <view class="policy-section">
+    <view class="section-title">五、你的查阅与管理方式</view>
+    <view class="privacy-row"><view class="row-title">查阅与更正</view><view class="row-copy">你可以在项目、记录和统计页面查看自己的内容，并通过项目管理、记录管理与设置页面进行相应修改。</view></view>
+    <view class="privacy-row"><view class="row-title">导出与恢复</view><view class="row-copy">“设置 → 数据与备份”可导出当前空间在本机保存的项目和记录。备份文件为导出时的快照，恢复内容加入当前使用空间；登录状态下恢复的新增内容会同步到当前账号。</view></view>
+    <view class="privacy-row"><view class="row-title">停止同步与退出</view><view class="row-copy">退出登录可停止当前设备的账号同步并切回游客空间。账号记录与本机账号副本继续保留，重新登录同一账号后可继续使用。需要撤回相关同意、限制处理或进一步删除资料时，可通过本页邮箱或反馈入口联系运营者。</view></view>
+    <view class="privacy-row"><view class="row-title">删除与注销</view><view class="row-copy">“设置 → 数据与备份 → 其他操作 → 账号数据与注销”提供账号记录删除及注销申请入口。注销申请经身份核验后办理，可联系运营者查询处理进度。账号记录的删除会同步至同一账号的其他设备，游客副本和已导出的文件需分别管理；历史备份副本的清理与在线删除需要分别处理。</view></view>
   </view>
-  <view class="privacy-actions">
-    <button class="primary-action" bindtap="openAccount" hover-class="action-pressed">账号与登录 <text>›</text></button>
-    <button class="secondary-action" open-type="feedback" hover-class="action-pressed">反馈隐私或数据问题 <text>›</text></button>
-    <button class="secondary-action" bindtap="openPrivacyContract" hover-class="action-pressed">微信平台隐私指引 <text>↗</text></button>
+
+  <view class="policy-section">
+    <view class="section-title">六、未成年人保护</view>
+    <view class="policy-paragraph">未成年人请在监护人指导下使用 Foclo。不满十四周岁用户的个人信息处理需要监护人依法同意。监护人如需了解、管理或删除相关信息，可通过本页联系方式提出请求，经必要核验后处理。</view>
   </view>
-  <view class="privacy-footer">本页说明须与微信后台配置的运营主体、隐私指引和实际云端环境保持一致。游客数据只在本机，账号数据可在账号页管理。</view>
+
+  <view class="policy-section">
+    <view class="section-title">七、政策更新</view>
+    <view class="policy-paragraph">信息处理目的、方式或范围发生变化时，将更新本政策并作出相应提示；需要重新征得同意的处理事项，将在继续处理前向你说明并征得同意。</view>
+  </view>
+
+  <view class="policy-section">
+    <view class="section-title">八、联系我们</view>
+    <view class="policy-paragraph">如需查阅、复制、更正、删除个人信息，申请转移、撤回同意，或咨询本政策，可通过以下邮箱或小程序“反馈与建议”提交问题。请说明相关账号与请求事项，便于核验和处理。我们会在收到后 15 个工作日内回复。</view>
+    <view class="policy-contact"><text selectable="true">隐私联系邮箱：1781567344@qq.com</text></view>
+  </view>
+
+  <view class="policy-links">
+    <button class="policy-link" bindtap="openTerms" hover-class="link-pressed">用户服务协议</button>
+    <button class="policy-link" bindtap="openAccount" hover-class="link-pressed">账号管理</button>
+    <button class="policy-link" open-type="feedback" hover-class="link-pressed">隐私问题反馈</button>
+    <button class="policy-link" bindtap="openPrivacyContract" hover-class="link-pressed">微信隐私指引</button>
+  </view>
 </view>

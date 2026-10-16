@@ -7,14 +7,13 @@ const GROUPS = [
   { title: '界面偏好', items: [
     { key: 'display', title: '外观与屏幕', hint: '主题、屏幕常亮' }
   ] },
-  { title: '账号与数据', items: [
-    { key: 'account', title: '账号与同步', hint: '可选登录，跨设备保存记录' },
+  { title: '数据管理', items: [
     { key: 'data', title: '数据与备份', hint: '备份、恢复与数据管理' }
   ] },
-  { title: '帮助', items: [
-    { key: 'guide', title: '使用指南', hint: '项目、计时与统计，按步骤说明' },
+  { title: '帮助与信息', items: [
+    { key: 'guide', title: '使用指南', hint: '分层项目、图表联动与进阶用法' },
     { key: 'feedback', title: '反馈与建议', hint: '哪里不好用，或希望增加什么功能' },
-    { key: 'help', title: '帮助与关于', hint: '使用说明、版本信息与隐私政策' }
+    { key: 'help', title: '关于与协议', hint: '版本、服务协议与隐私政策' }
   ] }
 ];
 const { lightThemeName } = require('./light-theme-options');

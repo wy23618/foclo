@@ -1,0 +1,7 @@
+# Foclo 森绿 F · 简化时间元素
+
+使用内置 image_gen 图像工具编辑原始 01-forest-f.png。输出：06-forest-f-subtle-time.png。移除完整钟面、刻度与中心点，只保留原始小缺口中的简化指针。
+
+## 完整提示词
+
+Use case: precise-object-edit, minimalist logo-brand. Edit the attached ORIGINAL forest-green Foclo F monogram. User wants only a subtle hint of time and rejected a conspicuous literal clock. Preserve this original's exact ivory F silhouette, original SMALL circular cutout at upper-right, original F size and placement, deep forest-green full-square background and warm ivory color. Make only ONE very restrained change: inside the original small green circular cutout, introduce a tiny understated ivory angular stroke, like two short connected tapered clock hands, with NO central dot. This is a typographic micro-detail integrated with the cutout, not a separate clock pictogram. The stroke occupies at most one third of the cutout diameter and should be discovered on a second look. Keep the cutout original size, NOT enlarged. Absolutely no clock face, no dial, no hour ticks, no numerals, no complete circle outline, no rim, no badge, no decorative added circles, no floating symbols. At first glance this must look almost identical to the reference elegant letter F. The reference's open circular notch stays OPEN; do not close it into a watch. Do not change the monogram or add text. Single finished opaque square avatar, flat precise artwork, no framing or mockup, no watermark. Important: less is more; a discreet time reference embedded in the original typography.

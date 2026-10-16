@@ -1,0 +1,6 @@
+{
+  "navigationStyle": "custom",
+  "usingComponents": {
+    "stat-donut": "/components/stat-donut/stat-donut"
+  }
+}

@@ -2,27 +2,109 @@
 <view class="guide-page theme-{{themeClass}}">
   <view class="guide-hero">
     <text class="guide-brand">Foclo · 使用指南</text>
-    <view class="guide-title">从选择项目，到看懂记录</view>
-    <view class="guide-subtitle">按实际操作顺序，快速走完一轮。</view>
+    <view class="guide-title">探索功能</view>
+    <view class="guide-subtitle">点选板块，先看界面样例</view>
   </view>
-  <swiper class="guide-deck" current="{{cardIndex}}" bindchange="onCardChange" indicator-dots indicator-color="{{indicatorColor}}" indicator-active-color="{{indicatorActiveColor}}">
-    <swiper-item wx:for="{{quickSteps}}" wx:key="number">
-      <view class="starter-card">
-        <view class="starter-top"><text>从这里开始</text><text>{{item.number}} / 03</text></view>
-        <view class="starter-symbol">{{item.symbol}}</view>
-        <view class="starter-preview preview-{{index}}">{{item.preview}}</view>
-        <view class="starter-title">{{item.title}}</view>
-        <view class="starter-text">{{item.text}}</view>
-      </view>
-    </swiper-item>
-  </swiper>
-  <button class="guide-start" bindtap="startFocus">开始一轮专注 <text>→</text></button>
-  <view class="tips-label">遇到具体情况，再展开查看</view>
-  <view class="guide-tips">
-    <view wx:for="{{chapters}}" wx:key="id" id="guide-{{item.id}}" class="tip-card">
-      <view class="tip-heading" data-id="{{item.id}}" bindtap="toggleChapter"><text class="tip-symbol">{{item.symbol}}</text><text class="tip-title">{{item.title}}</text><text class="tip-expand">{{opened[item.id] ? '−' : '+'}}</text></view>
-      <view wx:if="{{opened[item.id]}}" class="tip-content">{{item.tip}}</view>
+
+  <view class="guide-grid">
+    <view wx:for="{{cards}}" wx:key="id" class="guide-tile {{selectedId === item.id ? 'guide-tile-selected' : ''}}" data-id="{{item.id}}" bindtap="openPreview" hover-class="guide-tile-pressed" aria-role="button" aria-label="查看{{item.label}}界面样例">
+      <view class="tile-icon icon-{{item.icon}}"><view class="icon-part part-a"></view><view class="icon-part part-b"></view><view class="icon-part part-c"></view></view>
+      <view class="tile-title">{{item.label}}</view>
+      <view class="tile-caption">{{item.caption}}</view>
+      <view class="tile-open">查看样例 <text>›</text></view>
     </view>
   </view>
-  <view class="guide-end">慢慢来，每一次专注都算数。</view>
+
+  <button class="guide-return" bindtap="startFocus" hover-class="guide-action-pressed">返回专注使用</button>
+</view>
+
+<view wx:if="{{previewOpen}}" class="preview-overlay theme-{{themeClass}}" catchtouchmove="noop">
+  <view class="preview-mask" bindtap="closePreview"></view>
+  <view class="preview-card" catchtap="noop">
+    <view class="preview-header">
+      <view class="preview-heading">
+        <view class="preview-eyebrow">界面样例</view>
+        <view class="preview-title">{{selected.label}}</view>
+      </view>
+      <button class="preview-try" bindtap="tryDemo" loading="{{demoOpening}}" disabled="{{demoOpening}}" hover-class="preview-try-pressed">{{demoOpening ? '准备中' : '试一试'}} <text wx:if="{{!demoOpening}}">›</text></button>
+      <view class="preview-close" bindtap="closePreview" aria-role="button" aria-label="关闭预览">×</view>
+    </view>
+
+    <view class="preview-screen">
+      <view wx:if="{{selectedId === 'projects'}}" class="mini-project-screen">
+        <view class="mini-screen-title">我的项目 <text>管理 ›</text></view>
+        <view class="mini-project-group"><view class="mini-project-parent"><view class="mini-project-dot dot-mauve"></view><text>学习</text><text class="mini-project-total">42小时18分</text></view>
+          <view class="mini-project-child"><view class="mini-tree-line"></view><view class="mini-project-dot dot-blue"></view><text>数学</text><text class="mini-project-total">24小时36分</text></view>
+          <view class="mini-project-leaf"><view class="mini-tree-line"></view><view class="mini-project-dot dot-blue-light"></view><text>高等数学</text><text class="mini-project-total">16小时12分</text></view>
+          <view class="mini-project-child"><view class="mini-tree-line"></view><view class="mini-project-dot dot-green"></view><text>英语</text><text class="mini-project-total">17小时42分</text></view>
+        </view>
+        <view class="mini-project-group"><view class="mini-project-parent"><view class="mini-project-dot dot-orange"></view><text>生活</text><text class="mini-project-total">8小时24分</text></view><view class="mini-project-child"><view class="mini-tree-line"></view><view class="mini-project-dot dot-orange-light"></view><text>游泳</text><text class="mini-project-total">5小时18分</text></view></view>
+      </view>
+
+      <view wx:elif="{{selectedId === 'runtime'}}" class="mini-focus-screen">
+        <view class="mini-focus-project"><view class="mini-project-dot dot-blue"></view>高等数学 <text>学习 ›</text></view>
+        <view class="mini-dial"><view class="mini-dial-inner"><view class="mini-clock">00:18:42</view><view class="mini-clock-caption">已暂停 · 点击继续</view></view></view>
+        <view class="mini-focus-total">今日累计 <text>1小时36分</text></view>
+        <view class="mini-focus-tools"><view>极简显示</view><view>防误触</view></view>
+        <view class="mini-focus-actions"><view>▶ 继续</view><view>结束</view></view>
+      </view>
+
+      <view wx:elif="{{selectedId === 'rest'}}" class="mini-settings-screen">
+        <view class="mini-screen-title">专注与休息</view>
+        <view class="mini-setting-row"><view><text>短休息</text><text class="mini-setting-note">每轮专注后</text></view><text class="mini-setting-value">5 分钟 <text>›</text></text></view>
+        <view class="mini-setting-row"><view><text>长休息</text><text class="mini-setting-note">每完成 4 轮</text></view><text class="mini-setting-value">15 分钟 <text>›</text></text></view>
+        <view class="mini-setting-row"><view><text>休息提醒</text><text class="mini-setting-note">专注完成后提示</text></view><view class="mini-toggle mini-toggle-on"></view></view>
+        <view class="mini-rest-cycle"><view class="mini-cycle-dot active"></view><view class="mini-cycle-line"></view><view class="mini-cycle-dot active"></view><view class="mini-cycle-line"></view><view class="mini-cycle-dot active"></view><view class="mini-cycle-line"></view><view class="mini-cycle-dot long"></view></view>
+        <view class="mini-rest-labels"><text>专注 × 3</text><text>长休息</text></view>
+      </view>
+
+      <view wx:elif="{{selectedId === 'stats'}}" class="mini-stats-screen">
+        <view class="mini-screen-title">专注统计 <text>近 7 天⌄</text></view>
+        <view class="mini-stats-summary"><view><text class="mini-metric-label">累计专注</text><text class="mini-metric-value">18小时36分</text></view><view><text class="mini-metric-label">专注次数</text><text class="mini-metric-value">24次</text></view></view>
+        <view class="mini-distribution-title">项目分布 <text>点击图形查看项目</text></view>
+        <view class="mini-distribution"><view class="mini-donut"><view class="mini-donut-hole"><text>24</text><text>次</text></view></view><view class="mini-dist-rows"><view><view class="mini-dist-dot dot-mauve"></view>数学 <text>52%</text></view><view><view class="mini-dist-dot dot-green"></view>英语 <text>31%</text></view><view><view class="mini-dist-dot dot-orange"></view>阅读 <text>17%</text></view></view></view>
+      </view>
+
+      <view wx:elif="{{selectedId === 'timeline'}}" class="mini-heatmap-screen">
+        <view class="mini-screen-title">专注热力图 <text>少 · · · 多</text></view>
+        <view class="mini-month">2026年10月 <text>‹</text><text>›</text></view>
+        <view class="mini-calendar">
+          <text wx:for="{{['一','二','三','四','五','六','日']}}" wx:key="*this" class="mini-weekday">{{item}}</text>
+          <view wx:for="{{previewHeatmap}}" wx:key="day" class="mini-day-cell heat-level-{{item.level}}">{{item.day}}</view>
+        </view>
+        <view class="mini-selected-day"><view><text>10月16日</text><text>数学</text></view><text class="mini-selected-minutes">38分钟 ›</text></view>
+      </view>
+
+      <view wx:elif="{{selectedId === 'slots'}}" class="mini-slots-screen">
+        <view class="mini-screen-title">专注时段分布 <text>近 30 天⌄</text></view>
+        <view class="mini-slot-total">你通常在 <text>14:00</text> 更容易专注</view>
+        <view class="mini-bar-chart"><view wx:for="{{previewBars}}" wx:key="label" class="mini-bar-col"><view class="mini-bar-track"><view class="mini-bar-fill" style="height:{{item.height}}%"></view></view><text>{{item.label}}</text></view></view>
+        <view class="mini-chart-note">每柱代表 1 小时 · 按自然日平均</view>
+      </view>
+
+      <view wx:elif="{{selectedId === 'data'}}" class="mini-settings-screen mini-data-screen">
+        <view class="mini-screen-title">数据与备份</view>
+        <view class="mini-sync-status"><view class="mini-sync-icon">↻</view><view><text>记录同步</text><text class="mini-setting-note">上次同步 10月16日 21:45</text></view><view class="mini-toggle mini-toggle-on"></view></view>
+        <view class="mini-setting-row"><view><text>数据存储</text><text class="mini-setting-note">以本机记录为主</text></view><text class="mini-setting-value">查看 ›</text></view>
+        <view class="mini-backup-card"><view class="mini-backup-icon">↥</view><view><text>创建备份</text><text class="mini-setting-note">可保存一份记录文件</text></view><text class="mini-setting-value">›</text></view>
+        <view class="mini-backup-actions"><view>导出统计表</view><view>恢复备份</view></view>
+      </view>
+
+      <view wx:elif="{{selectedId === 'appearance'}}" class="mini-settings-screen mini-appearance-screen">
+        <view class="mini-screen-title">外观与屏幕</view>
+        <view class="mini-setting-row"><view><text>外观主题</text><text class="mini-setting-note">跟随系统设置</text></view><text class="mini-setting-value">浅色 ›</text></view>
+        <view class="mini-palette-label">浅色配色</view>
+        <view class="mini-palette-options"><view class="mini-palette-option selected"><view class="palette-swatch swatch-forest"></view><text>森林</text></view><view class="mini-palette-option"><view class="palette-swatch swatch-lavender"></view><text>薰衣草</text></view><view class="mini-palette-option"><view class="palette-swatch swatch-peach"></view><text>杏色</text></view><view class="mini-palette-option"><view class="palette-swatch swatch-blue"></view><text>海盐</text></view></view>
+        <view class="mini-setting-row"><view><text>屏幕常亮</text><text class="mini-setting-note">专注时保持屏幕点亮</text></view><view class="mini-toggle"></view></view>
+      </view>
+
+      <view wx:elif="{{selectedId === 'goals'}}" class="mini-goal-screen">
+        <view class="mini-screen-title">今日专注 <text>统计 ›</text></view>
+        <view class="mini-goal-card"><view class="mini-goal-heading"><view><text>每日目标</text><text class="mini-setting-note">每天稳步积累</text></view><text class="mini-goal-percent">80%</text></view><view class="mini-goal-track"><view class="mini-goal-progress"></view></view><view class="mini-goal-numbers"><text>96 分钟</text><text>目标 120 分钟</text></view></view>
+        <view class="mini-goal-ring"><view class="mini-goal-ring-inner"><text>80%</text><text>今日进度</text></view></view>
+      </view>
+    </view>
+
+    <view class="preview-footnote"><view class="preview-footnote-dot"></view>固定样例 · 试一试中的操作不会修改日常记录</view>
+  </view>
 </view>

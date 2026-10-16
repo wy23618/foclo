@@ -1,30 +1,3 @@
 <page-meta page-style="{{themePageStyle}}"/>
-<safe-nav id="safeNav" theme="{{themeClass}}" title="专注热力图" back-text="‹ 统计" bindback="back"/>
-<view class="container theme-{{themeClass}}">
-  <picker range="{{scopeOptions}}" range-key="name" value="{{scopeIndex}}" bindchange="pickScope"><view class="scope-switch">{{scopeName}} ▾</view></picker>
-
-  <view class="card">
-    <view class="month-nav">
-      <view class="month-arrow" bindtap="prevMonth">‹</view>
-      <picker mode="date" fields="month" value="{{monthKey}}" end="{{currentMonth}}" bindchange="pickMonth" class="flex-1"><view class="month-label">{{monthTitle}} ▾</view></picker>
-      <view class="month-arrow {{canGoNext?'':'month-arrow-off'}}" bindtap="nextMonth">›</view>
-    </view>
-    <view class="row-between month-summary"><view class="small muted">活跃 {{activeDays}} 天</view><view class="small muted">月合计 {{monthTotalText}}</view></view>
-  </view>
-
-  <view wx:if="{{error}}" class="card" bindtap="load">{{error}} · 重试</view>
-  <view class="card cal-card" bindtouchstart="touchStart" bindtouchend="touchEnd">
-    <view class="cal-head"><view wx:for="{{weekHead}}" wx:key="*this" class="cal-head-cell">{{item}}</view></view>
-    <view class="cal-grid">
-      <view wx:for="{{grid}}" wx:for-item="r" wx:key="index" class="cal-row">
-        <view wx:for="{{r}}" wx:for-item="cell" wx:key="date">
-          <view class="cal-cell {{cell.outside?'cal-outside':''}} {{cell.isToday?'cal-cell-today':''}} {{cell.isFuture?'cal-cell-future':''}}" style="{{cell.heatStyle}}" data-cell="{{cell}}" bindtap="onCellTap">
-            <view class="cal-day">{{cell.day}}</view><view class="cal-dur">{{cell.outside?'':cell.shortText}}</view>
-          </view>
-        </view>
-      </view>
-    </view>
-    <view class="legend"><text class="tiny muted">少</text><view class="legend-gradient"></view><text class="tiny muted">多</text></view>
-    <view class="legend-hint tiny muted">点击日期查看当天统计 · 左右滑动切换月份</view>
-  </view>
-</view>
+<safe-nav theme="{{themeClass}}" title="专注热力图" back-text="‹ 返回" bindback="back" bindheightchange="onNavHeightChange"/>
+<heatmap-card id="heatmapCard" opened="{{opened}}" scope-id="{{scope}}" theme="{{themeClass}}" top-inset="{{topInset}}" standalone="{{true}}" bindclose="back"/>

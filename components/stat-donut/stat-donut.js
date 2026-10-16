@@ -1,33 +1,47 @@
+const demoContext = require('../../utils/demo-context');
 const { themeColors } = require('../../utils/theme');
 const { computeDonutLayout, hitTestChart, computeMultiDepthLayout, hitTestMulti } = require('../../utils/donut-layout');
 const { prepareChartData, formatDuration, formatPercent } = require('../../utils/donut-data');
 const { renderDonut, interpolateDonut } = require('../../utils/donut-renderer-compact');
 Component({
-  properties: { segments: { type:Array,value:[] }, groups: { type:Array,value:[] }, tree: {type:Array,value:[]}, totalText: { type:String,value:'—' }, centerLabel:{type:String,value:''}, singleExpand:{type:Boolean,value:false}, standaloneFull:{type:Boolean,value:false}, compact:{type:Boolean,value:false}, toolbarActions:{type:Boolean,value:false}, animation: { type:Boolean,value:true }, theme: { type:String,value:'light' }, obscured: {type:Boolean,value:false,observer(v){if(v){this.drawToken=(this.drawToken||0)+1;this.cancelAnimation();this.canvas=null;this.ctx=null;this.setData({restoringCanvas:false,drawReady:false});}else if(this.ready)this.setData({restoringCanvas:!!this.data.snapshotPath},()=>wx.nextTick(()=>this.draw(false)));}} },
+  properties: { demoSession: { type: String, value: '' },  segments: { type:Array,value:[] }, groups: { type:Array,value:[] }, tree: {type:Array,value:[]}, totalText: { type:String,value:'—' }, centerLabel:{type:String,value:''}, singleExpand:{type:Boolean,value:false}, standaloneFull:{type:Boolean,value:false}, compact:{type:Boolean,value:false}, toolbarActions:{type:Boolean,value:false}, animation: { type:Boolean,value:true }, theme: { type:String,value:'light' }, obscured: {type:Boolean,value:false,observer(v){if(v){this.drawToken=(this.drawToken||0)+1;this.cancelAnimation();this.canvas=null;this.ctx=null;this.setData({restoringCanvas:false,drawReady:false});}else if(this.ready)this.setData({restoringCanvas:!!this.data.snapshotPath},()=>wx.nextTick(()=>this.draw(false)));}} },
   observers: { 'segments, groups, theme'() { this.preparedData=null;this.snapshotReady=false;this.setData({snapshotPath:this.properties.obscured||this.data.restoringCanvas?this.data.snapshotPath:''});this.draw(false); } },
   data: { drawReady:false,restoringCanvas:false,snapshotPath:'',chartHeight:290,renderHeight:290,renderWidth:0,labels:[],calloutDetails:[],expandedParentIds:[],expandedIds:[],expandableCount:0,allExpanded:false,selectedParentId:'',selectedChildId:'',calloutPage:0,calloutPageCount:1,layoutError:'',scrollHint:'',detail:null,fullView:false,fullWidth:0,fullHeight:0,isEmpty:false,renderTotal:-1 },
   lifetimes: {
     ready() { this.ready=true;this.draw(false); },
-    detached() { this.ready=false;this.drawToken=(this.drawToken||0)+1;this.cancelAnimation(); }
+    detached() { this.ready=false;this.drawToken=(this.drawToken||0)+1;this.cancelAnimation();clearTimeout(this.snapshotTimer);this.snapshotRequest=(this.snapshotRequest||0)+1;this.pendingSnapshotCallback=null;this.waitingSnapshot=false; }
   },
   pageLifetimes: { resize() { this.draw(false);if(this.data.fullView)this.openFullView(); } },
   methods: {
     noop() {},
     captureSnapshot(callback){
-      if(!this.data.drawReady&&!this.properties.obscured){this.deferredSnapshotCallback=callback;return;}
-      if(this.data.snapshotPath&&this.snapshotReady){if(callback)callback(true);return;}
-      const canvas=this.canvas;
-      if(!canvas||!wx.canvasToTempFilePath){if(callback)callback(false);return;}
+      if(this.pendingSnapshotCallback)this.finishSnapshot(false);
+      this.snapshotRequest=(this.snapshotRequest||0)+1;
       this.pendingSnapshotCallback=callback||null;
+      this.snapshotTimer=setTimeout(()=>this.finishSnapshot(false),2500);
+      if(!this.data.drawReady&&!this.properties.obscured){this.waitingSnapshot=true;return;}
+      this.captureSnapshotNow();
+    },
+    captureSnapshotNow(){
+      if(!this.pendingSnapshotCallback)return;
+      this.waitingSnapshot=false;
+      if(this.data.snapshotPath&&this.snapshotReady){this.finishSnapshot(true);return;}
+      const canvas=this.canvas;
+      if(!canvas||!wx.canvasToTempFilePath){this.finishSnapshot(false);return;}
+      const request=this.snapshotRequest;
       wx.canvasToTempFilePath({canvas,fileType:'png',success:result=>{
+        if(request!==this.snapshotRequest||!this.ready)return;
         if(!result||!result.tempFilePath){this.finishSnapshot(false);return;}
         this.snapshotReady=false;
         this.setData({snapshotPath:result.tempFilePath});
-      },fail:()=>this.finishSnapshot(false)},this);
+      },fail:()=>{if(request===this.snapshotRequest)this.finishSnapshot(false);}},this);
     },
     onSnapshotLoad(e){if(e.currentTarget.dataset.path===this.data.snapshotPath)this.finishSnapshot(true);},
     onSnapshotError(e){if(e.currentTarget.dataset.path===this.data.snapshotPath)this.finishSnapshot(false);},
     finishSnapshot(ready){
+      clearTimeout(this.snapshotTimer);
+      this.snapshotRequest=(this.snapshotRequest||0)+1;
+      this.waitingSnapshot=false;
       this.snapshotReady=ready;
       const callback=this.pendingSnapshotCallback;
       this.pendingSnapshotCallback=null;
@@ -38,9 +52,9 @@ Component({
       if(!this.properties.standaloneFull){
         if(this.openingFull)return;
         this.openingFull=true;
-        const app=getApp();
+        const app=demoContext.appFor(this);
         app.globalData.fullChartPayload={groups:this.properties.groups,segments:this.properties.segments,tree:this.properties.tree,totalText:this.properties.totalText,centerLabel:this.properties.centerLabel,singleExpand:this.properties.singleExpand,theme:this.properties.theme};
-        wx.navigateTo({url:'/pages/chart-full/chart-full',fail:()=>{app.globalData.fullChartPayload=null;wx.showToast({title:'暂时无法打开全图',icon:'none'});},complete:()=>{this.openingFull=false;}});
+        demoContext.navigateFor(this, {url:'/pages/chart-full/chart-full',fail:()=>{app.globalData.fullChartPayload=null;wx.showToast({title:'暂时无法打开全图',icon:'none'});},complete:()=>{this.openingFull=false;}});
         return;
       }
       if(!(this.properties.tree&&this.properties.tree.length)&&!this.geometry){this.pendingFullOpen=true;return;}
@@ -188,9 +202,7 @@ Component({
                 if(!this.ready||token!==this.drawToken||this.properties.obscured)return;
                 this.frame=undefined;
                 this.setData({drawReady:true,restoringCanvas:false,snapshotPath:''},()=>{
-                  const callback=this.deferredSnapshotCallback;
-                  this.deferredSnapshotCallback=null;
-                  if(callback)this.captureSnapshot(callback);
+                  if(this.waitingSnapshot)this.captureSnapshotNow();
                 });
               };
               if(this.data.restoringCanvas&&canvas.requestAnimationFrame)this.frame=canvas.requestAnimationFrame(()=>{

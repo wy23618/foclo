@@ -20,7 +20,12 @@ Component({
   },
   observers: {
     'records, colorMap': function (records, colorMap) {
-      this.setData(Object.assign({}, buildTimeline(records, colorMap), { activeKey: '', managementRows: managementRows(records) }));
+      const managedRows = managementRows(records);
+      const maxDuration = Math.max(1, ...managedRows.map(row => Number(row.durationSeconds) || 0));
+      managedRows.forEach(row => {
+        row.barPct = Math.max((Number(row.durationSeconds) / maxDuration) * 100, 4).toFixed(1);
+      });
+      this.setData(Object.assign({}, buildTimeline(records, colorMap), { activeKey: '', managementRows: managedRows }));
     },
   },
   methods: {

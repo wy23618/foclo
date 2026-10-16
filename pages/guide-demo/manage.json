@@ -1,0 +1,7 @@
+{
+  "navigationBarTitleText": "项目管理",
+  "usingComponents": {
+    "segmented": "../../components/segmented/segmented",
+    "empty-state": "../../components/empty-state/empty-state"
+  }
+}

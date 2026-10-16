@@ -91,8 +91,11 @@ Page({
     statusLabel: STATUS_LABELS.guest,
     statusMessage: "",
     accountLabel: "游客体验",
+    accountId: "",
+    accountIdText: "",
     avatarUrl: '',
     profileUserId: '',
+    agreementAccepted: false,
     pending: 0,
     syncedAt: "暂无同步记录",
     conflicts: [],
@@ -114,7 +117,6 @@ Page({
   },
 
   onLoad(options) {
-    this.loginOnOpen = options && options.login === "1";
     const toolsOnly = !!(options && options.tools === '1');
     this.setData({ toolsOnly });
     if (toolsOnly) wx.setNavigationBarTitle({ title:'账号数据与注销' });
@@ -132,10 +134,6 @@ Page({
         this.applyStatus(status),
       );
     await this.refresh();
-    if (this.loginOnOpen) {
-      this.loginOnOpen = false;
-      await this.onLogin();
-    }
     const service = app.globalData.service;
     try {
       const prefs = service && (await service.getPrefs());
@@ -160,6 +158,7 @@ Page({
   applyStatus(status) {
     status = status || {};
     const account = this.accounts && this.accounts.getCurrent();
+    const accountId = account ? String(account.userId || '') : '';
     const pending = Number.isFinite(status.pending) ? status.pending : 0;
     const conflicts = Array.isArray(status.conflicts)
       ? status.conflicts
@@ -171,6 +170,8 @@ Page({
       accountLabel: account
         ? (this.data.profileUserId === account.userId ? this.data.accountLabel : '微信账号')
         : "游客体验",
+      accountId,
+      accountIdText: accountId.slice(-4),
       hasAccount: !!account,
       avatarUrl:account && this.data.profileUserId === account.userId ? this.data.avatarUrl : '',
       pending,
@@ -257,6 +258,10 @@ Page({
 
   async onLogin(event) {
     if (this.data.busy) return;
+    if (!this.data.hasAccount && !this.data.agreementAccepted) {
+      wx.showToast({ title:'请先勾选并同意相关协议', icon:'none' });
+      return;
+    }
     const id = event && event.currentTarget && event.currentTarget.dataset.method || 'wechat';
     const method = this.data.loginMethods.find(item => item.id === id);
     if (!method || method.id !== 'wechat') return;
@@ -268,17 +273,10 @@ Page({
         const agreed = await confirmGuestImport(summary);
         if (agreed) wx.showLoading({ title:'正在迁移记录', mask:true });
         return agreed;
-      }, () => new Promise(resolve => {
-        wx.showModal({
-          title:'开启账号同步？',
-          content:'微信登录使用微信账号标识识别你，不读取手机号、聊天或通讯录。登录后，项目、专注记录和账号设置会自动保存，方便你换设备继续使用。头像昵称可选。详情见「设置 > 帮助与关于 > 隐私政策」。',
-          confirmText:'登录同步', cancelText:'先不用',
-          success:result => {
-            if (result.confirm) wx.showLoading({ title:'正在连接微信', mask:true });
-            resolve(!!result.confirm);
-          }, fail:() => resolve(false)
-        });
-      }));
+      }, () => {
+        wx.showLoading({ title:'正在连接微信', mask:true });
+        return true;
+      });
       if (result.cancelled) return;
       getApp().globalData.guestSession = false;
       await this.refresh();
@@ -301,6 +299,14 @@ Page({
     finally { this.setData({ busy:false }); }
   },
   openPrivacy() { wx.navigateTo({ url:'/pages/privacy/privacy' }); },
+  openTerms() { wx.navigateTo({ url:'/pages/terms/terms' }); },
+  toggleAgreement() { this.setData({ agreementAccepted:!this.data.agreementAccepted }); },
+  continueLocal() { wx.navigateBack({ delta:1 }); },
+  copyAccountId() {
+    const id = this.data.accountId;
+    if (!id) return;
+    wx.setClipboardData({ data:id, success:() => wx.showToast({ title:'Foclo ID 已复制', icon:'success' }) });
+  },
   onLogout() {
     wx.showModal({
       title: "退出登录？",

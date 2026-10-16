@@ -1,0 +1,9 @@
+{
+  "navigationStyle": "custom",
+  "usingComponents": {
+    "project-list": "/components/project-list/project-list",
+    "safe-nav": "/components/safe-nav/safe-nav",
+    "stat-donut": "/components/stat-donut/stat-donut",
+    "day-detail": "/components/day-detail/day-detail"
+  }
+}

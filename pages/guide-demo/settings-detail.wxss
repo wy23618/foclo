@@ -1,0 +1,2 @@
+@import "../settings-detail/settings-detail.wxss";
+@import "./scene.wxss";

@@ -1,0 +1,2 @@
+@import "../focus/focus.wxss";
+@import "./scene.wxss";

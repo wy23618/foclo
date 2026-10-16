@@ -1,0 +1,2 @@
+@import "../records/records.wxss";
+@import "./scene.wxss";

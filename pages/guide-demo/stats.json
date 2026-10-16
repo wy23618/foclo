@@ -1,4 +1,5 @@
 {
+  "navigationBarTitleText": "专注统计",
   "usingComponents": {
     "project-list": "/components/project-list/project-list",
     "heatmap-card": "/components/heatmap-card/heatmap-card",
@@ -8,7 +9,8 @@
     "date-range": "../../components/date-range/date-range",
     "day-detail": "../../components/day-detail/day-detail",
     "safe-nav": "/components/safe-nav/safe-nav",
-    "subject-picker": "/components/subject-picker/subject-picker"
+    "subject-picker": "/components/subject-picker/subject-picker",
+    "main-nav": "/components/main-nav/main-nav"
   },
-  "component": true
+  "navigationStyle": "custom"
 }

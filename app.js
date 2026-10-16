@@ -12,6 +12,10 @@ App({
   },
 
   onLaunch() {
+    // Clear a debug switch left on by an earlier preview on this device.
+    if (typeof wx !== "undefined" && typeof wx.setEnableDebug === "function") {
+      try { wx.setEnableDebug({ enableDebug: false, fail() {} }); } catch (e) {}
+    }
     const adapter = createDefaultAdapter();
     this.globalData.readyPromise = (async () => {
       this.globalData.accounts = createAccounts(adapter, this);

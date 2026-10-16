@@ -1,16 +1,22 @@
-const view = require('../../utils/view-data');
+// Shared by the normal page and its isolated guide demonstration.
+module.exports = function createPage(app, runtime) {
+  runtime = runtime || {};
+  const navigation = runtime.platform || {
+    navigateTo: options => wx.navigateTo(options),
+    redirectTo: options => wx.redirectTo(options),
+    reLaunch: options => wx.reLaunch(options)
+  };
+const view = (runtime.view || require('../../utils/view-data'));
 const time = require('../../core/time');
 const { buildTimeSlotChart, SCALE_MINUTES, SCALE_LABELS } = require('../../utils/time-slot-chart');
 const { createRace } = require('../../utils/race');
 const { buildDashboard, selectedDetail, detailExpansion } = require('../../utils/stats-dashboard');
 const format = require('../../utils/format');
 
-Component({
-  options:{styleIsolation:'apply-shared'},
-  properties:{opened:{type:Boolean,value:false,observer:'onOpenedChange'},theme:{type:String,value:'light',observer:'onThemeChange'}},
+const definition = {
   data: {
-    activated:false,heatmapOpen:false,panelScrollTop:0,
-    themeClass:'light',rangeItems:view.RANGE_ITEMS,modeItems:view.MODE_ITEMS,preset:'last30',mode:'realtime',
+    heatmapOpen:false,
+    rangeItems:view.RANGE_ITEMS,modeItems:view.MODE_ITEMS,preset:'last30',mode:'realtime',
     startDate:'',endDate:'',rangeText:'',rangeLabel:'近30天',distRows:[],chartGroups:[],chartTree:[],chartFull:false,chartExpandable:false,chartAllExpanded:false,
     stackSegs:[],dailySeries:[],sumH:0,sumM:0,sumS:0,sumZero:true,shortTotal:'—',
     totalText:'0秒',countText:'',avgText:'',selectedDate:'',rangeStart:'',rangeEnd:'',
@@ -19,58 +25,48 @@ Component({
     selectedProjectId:'',selectedDetail:null,expandedDetailChildIds:[],timeSlots:[],slotScaleText:'1小时',slotScaleFixed:0,slotScaleIndex:0,slotScaleOptions:SCALE_LABELS,selectedTimeSlot:-1,selectedSlot:null,
     avgSessionText:'0秒',goalPercentText:'0'
   },
-  lifetimes:{attached(){this.isAttached=true;this.race=createRace();this.dashboard=buildDashboard([],[]);setTimeout(()=>{if(!this.isAttached)return;this.setData({startDate:view.today(),endDate:view.today(),themeClass:this.properties.theme});if(this.properties.opened&&!this.data.activated)this.activate();},50);},detached(){this.isAttached=false;}},
-  pageLifetimes:{show(){if(this.properties.opened&&this.wasPageHidden){if(getApp().globalData.closeStatsPickerOnReturn){getApp().globalData.closeStatsPickerOnReturn=false;this.closeSubjects();}this.activate();}this.wasPageHidden=false;},hide(){this.wasPageHidden=true;}},
-  methods:{
-    onPanelScroll(e){this.panelScrollPosition=e.detail.scrollTop||0;},
-    scrollProjectListBy(shift){
-      const next=Math.max(0,(this.panelScrollPosition||0)+shift);
-      if(this.data.panelScrollTop===next)this.setData({panelScrollTop:Math.max(0,next-1)},()=>this.setData({panelScrollTop:next}));
-      else this.setData({panelScrollTop:next});
-    },
-    onThemeChange(theme){if(this.isAttached&&theme)setTimeout(()=>{if(this.isAttached&&theme===this.properties.theme&&theme!==this.data.themeClass)this.setData({themeClass:theme});},50);},
-    onOpenedChange(opened){
-      if(!this.isAttached)return;
-      // Property observers can run while the parent page is applying its
-      // setData patch. Use a later task so child updates start after that render.
-      setTimeout(()=>{
-        if(!this.isAttached||!!this.properties.opened!==!!opened)return;
-        if(opened&&!this.data.activated)this.activate();
-      },50);
-    },
-  onNavHeightChange(e){const height=e.detail.height;if(!Number.isFinite(height)||height===this.data.filterTop)return;setTimeout(()=>{if(this.isAttached&&this.data.filterTop!==height)this.setData({filterTop:height});},50);},
-  async activate(){
-    const revisiting=this.data.activated;
-    if(!revisiting)this.setData({activated:true});
+  onLoad(){
+    this.race=createRace();this.dashboard=buildDashboard([],[]);
+    this.setData({startDate:view.today(),endDate:view.today()});
+    if(getCurrentPages().length===1){
+      this.redirectingToFocus=true;
+      navigation.reLaunch({url:'/pages/focus/focus',success:()=>setTimeout(()=>navigation.navigateTo({url:'/pages/stats/stats'}),0)});
+    }
+  },
+  onNavHeightChange(e){this.setData({filterTop:e.detail.height});},
+  async onShow(){
+    if(this.redirectingToFocus)return;
     require('../../utils/theme').applyPageTheme(this);
-    const returningFromSubpage=!!this.data.openingPage||!!this.returningFromDay||!!this.wasActivated;
-    this.wasActivated=true;
+    const returningFromSubpage=!!this.hasShown;
+    this.hasShown=true;
     this.returningFromDay=false;
     this.setData({openingPage:''});
-    await getApp().globalData.readyPromise;
+    await app.globalData.readyPromise;
     if(!returningFromSubpage){
-      const prefs=await getApp().globalData.service.getPrefs();
+      const prefs=await app.globalData.service.getPrefs();
       const preset=prefs&&['today','last7','last30'].includes(prefs.statsPreset)?prefs.statsPreset:'today';
       if(this.data.preset!==preset)this.resetChartSelection();
       this.setData({preset,selectedDate:'',selectedTimeSlot:-1,selectedSlot:null});
     }
     await this.load();
-    if(revisiting){const detail=this.selectComponent('#dayDetail');if(detail)await detail.load(false);}
+    const detail=this.selectComponent('#dayDetail');
+    if(detail)await detail.load(false);
   },
+  onUnload(){this.race.next();},
   onRangeChange(e){if(e.detail.key==='custom'){this.openRange();return;}this.resetChartSelection();this.setData({preset:e.detail.key,selectedDate:'',selectedTimeSlot:-1,selectedSlot:null});this.load();},
-  openRange(){this.setData({rangeOpen:true});this.triggerEvent('navhiddenchange',{hidden:true});},closeRange(){this.setData({rangeOpen:false});this.triggerEvent('navhiddenchange',{hidden:!!(this.data.scopeOpen||this.data.chartFull)});},
-  confirmRange(e){this.resetChartSelection();this.setData({preset:'custom',startDate:e.detail.startDate,endDate:e.detail.endDate,rangeOpen:false,selectedDate:'',selectedTimeSlot:-1,selectedSlot:null});this.triggerEvent('navhiddenchange',{hidden:false});this.load();},
+  openRange(){this.setData({rangeOpen:true});},closeRange(){this.setData({rangeOpen:false});},
+  confirmRange(e){this.resetChartSelection();this.setData({preset:'custom',startDate:e.detail.startDate,endDate:e.detail.endDate,rangeOpen:false,selectedDate:'',selectedTimeSlot:-1,selectedSlot:null});this.load();},
   resetChartSelection(){const chart=this.selectComponent('#distributionChart');if(chart)chart.resetView();this.setData({selectedProjectId:'',selectedDetail:null,expandedDetailChildIds:[]});},
 
 
   async load(){
-    const token=this.race.next();await getApp().globalData.readyPromise;
+    const token=this.race.next();await app.globalData.readyPromise;
     if(!this.race.isCurrent(token))return;
     this.setData({loading:true,error:''});
-    const env=await getApp().globalData.service.getStatistics(view.rangeSpec(this.data));
+    const env=await app.globalData.service.getStatistics(view.rangeSpec(this.data));
     if(!this.race.isCurrent(token))return;
     if(!env.ok){this.setData({loading:false,error:env.error.message});return;}
-    const service=getApp().globalData.service,prefs=await service.getPrefs();
+    const service=app.globalData.service,prefs=await service.getPrefs();
     let goalSeconds=0;
     if(prefs&&prefs.dailyGoalEnabled){const today=await service.getStatistics({preset:'today',mode:'realtime'});if(today.ok)goalSeconds=today.data.totalSeconds;}
     if(!this.race.isCurrent(token))return;
@@ -102,19 +98,7 @@ Component({
   },
   onChartSelectParent(e){this.applyChartSelection(e.detail);},
   showAllProjects(){require('../../utils/show-all-projects')(this);},
-  onChartExpandState(e){
-    const {expandable,allExpanded}=e.detail;
-    this.pendingChartExpandState={chartExpandable:!!expandable,chartAllExpanded:!!allExpanded};
-    if(this.chartExpandUpdateScheduled)return;
-    this.chartExpandUpdateScheduled=true;
-    setTimeout(()=>{
-      this.chartExpandUpdateScheduled=false;
-      const patch=this.pendingChartExpandState;
-      this.pendingChartExpandState=null;
-      if(!this.isAttached||!patch)return;
-      if(this.data.chartExpandable!==patch.chartExpandable||this.data.chartAllExpanded!==patch.chartAllExpanded)this.setData(patch);
-    },50);
-  },
+  onChartExpandState(e){const {expandable,allExpanded}=e.detail,nextExpandable=!!expandable,nextExpanded=!!allExpanded;if(this.data.chartExpandable!==nextExpandable||this.data.chartAllExpanded!==nextExpanded)this.setData({chartExpandable:nextExpandable,chartAllExpanded:nextExpanded});},
   toggleChartAll(){const chart=this.selectComponent('#distributionChart');if(chart)chart.toggleAll();},
   onChartSelectChild(e){this.applyChartSelection(e.detail);},
   applyChartSelection(detail){
@@ -131,19 +115,35 @@ Component({
     this.setData({selectedDetail:expansion.detail,expandedDetailChildIds:expansion.ids});
   },
   selectTimeSlot(e){const index=Number(e.currentTarget.dataset.index);this.setData({selectedTimeSlot:index,selectedSlot:this.data.timeSlots[index]||null});},
-  async selectSlotScale(e){const minutes=SCALE_MINUTES[Number(e.detail.value)];if(minutes===undefined)return;const saved=await getApp().globalData.service.savePrefs({timeSlotScaleMinutes:minutes});if(!saved.ok){wx.showToast({title:saved.error.message,icon:'none'});return;}this.load();},
-  openSubjects(){if(this.openingSubjectPicker||this.data.chartObscured)return;this.openingSubjectPicker=true;const open=()=>this.setData({scopeOpen:true,chartObscured:!!this.selectComponent('#distributionChart')});const chart=this.selectComponent('#distributionChart');if(chart)chart.captureSnapshot(ready=>{if(ready)open();else{this.openingSubjectPicker=false;wx.showToast({title:'圆环正在准备，请再试一次',icon:'none'});}});else open();},
+  async selectSlotScale(e){const minutes=SCALE_MINUTES[Number(e.detail.value)];if(minutes===undefined)return;const saved=await app.globalData.service.savePrefs({timeSlotScaleMinutes:minutes});if(!saved.ok){wx.showToast({title:saved.error.message,icon:'none'});return;}this.load();},
+  openSubjects(){if(this.openingSubjectPicker||this.openingHeatmap||this.data.heatmapOpen||this.data.chartObscured)return;this.openingSubjectPicker=true;const open=()=>{this.pageOverlayKind='subjects';this.setData({scopeOpen:true,chartObscured:!!this.selectComponent('#distributionChart')});};const chart=this.selectComponent('#distributionChart');if(chart)chart.captureSnapshot(ready=>{if(ready)open();else{this.openingSubjectPicker=false;wx.showToast({title:'圆环正在准备，请再试一次',icon:'none'});}});else open();},
   closeSubjects(){this.setData({scopeOpen:false});},
-  onSubjectsAfterClose(){this.setData({chartObscured:false},()=>{this.openingSubjectPicker=false;this.triggerEvent('navhiddenchange',{hidden:!!(this.data.rangeOpen||this.data.chartFull)});});},
+  onSubjectsAfterClose(){this.setData({chartObscured:false},()=>{this.openingSubjectPicker=false;});},
+  onOverlayBeforeLeave(){this.overlayLeaving=this.pageOverlayKind;if(this.overlayLeaving==='subjects'){const picker=this.selectComponent('#subjectPicker');if(picker&&picker.onBeforeLeave)picker.onBeforeLeave();}},
+  onOverlayAfterLeave(){const kind=this.overlayLeaving||this.pageOverlayKind;this.overlayLeaving='';this.pageOverlayKind='';if(kind==='subjects'){if(this.data.scopeOpen)this.setData({scopeOpen:false});const picker=this.selectComponent('#subjectPicker');if(picker&&picker.onAfterLeave)picker.onAfterLeave();}else if(kind==='heatmap')require('../../utils/heatmap-modal').afterHeatmapLeave.call(this);},
+  onOverlayClick(){if(this.pageOverlayKind==='subjects'){const picker=this.selectComponent('#subjectPicker');if(picker&&picker.close)picker.close();else this.closeSubjects();}},
   chooseSubject(e){if(e.detail.projectId)this.goProject(e);else this.closeSubjects();},
-  selectDay(e){this.returningFromDay=true;wx.navigateTo({url:'/pages/day-stats/day-stats?date='+e.detail.date,fail:()=>{this.returningFromDay=false;}});},
-  goFocus(){this.triggerEvent('switchtab',{tab:0});},refresh(){return this.load();},
+  selectDay(e){this.returningFromDay=true;navigation.navigateTo({url:'/pages/day-stats/day-stats?date='+e.detail.date,fail:()=>{this.returningFromDay=false;}});},
+  goBack(){wx.navigateBack({fail:()=>(runtime.navigation || require('../../utils/main-navigation')).openMainTab(0)});},
+  goFocus(){
+    const pages=getCurrentPages(),index=pages.findIndex(page=>page.route==='pages/focus/focus');
+    if(index>=0&&index<pages.length-1)wx.navigateBack({delta:pages.length-1-index});
+    else navigation.reLaunch({url:'/pages/focus/focus'});
+  },refresh(){return this.load();},
   goProject(e){const id=(e.detail&&e.detail.projectId)||e.currentTarget.dataset.id;if(!id)return;let url='/pages/project-stats/project-stats?id='+encodeURIComponent(id)+'&mode='+this.data.mode+'&preset='+this.data.preset;if(this.data.preset==='custom')url+='&startDate='+this.data.startDate+'&endDate='+this.data.endDate;this.openSubpage('project',url);},
   goHeatmap(){require('../../utils/heatmap-modal').openHeatmap.call(this);},
   closeHeatmap(){require('../../utils/heatmap-modal').closeHeatmap.call(this);},
   goManage(){this.openSubpage('manage','/pages/manage/manage');},
   goHierarchy(){const chart=this.selectComponent('#distributionChart');if(chart)chart.openFullView();},
-  onChartFullChange(e){const chartFull=!!e.detail.open;this.setData({chartFull});this.triggerEvent('navhiddenchange',{hidden:chartFull||this.data.scopeOpen||this.data.rangeOpen});},
-  openSubpage(name,url){if(this.data.openingPage)return;this.setData({openingPage:name});wx.navigateTo({url,fail:e=>{this.setData({openingPage:''});wx.showToast({title:e.errMsg,icon:'none'});}});}
-  }
-});
+  onChartFullChange(e){this.setData({chartFull:!!e.detail.open});},
+  openSubpage(name,url){if(this.data.openingPage)return;this.setData({openingPage:name});navigation.navigateTo({url,fail:e=>{this.setData({openingPage:''});wx.showToast({title:e.errMsg,icon:'none'});}});}
+};
+
+  definition.data.demoSession = '';
+  const load = definition.onLoad;
+  definition.onLoad = function(options) {
+    this.runtimeApp = app;
+    if (load) return load.call(this, options || {});
+  };
+  return definition;
+};

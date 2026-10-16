@@ -26,6 +26,7 @@ function managementRows(records) {
       end: format.timeOfDay(end),
       timeText: crossDay ? stamp(start) + ' – ' + stamp(end) : time.dayKey(start) + ' · ' + exactTime(start) + ' – ' + exactTime(end),
       durationText: format.durationText(seconds),
+      durationSeconds: seconds,
       color: record.color,
       canDelete: complete,
       statusText: complete ? '已完成' : record.paused ? '暂停中' : '进行中',

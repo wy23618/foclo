@@ -1,0 +1,15 @@
+<page-meta page-style="{{themePageStyle}}"/>
+<block wx:if="{{demoReady && !demoError}}">
+  <include src="../project-appearance/project-appearance-body.wxml"/>
+</block>
+<view wx:elif="{{!demoReady && !demoError}}" class="demo-loading" aria-live="polite">
+  <view class="demo-loading-card">
+    <view class="demo-loader-mark"><view class="demo-loader-orbit"></view><view class="demo-loader-dot"></view></view>
+    <text class="demo-loading-title">正在准备演示</text>
+    <text class="demo-loading-copy">载入固定样例，马上开始</text>
+  </view>
+</view>
+<view wx:else class="demo-loading demo-loading-error">
+  <view class="demo-loading-card"><text class="demo-loading-title">演示暂时无法打开</text><text class="demo-loading-copy">{{demoError}}</text><button class="demo-loading-back" bindtap="exitDemo">返回使用指南</button></view>
+</view>
+<view class="demo-exit  theme-{{themeClass}}" bindtap="exitDemo" aria-role="button" aria-label="退出功能演示，返回使用指南"><text>示例数据</text><text class="demo-exit-divider">·</text><text>返回指南 ›</text></view>

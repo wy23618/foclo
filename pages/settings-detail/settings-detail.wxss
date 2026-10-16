@@ -62,3 +62,7 @@
 .palette-swatch.palette-card { background: var(--bg-card); }
 .palette-swatch.palette-soft { background: var(--accent-soft); }
 .palette-swatch.palette-accent { background: var(--accent); }
+.about-intro { padding: 30rpx 12rpx 42rpx; text-align: center; }
+.about-name { font-size: 42rpx; font-weight: 600; color: var(--text-primary); }
+.about-copy { margin-top: 12rpx; font-size: 26rpx; color: var(--text-secondary); }
+.about-version { margin-top: 12rpx; font-size: 23rpx; color: var(--text-secondary); }
