@@ -76,6 +76,22 @@ async function setup() {
   await adapter.remove(local.itemKey(task.operationId));
   return { raw, adapter, service, p: p.data.project };
 }
+
+test('a full snapshot retains an offline duration edit and its project when cloud no longer contains the record', async () => {
+  const f=await setup(),id=uuid(),operationId=uuid(),page='yotick/snapshot-pages/missing/0';
+  const meta=await f.adapter.get('yotick/meta');
+  const s={id,spaceId:meta.id,projectId:f.p.id,status:'COMPLETED',startedAtSec:1799999800,
+    endedAtSec:1799999860,durationSeconds:60,targetSeconds:null,pauses:[],createdAtSec:1799999800,updatedAtSec:1799999860,revision:1};
+  await f.adapter.set('yotick/s/'+id,s);
+  await f.adapter.set(local.shadowKey('session',id),{entityType:'session',entityId:id,serverVersion:'1',deleted:false,data:{...s,endedAtSec:1799999920,durationSeconds:120}});
+  await f.adapter.set(local.itemKey(operationId),{operationId,kind:'session.reduceDuration',entityId:id,payload:s,related:[],order:1,status:'queued'});
+  await f.adapter.set(page,[]);
+  await f.service.buildSyncView(ctx=>buildSnapshotView(ctx,[page],'authoritative'));
+  assert.equal((await f.adapter.get('yotick/s/'+id)).durationSeconds,60);
+  assert.ok((await f.adapter.get('yotick/projects'))[f.p.id]);
+  assert.equal((await local.pending(f.adapter))[0].status,'conflict');
+  assert.ok((await f.adapter.keys()).some(k=>k.startsWith('yotick/conflicts/')));
+});
 test("snapshot staging and interrupted build never expose partial facts; switch is replayable", async () => {
   for (const stage of ["build", "pointer", "cursor"]) {
     const f = await setup(),

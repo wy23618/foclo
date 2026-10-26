@@ -124,13 +124,18 @@ function createRequest({ baseUrl, credentials, saveCredentials, transport }) {
       payload = undefined;
     }
     try {
-      return await send(method, url, payload, tokens?.accessToken);
+      const result = await send(method, url, payload, tokens?.accessToken);
+      if (cancelled) throw Object.assign(new Error("请求取消"), { code: "CANCELLED" });
+      return result;
     } catch (e) {
+      if (cancelled) throw Object.assign(new Error("请求取消"), { code: "CANCELLED" });
       if (e.status === 401 || e.code === "AUTH_REQUIRED") {
         await refresh();
         if (cancelled)
           throw Object.assign(new Error("请求取消"), { code: "CANCELLED" });
-        return send(method, url, payload, tokens.accessToken);
+        const result = await send(method, url, payload, tokens.accessToken);
+        if (cancelled) throw Object.assign(new Error("请求取消"), { code: "CANCELLED" });
+        return result;
       }
       throw e;
     }

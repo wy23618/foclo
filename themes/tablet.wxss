@@ -1,0 +1,35 @@
+@import "landscape.wxss";
+/* The physical screen must be tablet-sized; phone landscape stays unchanged.
+ * Device dimensions also keep keyboard opening from changing layout scale.
+ * Keep the breakpoint in sync with utils/window-layout.js. */
+@media (min-width: 500px) and (min-device-width: 520px) and (min-device-height: 520px) {
+  page .container,
+  page .account-page,
+  page .privacy-page,
+  page .guide-page {
+    width: 100%;
+    max-width: 920px;
+    margin-left: auto;
+    margin-right: auto;
+    padding: 24px 32px 40px;
+  }
+
+  page .with-tabbar { padding-bottom: calc(88px + env(safe-area-inset-bottom)); }
+  page .btn { min-height: 48px; }
+  page .btn-sm { min-height: 44px; }
+  page .link, page .icon-btn { min-height: 44px; box-sizing: border-box; }
+
+  page .sheet {
+    left: 50%;
+    right: auto;
+    bottom: auto;
+    top: 50%;
+    transform: translate(-50%, -50%);
+    width: calc(100% - 64px);
+    max-width: 560px;
+    max-height: 80vh;
+    border-radius: 24px;
+    padding: 28px;
+    overflow-y: auto;
+  }
+}

@@ -1,0 +1,34 @@
+      <view class="scope" bindtap="openScopePicker"><text class="scope-name">{{scopeName}}</text><text class="scope-hint">选择项目⌄</text></view>
+      <view class="month-stage">
+        <view wx:if="{{transitionFrom}}" class="month-page month-page-outgoing {{outgoingClass}}">
+          <view class="month-nav"><view class="arrow">‹</view><view class="month-label">{{transitionFrom.monthTitle}}</view><view class="arrow">›</view></view>
+          <view class="calendar">
+            <view class="week"><text class="week-day" wx:for="{{transitionFrom.weekHead}}" wx:key="*this">{{item}}</text></view>
+            <view class="cal-row" wx:for="{{transitionFrom.grid}}" wx:for-item="row" wx:key="index"><view class="cal-slot" wx:for="{{row}}" wx:for-item="cell" wx:key="date"><view class="cell {{cell.outside?'outside':''}} {{cell.isToday?'today':''}} {{cell.isFuture?'future':''}}" style="{{cell.heatStyle}}"><text class="day">{{cell.day}}</text><text class="duration">{{cell.outside?'':cell.shortText}}</text></view></view></view>
+          </view>
+          <view class="summary"><view class="summary-item"><text class="label">本月累计</text><text class="value">{{transitionFrom.monthTotalText}}</text></view><view class="summary-item"><text class="label">活跃天数</text><text class="value">{{transitionFrom.activeDays}} 天</text></view></view>
+          <view class="legend"><text>少</text><view class="heat-gradient"></view><text>多</text></view>
+        </view>
+        <view class="month-page month-page-current {{incomingClass}} {{dragAnimating?'drag-animating':''}}" style="{{dragDirection || dragAnimating ? 'transform:translateX(' + dragOffset + 'px);' : ''}}">
+          <view class="month-nav"><view class="arrow" bindtap="prevMonth">‹</view><picker class="month-picker" mode="date" fields="month" value="{{monthKey}}" end="{{currentMonth}}" bindchange="pickMonth"><view>{{monthTitle || monthKey}} ▾</view></picker><view class="arrow {{canGoNext?'':'off'}}" bindtap="nextMonth">›</view></view>
+          <view class="calendar" bindtouchstart="touchStart" bindtouchmove="touchMove" bindtouchend="touchEnd" bindtouchcancel="touchCancel">
+            <view class="week"><text class="week-day" wx:for="{{weekHead}}" wx:key="*this">{{item}}</text></view>
+            <view class="cal-row" wx:for="{{grid}}" wx:for-item="row" wx:key="index"><view class="cal-slot" wx:for="{{row}}" wx:for-item="cell" wx:key="date"><view class="cell {{cell.outside?'outside':''}} {{cell.isToday?'today':''}} {{cell.isFuture?'future':''}}" style="{{cell.heatStyle}}" data-cell="{{cell}}" bindtap="onCellTap"><text class="day">{{cell.day}}</text><text class="duration">{{cell.outside?'':cell.shortText}}</text></view></view></view>
+          </view>
+          <view class="summary"><view class="summary-item"><text class="label">本月累计</text><text class="value">{{monthTotalText}}</text></view><view class="summary-item"><text class="label">活跃天数</text><text class="value">{{activeDays}} 天</text></view></view>
+          <view class="legend"><text>少</text><view class="heat-gradient"></view><text>多</text></view>
+        </view>
+        <view wx:if="{{dragPreview && dragDirection}}" class="month-page month-page-preview {{dragAnimating?'drag-animating':''}}" style="transform:translateX({{dragPreviewOffset}}px)">
+          <view class="month-nav"><view class="arrow">‹</view><view class="month-label">{{dragPreview.monthTitle}}</view><view class="arrow">›</view></view>
+          <view class="calendar">
+            <view class="week"><text class="week-day" wx:for="{{dragPreview.weekHead}}" wx:key="*this">{{item}}</text></view>
+            <view class="cal-row" wx:for="{{dragPreview.grid}}" wx:for-item="row" wx:key="index"><view class="cal-slot" wx:for="{{row}}" wx:for-item="cell" wx:key="date"><view class="cell {{cell.outside?'outside':''}} {{cell.isToday?'today':''}} {{cell.isFuture?'future':''}}" style="{{cell.heatStyle}}"><text class="day">{{cell.day}}</text><text class="duration">{{cell.outside?'':cell.shortText}}</text></view></view></view>
+          </view>
+          <view class="summary"><view class="summary-item"><text class="label">本月累计</text><text class="value">{{dragPreview.monthTotalText}}</text></view><view class="summary-item"><text class="label">活跃天数</text><text class="value">{{dragPreview.activeDays}} 天</text></view></view>
+          <view class="legend"><text>少</text><view class="heat-gradient"></view><text>多</text></view>
+          <view wx:if="{{dragPreviewLoading}}" class="preview-loading">读取中…</view>
+        </view>
+      </view>
+      <view wx:if="{{error}}" class="message" bindtap="load">{{error}} · 点击重试</view>
+      <view wx:elif="{{loading && !grid.length}}" class="message">正在读取…</view>
+      <view class="hint">点击日期查看记录 · 左右滑动切换月份</view>

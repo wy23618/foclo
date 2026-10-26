@@ -3,5 +3,6 @@
   "usingComponents": {
     "segmented": "../../components/segmented/segmented",
     "empty-state": "../../components/empty-state/empty-state"
-  }
+  },
+  "pageOrientation": "auto"
 }

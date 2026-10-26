@@ -4,6 +4,32 @@ const { createMemoryAdapter } = require("../storage/adapter");
 const { createAccounts } = require("../sync/accounts");
 const { uuid } = require("../core/ids");
 
+test('one phone keeps guest, account A and account B facts and offline queues strictly isolated', async () => {
+  const raw = createMemoryAdapter(), app = { globalData: {} }, accounts = createAccounts(raw, app);
+  const a = { userId: uuid(), spaceId: uuid(), generation: '1' }, b = { userId: uuid(), spaceId: uuid(), generation: '1' };
+  await accounts.init();
+  const guestProject = (await app.globalData.service.createProject({ operationId: uuid(), name: '游客原记录' })).data.project;
+  await accounts.activate(a);
+  const adapterA = app.globalData.adapter;
+  const pa = (await app.globalData.service.createProject({ operationId: uuid(), name: 'A离线记录' })).data.project;
+  await accounts.activate(b);
+  const adapterB = app.globalData.adapter;
+  assert.deepEqual((await adapterB.get('yotick/projects')) || {}, {});
+  const pb = (await app.globalData.service.createProject({ operationId: uuid(), name: 'B离线记录' })).data.project;
+  const local = require('../sync/local');
+  assert.deepEqual((await local.pending(adapterA)).map(t => t.entityId), [pa.id]);
+  assert.deepEqual((await local.pending(adapterB)).map(t => t.entityId), [pb.id]);
+  await accounts.activate(a);
+  assert.deepEqual(Object.keys(await app.globalData.adapter.get('yotick/projects')), [pa.id]);
+  await accounts.activate(null);
+  assert.deepEqual(Object.keys(await app.globalData.adapter.get('yotick/projects')), [guestProject.id]);
+  const nextApp = { globalData: {} }, restarted = createAccounts(raw, nextApp);
+  await restarted.init(); await restarted.activate(b);
+  assert.deepEqual(Object.keys(await nextApp.globalData.adapter.get('yotick/projects')), [pb.id]);
+  assert.equal((await local.pending(nextApp.globalData.adapter))[0].entityId, pb.id);
+  await restarted.activate(null);
+});
+
 test('plain WeChat storage failures show the login stage and retain the guest space', async () => {
   const previousWx = global.wx;
   try {

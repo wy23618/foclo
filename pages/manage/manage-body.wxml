@@ -1,4 +1,5 @@
-<view class="container manage-page theme-{{themeClass}}">
+<view class="container {{landscapeLayout?'landscape-shell':''}} landscape-detail manage-page theme-{{themeClass}}">
+  <view class="landscape-only landscape-heading"><view class="landscape-title">项目管理</view><view class="landscape-subtitle">整理学习内容，让每次开始更清晰。</view></view>
   <view class="mg-toolbar"><view class="mg-intro">点项目看统计，长按拖动调整顺序</view><view class="mg-search-toggle" bindtap="toggleSearch"><view class="mg-search-icon"></view><text>{{searchOpen ? '收起' : '搜索'}}</text></view></view>
   <view class="mg-tab"><segmented items="{{tabItems}}" selected="{{tab}}" bindchange="switchTab" /></view>
   <view wx:if="{{searchOpen}}" class="mg-search-field"><view class="mg-search-icon"></view><input class="mg-search-input" value="{{searchQuery}}" focus="{{searchFocus}}" confirm-type="search" placeholder="搜索名称或上级项目" bindinput="inputSearch"/><view wx:if="{{searchQuery}}" class="mg-search-clear" bindtap="clearSearch">清除</view></view>
@@ -12,7 +13,7 @@
   </view>
 
   <view wx:else class="mg-list">
-    <view wx:for="{{visibleRows}}" wx:key="projectId" class="mg-item {{item.indent === 0 ? 'mg-item-root' : ''}} {{draggingId === item.projectId ? 'mg-item-dragging' : ''}} {{draggingId && draggingId !== item.projectId ? 'mg-item-shifting' : ''}} {{sortSettling && draggingId === item.projectId ? 'mg-item-settling' : ''}} {{dropTargetId === item.projectId ? (dropAfter ? 'mg-item-drop-after' : 'mg-item-drop-before') : ''}}" style="padding-left:{{item.indent}}rpx;transform:translateY({{draggingId === item.projectId ? dragOffset : (item.sortShift || 0)}}px)" data-id="{{item.projectId}}" aria-label="长按并拖动调整同级顺序" bindtouchstart="sortTouchStart" bindlongpress="sortLongPress" bindtouchmove="sortTouchMove" bindtouchend="sortTouchEnd" bindtouchcancel="sortTouchCancel">
+    <view wx:for="{{visibleRows}}" wx:key="projectId" class="tablet-inline mg-item {{item.indent === 0 ? 'mg-item-root' : ''}} {{draggingId === item.projectId ? 'mg-item-dragging' : ''}} {{draggingId && draggingId !== item.projectId ? 'mg-item-shifting' : ''}} {{sortSettling && draggingId === item.projectId ? 'mg-item-settling' : ''}} {{dropTargetId === item.projectId ? (dropAfter ? 'mg-item-drop-after' : 'mg-item-drop-before') : ''}}" style="--tablet-value-padding-left:calc({{item.indent}} * .6px);padding-left:var(--tablet-length-padding-left, {{item.indent}}rpx);transform:translateY({{draggingId === item.projectId ? dragOffset : (item.sortShift || 0)}}px)" data-id="{{item.projectId}}" aria-label="长按并拖动调整同级顺序" bindtouchstart="sortTouchStart" bindlongpress="sortLongPress" bindtouchmove="sortTouchMove" bindtouchend="sortTouchEnd" bindtouchcancel="sortTouchCancel">
       <view wx:if="{{!item.searchResult}}" class="mg-tree-toggle {{item.childCount ? '' : 'mg-tree-empty'}}" data-id="{{item.projectId}}" bindtap="toggleGroup">{{item.childCount ? (item.expanded ? '⌄' : '›') : ''}}</view>
       <view class="mg-main" data-id="{{item.projectId}}" bindtap="goProject">
         <view class="mg-name-line"><view class="mg-name ellipsis">{{item.name}}</view></view>

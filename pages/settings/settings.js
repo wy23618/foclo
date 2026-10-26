@@ -1,1 +1,1 @@
-Page(require('./settings-definition')(getApp()));
+Page(require('../../utils/share').withShare(require('./settings-definition')(getApp())));

@@ -725,6 +725,12 @@ function createService(adapter, options) {
   }
 
   async function recoveredEnvelope(kind, desc, input) {
+    if (kind === "reduceSessionDuration") {
+      const saved = desc.ops.find(op => op.t === "set" && op.k === repo.sessionKey(input.sessionId));
+      if (!saved) return failEnvelope("RECOVERY_REQUIRED", "记录调整尚未完成");
+      return okEnvelope({ sessionId: input.sessionId, durationSeconds: saved.v.durationSeconds,
+        endedAtSec: saved.v.endedAtSec, recovered: true });
+    }
     if (kind === "deleteSession") {
       const removed = desc.ops.find(
         (op) => op.t === "remove" && op.k === repo.sessionKey(input.sessionId),
@@ -1351,6 +1357,47 @@ function createService(adapter, options) {
       });
       applyMeta(meta);
       return { deletedSessionId: id };
+    });
+  }
+
+  async function reduceSessionDuration(input) {
+    return command("reduceSessionDuration", input, async () => {
+      const id = input.sessionId;
+      if (typeof id !== "string" || !id)
+        throw coded("INVALID_SESSION", "请选择要减少时长的记录");
+      const session = await adapter.get(repo.sessionKey(id));
+      if (!session) throw coded("SESSION_NOT_FOUND", "这条记录已不存在");
+      const invalid = validateSession(session);
+      if (invalid) throw coded("DATA_CORRUPT", invalid);
+      if (state.meta.activeSessionId === id)
+        throw coded("SESSION_IN_PROGRESS", "请先结束计时后再调整");
+      const reduced = require("./session-reduction").reduceSession(session, input.durationSeconds);
+      const now = nowSnapshot();
+      reduced.updatedAtSec = Math.max(now, session.updatedAtSec || 0);
+      reduced.revision = (session.revision || 0) + 1;
+      const span = await prepareSpan(reduced);
+      const first = time.dayIndex(reduced.startedAtSec);
+      const last = time.dayIndex(Math.max(reduced.startedAtSec, reduced.endedAtSec - 1));
+      const keptDays = new Set();
+      for (let day = first; day <= last; day++) keptDays.add(time.dayKeyOfIndex(day));
+      const ops = span.ops.slice(), patches = [];
+      for (const key of (await adapter.keys()).filter(key => key.indexOf("yotick/d/") === 0)) {
+        const day = key.slice("yotick/d/".length);
+        if (keptDays.has(day)) continue;
+        const ids = await adapter.get(key);
+        if (!Array.isArray(ids)) throw coded("DATA_CORRUPT", "记录索引异常，请先修复本地数据");
+        if (!ids.includes(id)) continue;
+        const kept = ids.filter(value => value !== id);
+        ops.push(kept.length ? { t: "set", k: key, v: kept } : { t: "remove", k: key });
+        patches.push({ day, kept });
+      }
+      const meta = bumpedMeta(now);
+      ops.push({ t: "set", k: repo.sessionKey(id), v: reduced }, { t: "set", k: repo.META, v: meta });
+      await persist(input.operationId, ops);
+      span.apply();
+      patches.forEach(({ day, kept }) => { state.dayCache[day] = kept.slice(); });
+      applyMeta(meta);
+      return { sessionId: id, durationSeconds: reduced.durationSeconds, endedAtSec: reduced.endedAtSec };
     });
   }
 
@@ -2244,6 +2291,7 @@ function createService(adapter, options) {
     restoreProject,
     deleteProject,
     deleteSession,
+    reduceSessionDuration,
     getCurrent,
     peekCurrent,
     getRecords,

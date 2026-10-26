@@ -1,5 +1,6 @@
 <safe-nav theme="{{themeClass}}" title="设置" back-text="‹ 返回" bindback="goBack"/>
-<view class="container with-tabbar settings-home theme-{{themeClass}}">
+<view class="container with-tabbar {{landscapeLayout?'landscape-shell':''}} settings-home theme-{{themeClass}}">
+  <view class="landscape-only landscape-heading"><view class="landscape-title">设置</view><view class="landscape-subtitle">专注习惯、外观与账号，在这里调整。</view></view>
   <view class="settings-account-card" bindtap="openAccount" hover-class="settings-account-pressed" hover-stay-time="90">
     <view class="settings-account-avatar">
       <image wx:if="{{settingsAvatar}}" src="{{settingsAvatar}}" mode="aspectFill"/>
@@ -15,27 +16,14 @@
     <view class="settings-account-action">{{settingsAccountAction}}<view class="settings-account-arrow"></view></view>
   </view>
   <view class="settings-intro">调整专注习惯、外观与记录管理。</view>
-  <view wx:for="{{groups}}" wx:key="title" class="settings-group">
-    <view class="settings-group-title">{{item.title}}</view>
-    <view class="settings-card">
-      <block wx:for="{{item.items}}" wx:for-item="entry" wx:key="key">
-      <button wx:if="{{entry.key === 'feedback'}}" class="settings-entry settings-feedback" open-type="feedback" hover-class="settings-feedback-pressed">
-        <view class="settings-copy">
-          <text class="settings-name">{{entry.title}}</text>
-          <text class="settings-hint">{{entry.hint}}</text>
-        </view>
-        <view class="settings-arrow"></view>
-      </button>
-      <view wx:else class="settings-entry" data-key="{{entry.key}}" bindtap="openSection">
-        <view class="settings-copy">
-          <text class="settings-name">{{entry.title}}</text>
-          <text class="settings-hint">{{entry.hint}}</text>
-        </view>
-        <text wx:if="{{entry.value}}" class="settings-value">{{entry.value}}</text>
-        <view class="settings-arrow"></view>
-      </view>
-      </block>
+  <view wx:if="{{landscapeLayout}}" class="landscape-settings-columns">
+    <view class="landscape-settings-column">
+      <block wx:for="{{groups}}" wx:key="title"><view wx:if="{{index % 2 === 0}}" class="settings-group"><include src="settings-group.wxml"/></view></block>
+    </view>
+    <view class="landscape-settings-column">
+      <block wx:for="{{groups}}" wx:key="title"><view wx:if="{{index % 2 === 1}}" class="settings-group"><include src="settings-group.wxml"/></view></block>
     </view>
   </view>
+  <block wx:else><view wx:for="{{groups}}" wx:key="title" class="settings-group"><include src="settings-group.wxml"/></view></block>
 </view>
-<main-nav demo-session="{{demoSession}}" selected="{{2}}" theme="{{themeClass}}"/>
+<main-nav landscape-layout="{{landscapeLayout}}" demo-session="{{demoSession}}" selected="{{2}}" theme="{{themeClass}}"/>

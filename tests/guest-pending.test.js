@@ -40,3 +40,19 @@ test('same name maps inside parent while genuinely new projects remain visible',
   await guest.set('yotick/projects',{p:{id:'p',name:'数学'},new:{id:'new',name:'英语'}});
   assert.deepEqual(await pendingGuest(raw,account),{projectCount:1,sessionCount:0,hasData:true});
 });
+
+test('independent overlapping guest records warn before import while exact duplicates remain excluded', async () => {
+  const {raw,guest,account} = await setup();
+  await account.set('yotick/s/account', { ...session('account'), startedAtSec: 10, endedAtSec: 100, durationSeconds: 90 });
+  await guest.set('yotick/s/independent', { ...session('independent'), startedAtSec: 20, endedAtSec: 40, durationSeconds: 20 });
+  await guest.set('yotick/s/exact-copy', { ...session('exact-copy'), startedAtSec: 10, endedAtSec: 100, durationSeconds: 90 });
+  assert.deepEqual(await pendingGuest(raw,account), {projectCount:0,sessionCount:1,hasData:true,overlapSessionCount:1});
+});
+
+test('guest records inside an account pause are not falsely flagged as overlapping focus', async () => {
+  const {raw,guest,account} = await setup();
+  await account.set('yotick/s/account', { ...session('account'), startedAtSec:10, endedAtSec:100, durationSeconds:70,
+    pauses:[{startedAtSec:20,endedAtSec:40,durationSeconds:20}] });
+  await guest.set('yotick/s/independent', { ...session('independent'), startedAtSec:20, endedAtSec:40,durationSeconds:20 });
+  assert.deepEqual(await pendingGuest(raw,account), {projectCount:0,sessionCount:1,hasData:true});
+});

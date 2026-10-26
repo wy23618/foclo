@@ -113,5 +113,5 @@ const definition = {
     this.runtimeApp = app;
     if (load) return load.call(this, options || {});
   };
-  return definition;
+  return require('../../utils/window-layout').withLandscapeLayout(definition);
 };

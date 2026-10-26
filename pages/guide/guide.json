@@ -1,4 +1,5 @@
 {
   "navigationBarTitleText": "使用指南",
-  "enablePullDownRefresh": false
+  "enablePullDownRefresh": false,
+  "pageOrientation": "auto"
 }

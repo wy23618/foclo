@@ -7,6 +7,7 @@ const PLOT_H = 180; // rpx
 
 Component({
   properties: {
+    landscapeLayout: { type: Boolean, value: false },
     series: { type: Array, value: [], observer: 'build' }
   },
   data: { cols: [], plotWidth: 0, scrollTarget: '' },

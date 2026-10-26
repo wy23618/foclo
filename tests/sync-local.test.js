@@ -20,6 +20,120 @@ async function fixture() {
   assert.equal((await service.init()).ok, true);
   return { raw, adapter, clock, service };
 }
+
+async function cleanCloudFixture(options = {}) {
+  const f = await fixture();
+  const p = (await f.service.createProject({ operationId: uuid(), name: '批次同步项目' })).data.project;
+  for (const task of await local.pending(f.adapter)) await f.adapter.remove(local.itemKey(task.operationId));
+  const statuses = [];
+  const worker = createWorker({ service: f.service, deviceId: uuid(), onStatus: s => statuses.push(s),
+    request: async (method, route) => {
+      assert.equal(method, 'GET'); assert.equal(route, '/sync/pull');
+      return { changes: [], cursor: 'current', hasMore: false };
+    }, ...options });
+  const s = { id: uuid(), projectId: p.id, status: 'COMPLETED', startedAtSec: f.clock.now - 120,
+    endedAtSec: f.clock.now - 60, durationSeconds: 60, targetSeconds: null, pauses: [],
+    createdAtSec: f.clock.now - 120, updatedAtSec: f.clock.now - 60 };
+  const change = { entityType: 'session', entityId: s.id, serverVersion: '1', data: s, deleted: false };
+  return { ...f, p, s, change, worker, statuses };
+}
+
+test('one pull page applies create then delete without resurrecting facts or indexes', async () => {
+  const f = await cleanCloudFixture();
+  try {
+    await f.worker.apply([f.change, { ...f.change, serverVersion: '2', deleted: true }], 'done');
+    assert.equal(await f.adapter.get('yotick/s/' + f.s.id), undefined);
+    assert.equal((await f.adapter.get(local.shadowKey('session', f.s.id))).deleted, true);
+    for (const key of await f.adapter.keys())
+      if (/^yotick\/[dp]\//.test(key)) assert.ok(!(await f.adapter.get(key)).includes(f.s.id));
+    assert.equal((await f.adapter.get(local.STATE)).cursor, 'done');
+  } finally { f.worker.stop(); }
+});
+
+test('staged shadow versions reject stale changes within the same pull page', async () => {
+  const f = await cleanCloudFixture();
+  try {
+    await f.worker.apply([{ ...f.change, serverVersion: '3' }, { ...f.change, serverVersion: '2', deleted: true }], 'done');
+    assert.ok(await f.adapter.get('yotick/s/' + f.s.id));
+    assert.equal((await f.adapter.get(local.shadowKey('session', f.s.id))).serverVersion, '3');
+  } finally { f.worker.stop(); }
+});
+
+test('new client reconciles deleted shadows even when the cursor already advanced', async () => {
+  const f = await cleanCloudFixture();
+  try {
+    await f.worker.apply([f.change], 'already-advanced');
+    await f.adapter.set(local.shadowKey('session', f.s.id), { ...f.change, serverVersion: '2', deleted: true });
+    await f.worker.trigger();
+    assert.equal(await f.adapter.get('yotick/s/' + f.s.id), undefined);
+    assert.equal(f.statuses.at(-1).state, 'synced');
+  } finally { f.worker.stop(); }
+});
+
+test('deleted-shadow repair preserves an unsent edit as a conflict instead of discarding it', async () => {
+  const f = await cleanCloudFixture();
+  try {
+    await f.worker.apply([f.change], 'already-advanced');
+    const operationId = uuid();
+    await f.adapter.set(local.itemKey(operationId), { operationId, kind: 'session.reduceDuration',
+      entityId: f.s.id, related: [], payload: { ...f.s, durationSeconds: 30 }, localOrder: 1, status: 'pending' });
+    await f.adapter.set(local.shadowKey('session', f.s.id), { ...f.change, serverVersion: '2', deleted: true });
+    await f.worker.trigger();
+    assert.ok(await f.adapter.get('yotick/s/' + f.s.id));
+    assert.equal((await f.adapter.get(local.itemKey(operationId))).status, 'conflict');
+    assert.equal(f.statuses.at(-1).state, 'conflict');
+    const conflicts = (await f.adapter.keys()).filter(k => k.startsWith('yotick/conflicts/'));
+    assert.equal(conflicts.length, 1);
+    assert.equal((await f.adapter.get(conflicts[0])).code, 'ENTITY_DELETED');
+  } finally { f.worker.stop(); }
+});
+
+test('foreground polling receives other-device changes, suspends in background, and resumes immediately', async () => {
+  let pulls = 0;
+  const f = await cleanCloudFixture({ pollIntervalMs: 10, request: async () => {
+    pulls++; return { changes: [], cursor: 'latest', hasMore: false };
+  } });
+  try {
+    await f.worker.trigger();
+    await new Promise(resolve => setTimeout(resolve, 45));
+    assert.ok(pulls >= 4);
+    f.worker.suspend(); const paused = pulls;
+    await new Promise(resolve => setTimeout(resolve, 30));
+    assert.equal(pulls, paused);
+    await f.worker.resume(); assert.ok(pulls > paused);
+  } finally { f.worker.stop(); }
+});
+
+test('a late failure from an old account does not overwrite the new account status', async () => {
+  let reject, current = true;
+  const delayed = new Promise((_, no) => { reject = no; });
+  const statuses = [];
+  const f = await cleanCloudFixture({ isCurrent: () => current, onStatus: s => statuses.push(s), request: () => delayed });
+  try {
+    const running = f.worker.trigger();
+    await new Promise(resolve => setTimeout(resolve, 0));
+    current = false; reject(Object.assign(new Error('old request failed'), { code: 'NETWORK_ERROR' }));
+    await running;
+    assert.deepEqual(statuses.map(s => s.state), ['syncing']);
+  } finally { f.worker.stop(); }
+});
+
+test('two devices converge on identical facts and an offline device applies a remote deletion on reconnect', async () => {
+  const a = await cleanCloudFixture(), b = await cleanCloudFixture();
+  try {
+    const project = { ...a.p, name: '共享云端项目' };
+    const changes = [{ entityType: 'project', entityId: project.id, serverVersion: '1', deleted: false, data: project }, a.change];
+    await a.worker.apply(changes, '1'); await b.worker.apply(changes, '1');
+    assert.deepEqual(local.sessionPayload(await a.adapter.get('yotick/s/' + a.s.id)), local.sessionPayload(await b.adapter.get('yotick/s/' + a.s.id)));
+    const deleted = { ...a.change, serverVersion: '2', deleted: true };
+    await a.worker.apply([deleted], '2');
+    assert.ok(await b.adapter.get('yotick/s/' + a.s.id), 'offline cache retains its old view until reconnect');
+    await b.worker.apply([deleted], '2');
+    assert.equal(await a.adapter.get('yotick/s/' + a.s.id), undefined);
+    assert.equal(await b.adapter.get('yotick/s/' + a.s.id), undefined);
+    assert.deepEqual(await a.adapter.get(local.shadowKey('session', a.s.id)), await b.adapter.get(local.shadowKey('session', a.s.id)));
+  } finally { a.worker.stop(); b.worker.stop(); }
+});
 test("frozen rejected uploads refresh conflict cloud versions without losing proposals or a saved resolution", async () => {
   const f = await fixture();
   const p = await f.service.createProject({ operationId: uuid(), name: "本地提议" });

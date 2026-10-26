@@ -1,5 +1,6 @@
 {
   "navigationBarTitleText": "专注统计",
+  "enablePullDownRefresh": true,
   "usingComponents": {
     "project-list": "/components/project-list/project-list",
     "heatmap-card": "/components/heatmap-card/heatmap-card",
@@ -12,5 +13,6 @@
     "subject-picker": "/components/subject-picker/subject-picker",
     "main-nav": "/components/main-nav/main-nav"
   },
-  "navigationStyle": "custom"
+  "navigationStyle": "custom",
+  "pageOrientation": "auto"
 }

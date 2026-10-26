@@ -1,0 +1,1 @@
+<view wx:if="{{dailyGoalEnabled}}" class="card stats-goal"><view class="row-between"><view class="title-sm">今日目标</view><view class="muted small">{{dailyGoalPercent}}%</view></view><view class="goal-track"><view class="goal-fill" style="width:{{dailyGoalPercent}}%"></view></view><view class="muted small">{{dailyGoalText}} / {{dailyGoalMinutes}} 分钟</view></view>

@@ -94,3 +94,10 @@
 .picker-manage-entry{min-height:calc(72 * var(--picker-unit))}
 .picker-manage{font-size:calc(22 * var(--picker-unit));color:var(--text-muted)}
 .picker-footer-close{display:flex;align-items:center;justify-content:center;min-height:calc(72 * var(--picker-unit));margin:0;padding:0 calc(22 * var(--picker-unit));background:var(--bg-control-soft);border-radius:calc(14 * var(--picker-unit));color:var(--accent);font-size:calc(24 * var(--picker-unit));line-height:1.4}
+
+
+@media (min-width:500px) and (min-device-width:520px) and (min-device-height:520px) {
+  .picker-card { max-width:560px; }
+  .picker-close, .picker-manage, .picker-top-action { min-height:44px; }
+  .picker-close { min-width:44px; }
+}

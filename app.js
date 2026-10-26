@@ -33,6 +33,9 @@ App({
     // 回前台统一走服务：恢复待提交、结算到期（不依赖专注页轮询，L11）
     const service = this.globalData.service;
     if (service) service.getCurrent();
-    if (this.globalData.accounts) this.globalData.accounts.trigger();
+    if (this.globalData.accounts) this.globalData.accounts.resumeSync();
+  },
+  onHide() {
+    if (this.globalData.accounts) this.globalData.accounts.suspendSync();
   },
 });

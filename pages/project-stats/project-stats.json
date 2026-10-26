@@ -12,5 +12,6 @@
     "subject-tree": "/components/subject-tree/subject-tree",
     "project-list": "/components/project-list/project-list"
   },
-  "navigationStyle": "custom"
+  "navigationStyle": "custom",
+  "pageOrientation": "auto"
 }

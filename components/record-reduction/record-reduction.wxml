@@ -1,0 +1,27 @@
+<root-portal wx:if="{{opened}}">
+  <view class="reduction-overlay theme-{{theme}}" style="{{overlayStyle}}" catchtouchmove="noop">
+    <view class="reduction-mask" bindtap="close"></view>
+    <view class="reduction-sheet">
+      <view class="reduction-heading"><view class="reduction-title">调整记录时长</view><button class="reduction-close" disabled="{{busy}}" bindtap="close" aria-label="关闭">×</button></view>
+      <scroll-view class="reduction-body" scroll-y="{{true}}" enhanced="{{true}}" show-scrollbar="{{false}}" style="height:{{bodyHeight}}px"><view class="reduction-body-content">
+        <view class="reduction-context"><view class="reduction-project">{{projectName}}</view><view wx:if="{{recordTime}}" class="reduction-time">{{recordTime}}</view></view>
+        <view class="reduction-editor">
+          <view class="reduction-wheel-labels"><text class="reduction-wheel-label">小时</text><text class="reduction-wheel-label">分钟</text></view>
+          <picker-view class="reduction-wheel {{busy?'reduction-wheel-busy':''}}" value="{{wheelValue}}" immediate-change="{{true}}" indicator-style="height:44px;border-top:1px solid var(--border);border-bottom:1px solid var(--border);" mask-style="background-image:none;background-color:transparent;" bindchange="pick" bindpickstart="pickStart" bindpickend="pickEnd">
+            <picker-view-column><view wx:for="{{hourOptions}}" wx:key="*this" class="reduction-option {{wheelValue[0]===item?'reduction-option-selected':''}}">{{item}}</view></picker-view-column>
+            <picker-view-column><view wx:for="{{minuteOptions}}" wx:key="*this" class="reduction-option {{wheelValue[1]===item?'reduction-option-selected':''}}">{{item}}</view></picker-view-column>
+          </picker-view>
+          <view class="reduction-feedback">{{message}}</view>
+        </view>
+        <view class="reduction-summary"><view class="reduction-comparison">
+          <view class="reduction-comparison-item"><text class="reduction-comparison-label">原时长</text><text class="reduction-before">{{originalText}}</text></view>
+          <text class="reduction-arrow">→</text>
+          <view class="reduction-comparison-item reduction-result"><text class="reduction-comparison-label">调整后时长</text><text class="reduction-value {{valid?'reduction-value-changed':''}}">{{remainingText}}</text></view>
+        </view>
+        <view class="reduction-note">只能调短记录；保存后无法恢复。</view></view>
+        <view wx:if="{{error}}" class="reduction-error">{{error}}</view>
+      </view></scroll-view>
+      <view class="reduction-actions"><button class="reduction-cancel" disabled="{{busy}}" bindtap="close">取消</button><button class="reduction-confirm" disabled="{{!valid || busy || wheelEditing}}" loading="{{busy}}" bindtap="confirm">{{busy ? '正在保存' : '确认调整'}}</button></view>
+    </view>
+  </view>
+</root-portal>

@@ -1,0 +1,1 @@
+<view class="day-records" wx:if="{{preset==='today'}}"><day-detail theme="{{themeClass}}" demo-session="{{demoSession}}" id="dayDetail" summary="{{false}}" distribution="{{false}}" date="{{selectedDate}}" controls="{{false}}" mode="{{mode}}" start="{{rangeStart}}" end="{{rangeEnd}}" binddatechange="selectDay" bindrecorddeleted="load" bindrecordchanged="load" /></view>

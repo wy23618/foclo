@@ -2,6 +2,27 @@ const test=require('node:test');
 const assert=require('node:assert/strict');
 const {createRequest}=require('../sync/request');
 const {LAN_DEBUG_API_HOST,FOCLO_API_BASE_URL}=require('../sync/environment');
+
+test('account switch rejects a late successful response from the previous credentials', async () => {
+  let finish;
+  const response = new Promise(resolve => { finish = resolve; });
+  const request = createRequest({ baseUrl: 'https://test.invalid', credentials: { accessToken: 'account-a' },
+    saveCredentials: async () => {}, transport: () => response });
+  const reading = request('GET', '/me');
+  request.cancel(); finish({ userId: 'account-a' });
+  await assert.rejects(reading, { code: 'CANCELLED' });
+});
+
+test('cancelled unauthorized requests never refresh old-account credentials', async () => {
+  let fail, calls = 0;
+  const response = new Promise((_, reject) => { fail = reject; });
+  const request = createRequest({ baseUrl: 'https://test.invalid', credentials: { accessToken: 'old', refreshToken: 'old-refresh' },
+    saveCredentials: async () => { throw new Error('old credentials must not be saved'); },
+    transport: () => { calls++; return response; } });
+  const reading = request('GET', '/me'); request.cancel();
+  fail(Object.assign(new Error('expired'), { status: 401 }));
+  await assert.rejects(reading, { code: 'CANCELLED' }); assert.equal(calls, 1);
+});
 test('DevTools development login requests can reach loopback HTTP through wx.request', async () => {
   const previousWx = global.wx;
   const seen = [];

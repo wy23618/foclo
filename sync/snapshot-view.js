@@ -22,11 +22,11 @@ async function buildSnapshotView(ctx, pageKeys, cursor) {
       protectedProjects.add(t.entityId);
       t.related.forEach((id) => protectedProjects.add(id));
     }
-    if (t.kind === "session.createCompleted") {
+    if (t.kind.startsWith("session.")) {
       dirtySessions.add(t.entityId);
-      protectedProjects.add(t.payload.projectId);
+      const fact = t.payload?.projectId ? t.payload : await adapter.get(repo.sessionKey(t.entityId));
+      if (fact?.projectId) protectedProjects.add(fact.projectId);
     }
-    if (t.kind === "session.delete") dirtySessions.add(t.entityId);
   }
   if (ctx.active) protectedProjects.add(ctx.active.projectId);
   for (const id of Array.from(protectedProjects)) {

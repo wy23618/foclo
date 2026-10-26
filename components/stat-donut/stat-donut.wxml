@@ -1,4 +1,4 @@
-<view class="chart theme-{{theme}} {{compact ? 'chart-compact' : ''}}" style="visibility:{{standaloneFull ? 'hidden' : 'visible'}}">
+<view class="chart theme-{{theme}} {{compact ? 'chart-compact' : ''}} {{compactEmpty && isEmpty ? 'chart-empty-compact' : ''}}" style="visibility:{{standaloneFull ? 'hidden' : 'visible'}}">
   <view wx:if="{{expandableCount && !singleExpand && !toolbarActions}}" class="expand-all-row">
     <view class="expand-all-button" hover-class="expand-all-button-hover" bindtap="toggleAll">{{allExpanded ? '收起全部' : '展开全部'}}</view>
   </view>

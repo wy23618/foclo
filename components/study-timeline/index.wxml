@@ -5,7 +5,7 @@
   </view>
 
   <block wx:if="{{managing}}">
-    <view class="management-hint">每条对应一次计时 · 删除后统计会更新</view>
+    <view class="management-hint">每条对应一次计时 · 可减少时长或删除记录</view>
     <view wx:if="{{!managementRows.length}}" class="empty">这一天没有可管理的记录</view>
     <block wx:if="{{managementRows.length}}">
       <view class="tl">

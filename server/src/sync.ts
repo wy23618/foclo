@@ -398,6 +398,37 @@ export async function executeOperation(
         { entityType: "session", entityId: p.id, serverVersion: "1", data },
       ];
     }
+  } else if (op.kind === "session.reduceDuration") {
+    validateSession(p);
+    requireValue(p.id === op.entityId);
+    const row = (await db.query(
+      "SELECT * FROM study_sessions WHERE space_id=$1 AND id=$2 AND generation=$3",
+      [space.id, op.entityId, space.generation],
+    )).rows[0];
+    cas(row, op.baseServerVersion);
+    const old = row.data;
+    requireValue(p.durationSeconds < old.durationSeconds && p.endedAtSec <= old.endedAtSec,
+      "INVALID_DURATION");
+    for (const key of ["projectId", "startedAtSec", "createdAtSec", "targetSeconds"])
+      requireValue(p[key] === old[key], "INVALID_DURATION");
+    requireValue(p.updatedAtSec >= old.updatedAtSec, "INVALID_DURATION");
+    const data = sessionData(p, space);
+    const pauses = old.pauses.filter((pause: any) => pause.startedAtSec < p.endedAtSec)
+      .map((pause: any) => ({ ...pause,
+        endedAtSec: Math.min(pause.endedAtSec, p.endedAtSec),
+        durationSeconds: Math.min(pause.endedAtSec, p.endedAtSec) - pause.startedAtSec,
+      }));
+    requireValue(digest(data.pauses) === digest(pauses), "INVALID_DURATION");
+    data.revision = (old.revision || 0) + 1;
+    const version = (BigInt(row.server_version) + 1n).toString();
+    await db.query("UPDATE study_sessions SET data=$3,server_version=$4 WHERE space_id=$1 AND id=$2",
+      [space.id, row.id, data, version]);
+    await db.query("DELETE FROM pauses WHERE space_id=$1 AND session_id=$2", [space.id, row.id]);
+    for (const pause of data.pauses)
+      await db.query("INSERT INTO pauses(space_id,id,session_id,data) VALUES($1,$2,$3,$4)",
+        [space.id, pause.id, row.id, pause]);
+    await log(db, space, "session", row.id, version, data);
+    changes = [{ entityType: "session", entityId: row.id, serverVersion: version, data }];
   } else if (op.kind === "session.delete") {
     const row = (
       await db.query(

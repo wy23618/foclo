@@ -1,7 +1,7 @@
 const demoContext = require('../../utils/demo-context');
 Component({
   options: { styleIsolation: 'isolated' },
-  properties: { demoSession: { type: String, value: '' },  selected: { type: Number, value: 0 }, hidden: { type: Boolean, value: false }, inline: { type: Boolean, value: false }, theme: { type: String, value: 'light' } },
+  properties: { demoSession: { type: String, value: '' }, landscapeLayout: Boolean, selected: { type: Number, value: 0 }, hidden: { type: Boolean, value: false }, inline: { type: Boolean, value: false }, theme: { type: String, value: 'light' } },
   data: { list: [
     { pagePath: '/pages/focus/focus', text: '专注' },
     { pagePath: '/pages/stats/stats', text: '统计' },

@@ -3,6 +3,7 @@ const time = require('../../core/time');
 const format = require('../../utils/format');
 const view = require('../../utils/view-data');
 const heatColor = require('../../utils/heat-color');
+const { responsiveMetrics, isTabletLandscape } = require('../../utils/window-layout');
 Component({
   options: { styleIsolation: 'apply-shared' },
   properties: { demoSession: { type: String, value: '' },
@@ -12,14 +13,16 @@ Component({
     topInset: { type: Number, value: 0 },
     standalone: { type: Boolean, value: false }
   },
-  data: { monthKey:'',currentMonth:'',monthTitle:'',scopeName:'全部项目',scopeOptions:[],scopeIndex:0,
+  data: { tabletLayout:false,landscapeLayout:false,monthKey:'',currentMonth:'',monthTitle:'',scopeName:'全部项目',scopeOptions:[],scopeIndex:0,
     grid:[],weekHead:[],monthTotalText:'0秒',activeDays:0,canGoNext:false,loading:true,error:'',
     scopePickerOpen:false,scopeLoading:false,scopeError:'',scopeQuery:'',scopeTreeRows:[],scopePickerRows:[],expandedScopeIds:[],recentScopes:[],selectedScopeId:'',
     transitionFrom:null,incomingClass:'',outgoingClass:'',dragPreview:null,dragPreviewOffset:0,dragOffset:0,dragAnimating:false,dragPreviewLoading:false },
   lifetimes: { attached(){this.seq=0;this.attachedReady=true;if(this.properties.opened)this.open();},
     detached(){this.seq++;this.attachedReady=false;} },
-  pageLifetimes: { show(){if(this.properties.opened&&this.returningFromDay){this.returningFromDay=false;this.load();}} },
+  pageLifetimes: { show(){if(this.properties.opened&&this.returningFromDay){this.returningFromDay=false;this.load();}},
+    resize(){this.measureLayout();this.gesture=null;this.stageWidth=0;if(this.properties.opened)wx.nextTick(()=>this.createSelectorQuery().select('.month-stage').boundingClientRect(rect=>{if(rect&&rect.width)this.stageWidth=rect.width;}).exec());} },
   methods: {
+    measureLayout(){let info;try{info=wx.getWindowInfo?wx.getWindowInfo():wx.getSystemInfoSync();}catch(e){}const tabletLayout=responsiveMetrics(info).tablet,landscapeLayout=isTabletLandscape(info);if(tabletLayout!==this.data.tabletLayout||landscapeLayout!==this.data.landscapeLayout)this.setData({tabletLayout,landscapeLayout});},
     onOpened(opened){if(!this.attachedReady)return;if(opened)this.open();else{this.seq++;this.transitionSeq=(this.transitionSeq||0)+1;this.gesture=null;this.dragTargetMonth='';this.dragReleasePending=false;clearTimeout(this.dragSettleTimer);this.setData({scopePickerOpen:false,scopeQuery:'',transitionFrom:null,incomingClass:'',outgoingClass:'',dragPreview:null,dragDirection:'',dragPreviewLoading:false,dragOffset:0,dragPreviewOffset:0,dragAnimating:false});}},
     onThemeChange(theme){
       if(!this.data.grid.length)return;
@@ -27,6 +30,7 @@ Component({
       this.setData({grid});
     },
     async open(){
+      this.measureLayout();
       const token=++this.seq,currentMonth=demoContext.todayFor(this).slice(0,7);
       this.scope=this.properties.scopeId||'';
       const keepGrid=this.gridMonthKey===currentMonth&&this.gridScope===(this.scope||'');

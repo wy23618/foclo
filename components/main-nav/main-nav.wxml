@@ -1,4 +1,5 @@
-<view wx:if="{{!hidden}}" class="tabbar theme-{{theme}}">
+<view wx:if="{{!hidden}}" class="tabbar {{landscapeLayout?'landscape-navigation':''}} theme-{{theme}}">
+  <view class="landscape-nav-brand" aria-hidden="true">F</view>
   <view
     wx:for="{{list}}"
     wx:key="pagePath"

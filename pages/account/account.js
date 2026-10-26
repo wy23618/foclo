@@ -6,8 +6,8 @@ const {
 
 const STATUS_LABELS = {
   guest: "仅保存在本机",
-  syncing: "正在保存",
-  synced: "已保存",
+  syncing: "正在同步",
+  synced: "已同步",
   pending: "等待保存",
   offline: "离线，资料已保存在本机",
   "upgrade-required": "空间升级待处理",
@@ -33,7 +33,7 @@ function formatTime(value) {
   const pad = (n) => String(n).padStart(2, "0");
   return Number.isNaN(date.getTime())
     ? "暂无同步记录"
-    : "最近保存：" + date.getFullYear() + "/" + pad(date.getMonth() + 1) + "/" +
+    : "最近同步：" + date.getFullYear() + "/" + pad(date.getMonth() + 1) + "/" +
       pad(date.getDate()) + " " + pad(date.getHours()) + ":" + pad(date.getMinutes()) + ":" + pad(date.getSeconds());
 }
 
@@ -310,7 +310,7 @@ Page({
   onLogout() {
     wx.showModal({
       title: "退出登录？",
-      content: "退出后使用游客模式，不会自动重新登录。账号记录和待同步内容都会保留。",
+      content: "退出后显示这台设备的游客记录，账号记录不会混入游客空间，也不会自动重新登录。未上传的账号修改留在原账号缓存里，下次登录同一账号后继续同步。换到其他账号看不到这些修改。",
       confirmText: "退出登录",
       success: (r) => {
         if (r.confirm) this.runAction("已退出登录", "logout");
@@ -319,8 +319,9 @@ Page({
   },
 
   onSync() {
-    this.runAction("已开始同步", "trigger");
+    this.runAction("账号记录已刷新", "refreshRecords");
   },
+  onPullDownRefresh(){return require('../../utils/refresh-records').refreshRecords(this,getApp(),()=>this.refresh());},
 
   toggleAdvanced() { this.setData({ advancedOpen: !this.data.advancedOpen }); },
 
@@ -486,7 +487,7 @@ Page({
     wx.showModal({
       title: "重新下载记录？",
       content:
-        "从账号重新下载已保存的记录，用于解决这台设备显示不完整的问题。不会删除账号记录。",
+        "以当前账号云端数据为准，重新建立这台设备的显示缓存；云端已经删除的记录也会从本机显示中移除。不会删除云端记录或游客原记录。存在未上传修改、冲突或进行中的计时时，会暂停操作。",
       confirmText: "重新下载",
       success: (r) => {
         if (r.confirm)
@@ -548,22 +549,40 @@ Page({
     const item = this.data.conflicts.find((c) => c.id === id);
     if (!item) return;
     if (item.isDeleted) {
-      this.setData({
-        recoveryPanel: true,
-        recoveryConflictId: id,
-        recoveryProjectId: "",
-        recoveryName: "",
+      if (!item.cloud?.deleted) {
+        this.setData({ recoveryPanel:true, recoveryConflictId:id, recoveryProjectId:"", recoveryName:"" });
+        return;
+      }
+      wx.showModal({
+        title: "账号中这项内容已删除",
+        content: "「按云端删」：这台设备也移除它，本机未同步修改保留在恢复副本中。\n「另存副本」：先选择项目，再把需要的本机内容作为新记录保存，不撤销原来的云端删除。",
+        confirmText: "按云端删",
+        cancelText: "另存副本",
+        success: result => {
+          if (result.confirm) this.runAction("已按云端更新本机", "resolveConflict", [id, "cloud"]);
+          else if (result.cancel) this.setData({ recoveryPanel:true, recoveryConflictId:id, recoveryProjectId:"", recoveryName:"" });
+        },
       });
       return;
     }
     wx.showActionSheet({
-      itemList: ["使用账号已保存的内容", "保留这台设备的修改并改名"],
+      itemList: ["按云端内容更新本机", "用本机修改更新账号"],
       success: (r) => {
-        if (r.tapIndex === 0)
-          this.runAction("已使用账号内容", "resolveConflict", [id, "cloud"]);
+        if (r.tapIndex === 0) wx.showModal({
+          title: "以云端内容为准？",
+          content: "这项内容会显示账号云端版本，本机未同步的冲突修改不再上传，并保留在恢复副本中。不会改动账号中的其他记录。",
+          confirmText:"按云端用", cancelText:"先不处理",
+          success: result => { if (result.confirm) this.runAction("已按云端更新本机", "resolveConflict", [id,"cloud"]); },
+        });
+        else if (r.tapIndex === 1 && item.code !== "NAME_CONFLICT") wx.showModal({
+          title: "把本机修改提交到账号？",
+          content: "这项本机修改会重新提交到当前账号。成功后，其他设备也会下载这项修改；云端若又有新变化，会再次提示冲突。原冲突资料保留在恢复副本中。",
+          confirmText:"提交修改", cancelText:"先不处理",
+          success: result => { if (result.confirm) this.runAction("本机修改已重新提交", "resolveConflict", [id,"local",{}]); },
+        });
         else if (r.tapIndex === 1)
           wx.showModal({
-            title: "本地项目新名称",
+            title: "换个名称保存本机项目",
             editable: true,
             placeholderText: "输入新名称",
             content: (item.local && item.local.name) || "",

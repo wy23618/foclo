@@ -28,14 +28,9 @@ const definition = {
   onLoad(){
     this.race=createRace();this.dashboard=buildDashboard([],[]);
     this.setData({startDate:view.today(),endDate:view.today()});
-    if(getCurrentPages().length===1){
-      this.redirectingToFocus=true;
-      navigation.reLaunch({url:'/pages/focus/focus',success:()=>setTimeout(()=>navigation.navigateTo({url:'/pages/stats/stats'}),0)});
-    }
   },
   onNavHeightChange(e){this.setData({filterTop:e.detail.height});},
   async onShow(){
-    if(this.redirectingToFocus)return;
     require('../../utils/theme').applyPageTheme(this);
     const returningFromSubpage=!!this.hasShown;
     this.hasShown=true;
@@ -124,12 +119,9 @@ const definition = {
   onOverlayClick(){if(this.pageOverlayKind==='subjects'){const picker=this.selectComponent('#subjectPicker');if(picker&&picker.close)picker.close();else this.closeSubjects();}},
   chooseSubject(e){if(e.detail.projectId)this.goProject(e);else this.closeSubjects();},
   selectDay(e){this.returningFromDay=true;navigation.navigateTo({url:'/pages/day-stats/day-stats?date='+e.detail.date,fail:()=>{this.returningFromDay=false;}});},
-  goBack(){wx.navigateBack({fail:()=>(runtime.navigation || require('../../utils/main-navigation')).openMainTab(0)});},
-  goFocus(){
-    const pages=getCurrentPages(),index=pages.findIndex(page=>page.route==='pages/focus/focus');
-    if(index>=0&&index<pages.length-1)wx.navigateBack({delta:pages.length-1-index});
-    else navigation.reLaunch({url:'/pages/focus/focus'});
-  },refresh(){return this.load();},
+  goBack(){(runtime.navigation || require('../../utils/main-navigation')).openMainTab(0);},
+  goFocus(){(runtime.navigation || require('../../utils/main-navigation')).openMainTab(0);},refresh(){return this.load();},
+  onPullDownRefresh(){return require('../../utils/refresh-records').refreshRecords(this,app,()=>this.load());},
   goProject(e){const id=(e.detail&&e.detail.projectId)||e.currentTarget.dataset.id;if(!id)return;let url='/pages/project-stats/project-stats?id='+encodeURIComponent(id)+'&mode='+this.data.mode+'&preset='+this.data.preset;if(this.data.preset==='custom')url+='&startDate='+this.data.startDate+'&endDate='+this.data.endDate;this.openSubpage('project',url);},
   goHeatmap(){require('../../utils/heatmap-modal').openHeatmap.call(this);},
   closeHeatmap(){require('../../utils/heatmap-modal').closeHeatmap.call(this);},
@@ -145,5 +137,5 @@ const definition = {
     this.runtimeApp = app;
     if (load) return load.call(this, options || {});
   };
-  return definition;
+  return require('../../utils/window-layout').withLandscapeLayout(definition);
 };

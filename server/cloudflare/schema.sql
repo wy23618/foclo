@@ -1,4 +1,5 @@
 -- Cloudflare schema v1; empty cloud store only. Legacy PostgreSQL migrations are retained.
+CREATE TABLE IF NOT EXISTS focus_presence(space_id TEXT NOT NULL REFERENCES spaces(id) ON DELETE CASCADE,device_id TEXT NOT NULL,generation INTEGER NOT NULL,session_id TEXT NOT NULL,started_at_sec INTEGER NOT NULL,expires_at TEXT NOT NULL,PRIMARY KEY(space_id,device_id));
 
 CREATE TABLE IF NOT EXISTS schema_migrations(version integer PRIMARY KEY, applied_at TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ','now')));
 CREATE TABLE IF NOT EXISTS users(id TEXT PRIMARY KEY, status text NOT NULL DEFAULT 'active' CHECK(status IN ('active','deleted')), created_at TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ','now')));

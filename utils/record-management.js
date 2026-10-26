@@ -29,6 +29,7 @@ function managementRows(records) {
       durationSeconds: seconds,
       color: record.color,
       canDelete: complete,
+      canReduce: complete && seconds >= 60,
       statusText: complete ? '已完成' : record.paused ? '暂停中' : '进行中',
       crossDay
     };
@@ -41,4 +42,21 @@ function deletionMessage(row) {
     '\n删除后将从统计中移除，无法撤销。';
 }
 
-module.exports = { managementRows, deletionMessage };
+function exactDuration(seconds) {
+  const hours = Math.floor(seconds / 3600), minutes = Math.floor(seconds % 3600 / 60), rest = seconds % 60;
+  return [hours ? hours + '小时' : '', minutes ? minutes + '分钟' : '', rest ? rest + '秒' : ''].join('') || '0秒';
+}
+
+function reductionPreview(duration, minutes, seconds) {
+  const min = String(minutes).trim(), sec = String(seconds).trim();
+  if ((!min && !sec) || !/^\d*$/.test(min) || !/^\d*$/.test(sec))
+    return { valid: false, message: '请输入需要减少的时长' };
+  const amount = Number(min || 0) * 60 + Number(sec || 0);
+  if (!Number.isSafeInteger(amount) || Number(sec || 0) > 59)
+    return { valid: false, message: '秒数请填写 0–59' };
+  if (amount <= 0) return { valid: false, message: '减少的时长需要大于零' };
+  if (amount > duration) return { valid: false, message: '不能超过当前记录的时长' };
+  return { valid: true, reduceSeconds: amount, remainingText: exactDuration(duration - amount), message: '' };
+}
+
+module.exports = { managementRows, deletionMessage, exactDuration, reductionPreview };

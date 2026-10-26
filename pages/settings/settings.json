@@ -4,5 +4,6 @@
   "usingComponents": {
     "safe-nav": "/components/safe-nav/safe-nav",
     "main-nav": "/components/main-nav/main-nav"
-  }
+  },
+  "pageOrientation": "auto"
 }

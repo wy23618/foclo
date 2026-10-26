@@ -82,6 +82,7 @@ before(async () => {
     "003_deletion_requests.sql",
     "004_device_sessions.sql",
     "005_client_privileges.sql",
+    "006_focus_presence.sql",
   ])
     await pool.query(
       await readFile(new URL("../migrations/" + f, import.meta.url), "utf8"),
@@ -164,7 +165,7 @@ test("deployment migrations serialize concurrent runners and runtime role cannot
       applyMigrations(target, directory),
       applyMigrations(target, directory),
     ]);
-    assert.deepEqual(applied.flat().sort(), [1, 2, 3, 4, 5]);
+    assert.deepEqual(applied.flat().sort(), [1, 2, 3, 4, 5, 6]);
     assert.deepEqual(await applyMigrations(target, directory), []);
     const cli = await promisify(execFile)(
       process.execPath,
@@ -193,7 +194,7 @@ test("deployment migrations serialize concurrent runners and runtime role cannot
     assert.equal(cli.stdout, "");
     const broken = await mkdtemp(join(tmpdir(), "yotick-bad-migration-"));
     await writeFile(
-      join(broken, "006_failure.sql"),
+      join(broken, "999_failure.sql"),
       "BEGIN; CREATE TABLE migration_failure(id integer); SELECT deliberately_missing_column; COMMIT;",
     );
     await assert.rejects(
@@ -209,7 +210,7 @@ test("deployment migrations serialize concurrent runners and runtime role cannot
     assert.equal(
       (await target.query("SELECT count(*) FROM schema_migrations")).rows[0]
         .count,
-      "5",
+      "6",
     );
     await target.query(
       "CREATE ROLE yotick_app NOLOGIN NOSUPERUSER NOCREATEDB NOCREATEROLE NOINHERIT NOBYPASSRLS",
@@ -230,7 +231,7 @@ test("deployment migrations serialize concurrent runners and runtime role cannot
             "SELECT max(version) AS version FROM schema_migrations",
           )
         ).rows[0].version,
-        5,
+        6,
       );
       const id = randomUUID();
       await db.query("INSERT INTO users(id) VALUES($1)", [id]);
@@ -392,6 +393,28 @@ async function tokens(identity = who) {
     headers: { authorization: "Bearer " + access },
   };
 }
+test('focus presence detects another device, isolates accounts and ignores stale stops', async () => {
+  const identity={...who,userId:randomUUID(),spaceId:randomUUID(),generation:'1'};
+  await pool.query('INSERT INTO users(id) VALUES($1)',[identity.userId]);
+  await pool.query('INSERT INTO spaces(id,user_id) VALUES($1,$2)',[identity.spaceId,identity.userId]);
+  const auth=await tokens(identity),a=randomUUID(),b=randomUUID(),s1=randomUUID(),s2=randomUUID();
+  const call=(payload:any)=>app.inject({method:'POST',url:'/api/v1/focus/presence',headers:auth.headers,payload:{generation:'1',...payload}});
+  assert.equal((await call({deviceId:a,state:'active',sessionId:s1,startedAtSec:1800000000})).statusCode,200);
+  assert.equal((await call({deviceId:a,state:'check'})).json().otherDevices.length,0);
+  assert.equal((await call({deviceId:b,state:'check'})).json().otherDevices.length,1);
+  const outsider=await tokens();
+  assert.equal((await app.inject({method:'POST',url:'/api/v1/focus/presence',headers:outsider.headers,payload:{generation:'1',deviceId:b,state:'check'}})).json().otherDevices.length,0);
+  await call({deviceId:a,state:'active',sessionId:s2,startedAtSec:1800000100});
+  await call({deviceId:a,state:'stopped',sessionId:s1});
+  assert.equal((await call({deviceId:b,state:'check'})).json().otherDevices.length,1);
+  await call({deviceId:a,state:'stopped',sessionId:s2});
+  assert.equal((await call({deviceId:b,state:'check'})).json().otherDevices.length,0);
+  await call({deviceId:a,state:'active',sessionId:s1,startedAtSec:1800000000});
+  await pool.query("UPDATE focus_presence SET expires_at=now()-interval '1 second' WHERE space_id=$1",[identity.spaceId]);
+  assert.equal((await call({deviceId:b,state:'check'})).json().otherDevices.length,0);
+  assert.equal((await call({deviceId:b,state:'check',generation:'2'})).json().error.code,'GENERATION_MISMATCH');
+});
+
 test("PostgreSQL idempotency, changed operation digest, CAS and tombstone", async () => {
   const p = project("幂等"),
     op = create(p),
@@ -1314,4 +1337,42 @@ test('automatic guest saving is idempotent, respects account deletions and retai
   assert.equal(removedTree.statusCode,200,removedTree.body);
   assert.equal(removedTree.json().skippedProjectCount,2);
   assert.equal(removedTree.json().addedSessionCount,0);
+});
+
+
+test("completed records can only be shortened, including pauses, retries and concurrent versions", async () => {
+  const identity={...who,userId:randomUUID(),spaceId:randomUUID(),generation:"1"};
+  await pool.query("INSERT INTO users(id) VALUES($1)",[identity.userId]);
+  await pool.query("INSERT INTO spaces(id,user_id) VALUES($1,$2)",[identity.spaceId,identity.userId]);
+  const send=(operations:any[])=>push(pool,identity,body(operations,identity));
+  const p = project("只能减少时长-" + randomUUID());
+  await send([create(p)]);
+  const id = randomUUID(), start = 1800000000;
+  const original = { id, projectId:p.id, status:"COMPLETED", startedAtSec:start,
+    endedAtSec:start+300, durationSeconds:180, targetSeconds:null, createdAtSec:start,
+    updatedAtSec:start+300, pauses:[{id:randomUUID(),sessionId:id,status:"COMPLETED",
+      startedAtSec:start+60,endedAtSec:start+180,durationSeconds:120,createdAtSec:start+60}] };
+  await send([{operationId:randomUUID(),kind:"session.createCompleted",entityId:id,payload:original}]);
+  const reduce = require("../../core/session-reduction").reduceSession;
+  const operation = {operationId:randomUUID(),kind:"session.reduceDuration",entityId:id,
+    baseServerVersion:"1",payload:reduce(original,90)};
+  const first = await send([operation]);
+  assert.equal(first.results[0]!.status,"applied");
+  const stored = (await pool.query("SELECT data,server_version FROM study_sessions WHERE space_id=$1 AND id=$2",[identity.spaceId,id])).rows[0];
+  assert.equal(stored.data.durationSeconds,90);assert.equal(stored.data.endedAtSec,start+210);
+  assert.equal(stored.data.pauses.length,1);assert.equal(stored.server_version,"2");
+  const replay = await send([operation]);
+  assert.deepEqual(replay.results,first.results);
+  for(const payload of [reduce(original,91),reduce(original,90),{...reduce(original,30),startedAtSec:start+1,endedAtSec:start+31}]) {
+    const result=await send([{...operation,operationId:randomUUID(),baseServerVersion:"2",payload}]);
+    assert.equal((result.results[0] as any).code,"INVALID_DURATION");
+  }
+  const concurrent=await Promise.all([30,20].map(duration=>send([{
+    ...operation,operationId:randomUUID(),baseServerVersion:"2",payload:reduce(original,duration)
+  }])));
+  assert.equal(concurrent.filter(result=>result.results[0]!.status==="applied").length,1);
+  assert.equal(concurrent.filter(result=>(result.results[0] as any).code==="VERSION_CONFLICT").length,1);
+  assert.equal((await pool.query("SELECT count(*) FROM pauses WHERE space_id=$1 AND session_id=$2",[identity.spaceId,id])).rows[0].count,"0");
+  const current=(await pool.query("SELECT data FROM study_sessions WHERE space_id=$1 AND id=$2",[identity.spaceId,id])).rows[0].data;
+  assert.ok(current.durationSeconds<=30);assert.equal(current.startedAtSec,start);
 });

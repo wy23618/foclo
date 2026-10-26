@@ -37,6 +37,15 @@ test('Workers runtime: WeChat auth, durable sync, savepoint rollback, snapshots,
     const login=await call('/api/v1/auth/wechat-mini',{code:'first',deviceId:randomUUID()});
     assert.equal(login.status,200,JSON.stringify(login.data));
     const {accessToken,refreshToken,account}=login.data;
+    const deviceA=randomUUID(),deviceB=randomUUID(),focusA=randomUUID(),focusB=randomUUID();
+    const presence=body=>call('/api/v1/focus/presence',{generation:account.generation,...body},accessToken);
+    assert.equal((await presence({deviceId:deviceA,state:'active',sessionId:focusA,startedAtSec:1800000000})).status,200);
+    assert.equal((await presence({deviceId:deviceB,state:'check'})).data.otherDevices.length,1);
+    await presence({deviceId:deviceA,state:'active',sessionId:focusB,startedAtSec:1800000001});
+    await presence({deviceId:deviceA,state:'stopped',sessionId:focusA});
+    assert.equal((await presence({deviceId:deviceB,state:'check'})).data.otherDevices.length,1);
+    await presence({deviceId:deviceA,state:'stopped',sessionId:focusB});
+    assert.equal((await presence({deviceId:deviceB,state:'check'})).data.otherDevices.length,0);
     assert.equal((await call('/api/v1/me',undefined,accessToken)).data.spaceId,account.spaceId);
     const project={id:randomUUID(),name:'Synthetic test project',parentId:null,archived:false,color:'#123456',shortName:'',createdAtSec:1800000000,updatedAtSec:1800000000};
     const op={operationId:randomUUID(),kind:'project.create',entityId:project.id,payload:project};

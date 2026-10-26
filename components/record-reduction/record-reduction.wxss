@@ -1,0 +1,52 @@
+@import "../../themes/palette.wxss";
+:host{display:block}
+.reduction-overlay{position:fixed;inset:0;z-index:1200;display:flex;align-items:center;justify-content:center;padding:16px;box-sizing:border-box;color:var(--text-primary)}
+.reduction-mask{position:absolute;inset:0;background:rgba(16,24,18,.25)}
+.reduction-sheet{position:relative;width:100%;max-width:400px;max-height:100%;overflow:hidden;display:flex;flex-direction:column;padding:16px 20px 20px;border:1px solid var(--border);border-radius:20px;background:var(--bg-page);box-shadow:0 10px 36px rgba(16,24,18,.08);box-sizing:border-box}
+.reduction-heading{flex:none;display:flex;align-items:center;justify-content:space-between;gap:12px}
+.reduction-title{font-size:19px;line-height:1.4;font-weight:600}
+.reduction-close{display:flex;align-items:center;justify-content:center;flex:none;width:44px;height:44px;padding:0;margin:0 -8px 0 0;border:0;background:transparent;font-size:25px;line-height:1;color:var(--text-secondary);border-radius:12px}
+.reduction-close::after{border:0}
+.reduction-context{margin-top:2px;min-width:0}
+.reduction-project{font-size:14px;line-height:1.5;font-weight:500;overflow-wrap:anywhere}
+.reduction-time{margin-top:3px;font-size:11px;line-height:1.5;color:var(--text-muted);overflow-wrap:anywhere;font-variant-numeric:tabular-nums}
+.reduction-editor{margin-top:14px}
+.reduction-feedback{min-height:18px;margin-top:8px;font-size:11px;line-height:1.6;color:var(--text-muted);overflow-wrap:anywhere}
+.reduction-comparison{display:flex;align-items:center;gap:12px;margin-top:12px;padding-top:12px;border-top:1px solid var(--divider)}
+.reduction-comparison-item{display:flex;flex:1;min-width:0;flex-direction:column;gap:6px}
+.reduction-comparison-label{font-size:11px;line-height:1.5;color:var(--text-muted)}
+.reduction-before,.reduction-value{font-size:15px;line-height:1.5;font-weight:500;font-variant-numeric:tabular-nums;overflow-wrap:anywhere}
+.reduction-before{color:var(--text-secondary)}
+.reduction-value-changed{color:var(--accent);font-weight:600}
+.reduction-arrow{flex:none;font-size:19px;color:var(--text-muted)}
+.reduction-result{text-align:right}
+.reduction-note{margin-top:10px;font-size:11px;line-height:1.6;color:var(--text-muted)}
+.reduction-error{margin-top:10px;font-size:12px;line-height:1.5;color:var(--danger-text)}
+.reduction-actions{flex:none;display:flex;gap:10px;margin-top:18px}
+.reduction-actions button{display:flex;align-items:center;justify-content:center;height:46px;min-height:44px;border:0;margin:0;padding:8px;font-size:14px;font-weight:500;line-height:1.4;border-radius:12px;box-sizing:border-box}
+.reduction-actions button::after{border:0}
+.reduction-cancel{flex:1;color:var(--text-secondary);background:var(--bg-control-soft)}
+.reduction-confirm{flex:2;color:var(--text-on-accent);background:var(--accent)}
+.reduction-confirm[disabled]{color:var(--text-muted);background:var(--bg-control);opacity:1}
+
+.reduction-body{display:block;flex:0 1 auto;min-height:0;width:100%}
+.reduction-body-content{padding-bottom:2px}
+.reduction-wheel-labels{display:flex;align-items:center;font-size:12px;color:var(--text-secondary);text-align:center}
+.reduction-wheel-label{display:block;flex:1;min-width:0}
+.reduction-wheel{display:block;width:100%;height:132px;margin-top:4px;border-radius:12px;background:var(--bg-control-soft);overflow:hidden}
+.reduction-option{height:44px;line-height:44px;text-align:center;font-size:20px;font-weight:500;font-variant-numeric:tabular-nums;color:var(--text-muted)}
+.reduction-wheel-busy{pointer-events:none;opacity:.6}
+@media (min-width:680px) and (orientation:landscape) {
+  .reduction-sheet{max-width:540px;padding:16px 24px 20px}
+  .reduction-body-content{display:grid;grid-template-columns:minmax(0,1.15fr) minmax(0,1fr);gap:14px 24px;align-items:start}
+  .reduction-context{grid-column:1 / -1}
+  .reduction-editor{grid-column:1;grid-row:2;margin:0}
+  .reduction-summary{grid-column:2;grid-row:2;display:flex;flex-direction:column;justify-content:center;align-self:stretch;padding-left:20px;border-left:1px solid var(--divider)}
+  .reduction-comparison{flex-direction:column;align-items:stretch;margin:0;padding:0;border-top:0;gap:12px}
+  .reduction-result{text-align:left}
+  .reduction-arrow{display:none}
+  .reduction-note{margin-top:12px;padding:0}
+  .reduction-error{grid-column:1 / -1;margin:0}
+}
+
+.reduction-option-selected{font-size:22px;font-weight:600;color:var(--accent)}

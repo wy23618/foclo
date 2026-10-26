@@ -4,5 +4,6 @@
     "safe-nav": "/components/safe-nav/safe-nav",
     "heatmap-card": "/components/heatmap-card/heatmap-card"
   },
-  "navigationStyle": "custom"
+  "navigationStyle": "custom",
+  "pageOrientation": "auto"
 }

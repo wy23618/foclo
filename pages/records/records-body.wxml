@@ -1,4 +1,6 @@
 <view class="container theme-{{themeClass}}">
+  <button class="secondary-button" loading="{{syncRefreshing}}" disabled="{{syncRefreshing}}" bindtap="onRefreshRecords">刷新记录</button>
+  <view class="faint tiny">另一设备结束后，需先在那台设备上传成功；在这里刷新即可下载。游客记录只保存在各自设备。</view>
   <!-- 日期导航 -->
   <view class="card">
     <view class="date-nav">

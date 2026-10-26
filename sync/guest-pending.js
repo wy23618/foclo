@@ -5,6 +5,16 @@ const fingerprint = (s, projectId) => JSON.stringify([
   (s.pauses || []).map(p => [p.startedAtSec, p.endedAtSec, p.durationSeconds]).sort(),
 ]);
 
+function focusSpans(session) {
+  const spans = []; let cursor = session.startedAtSec;
+  for (const pause of (session.pauses || []).slice().sort((a,b) => a.startedAtSec-b.startedAtSec)) {
+    if (pause.startedAtSec > cursor) spans.push([cursor,pause.startedAtSec]);
+    cursor = pause.endedAtSec;
+  }
+  if (session.endedAtSec > cursor) spans.push([cursor,session.endedAtSec]);
+  return spans;
+}
+
 // Compare locally with the latest account facts; never upload guest contents
 // before the user agrees. Deletion markers remain authoritative.
 async function pendingGuest(raw, account) {
@@ -31,7 +41,7 @@ async function pendingGuest(raw, account) {
     }
     remaining = remaining.filter(p => !done.has(p.id));
   }
-  const knownIds = new Set(), knownFacts = new Set();
+  const knownIds = new Set(), knownFacts = new Set(), accountSessions = new Map();
   for (const key of await account.keys()) {
     if (!key.startsWith('yotick/shadow/session/') && !key.startsWith('yotick/s/')) continue;
     const value = await account.get(key);
@@ -39,15 +49,21 @@ async function pendingGuest(raw, account) {
     const s = key.startsWith('yotick/shadow/') ? value.data : value;
     knownIds.add(value.entityId || s?.id);
     if (s) knownFacts.add(fingerprint(s, s.projectId));
+    if (s?.status === 'COMPLETED' && !value.deleted) accountSessions.set(s.id, s);
   }
+  const accountSpans = [...accountSessions.values()].flatMap(focusSpans);
+  let overlapSessionCount = 0;
   for (const key of await guest.keys()) {
     if (!key.startsWith('yotick/s/')) continue;
     const s = await guest.get(key);
     if (!s || s.status !== 'COMPLETED' || skipped.has(s.projectId)) continue;
     const fact = fingerprint(s, mapping[s.projectId] || s.projectId);
     if (knownIds.has(s.id) || knownFacts.has(fact)) continue;
+    if (focusSpans(s).some(span => accountSpans.some(other => Math.min(span[1],other[1]) > Math.max(span[0],other[0]))))
+      overlapSessionCount++;
     sessionCount++; knownIds.add(s.id); knownFacts.add(fact);
   }
-  return { projectCount, sessionCount, hasData: projectCount > 0 || sessionCount > 0 };
+  return { projectCount, sessionCount, hasData: projectCount > 0 || sessionCount > 0,
+    ...(overlapSessionCount ? { overlapSessionCount } : {}) };
 }
 module.exports = { pendingGuest };

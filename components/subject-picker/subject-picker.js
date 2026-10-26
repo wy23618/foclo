@@ -1,4 +1,5 @@
 const { colorOf } = require('../../utils/color');
+const { responsiveMetrics } = require('../../utils/window-layout');
 
 Component({
   properties:{
@@ -8,6 +9,7 @@ Component({
     selected:{type:String,value:'',observer:'onRowsChange'}
   },
   data:{visibleRows:[],expandedIds:[],bodyHeight:160,listScrollTop:0,currentName:'全部项目'},
+  pageLifetimes:{resize(){if(this.properties.opened)this.onRowsChange();}},
   methods:{
     noop(){},
     close(){if(this.closing)return;this.closing=true;this.triggerEvent('close');},
@@ -63,7 +65,7 @@ Component({
           ancestor=nodesById[String(ancestor.parentId||'')];
         }
       });
-      const info=wx.getWindowInfo?wx.getWindowInfo():wx.getSystemInfoSync(),scale=(info.windowWidth||375)/750;
+      const info=wx.getWindowInfo?wx.getWindowInfo():wx.getSystemInfoSync(),scale=responsiveMetrics(info).unit;
       const desired=(84+(rows||[]).length*92)*scale;
       const available=Math.max(80,(info.windowHeight||667)*.72-300*scale);
       const selected=(rows||[]).find(row=>String(row.projectId)===this.properties.selected);

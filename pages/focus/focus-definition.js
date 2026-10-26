@@ -31,9 +31,15 @@ const definition = {
     ready: false,
     themeClass: 'light',
     focusNavHeight: 78,
+    tabletLayout: false,
+    focusWideLayout: false,
+    focusLayoutStyle: '',
+    minuteIndicatorStyle: 'height:50rpx',
     activeTab: 0, statsNavHidden: false,
     welcomeOpen: false,
     identityOpen: false,
+    isGuest: false,
+    guestHintDismissed: false,
     welcomeFeatures: require('../../utils/user-guide').WELCOME_FEATURES,
     completionVisible:false,restPrompt:false,restState:null,restRemaining:0,restClock:'00:00',restRound:0,restDuration:0,goalEnabled:false,goalMinutes:120,goalProgress:0,goalProgressStyle:'width:0%;',progress:1,keepScreenOn:false,confirmEnd:true,immersive:false,screenLocked:false,todayOpen:false,todayDate:'',todayText:'0秒',customOpen:false,customMinutes:'30',minuteOptions:[],minuteIndex:29,minuteWheelValue:[29],
     cur: null,
@@ -64,29 +70,34 @@ const definition = {
   },
 
   onLoad(q) {
+    this.updateTabletLayout();
     // Keep the timer page alive beneath native screens so system back can return.
     this.isShell = true;
     const initialTab = Math.min(2, Math.max(0, Number(q && q.tab) || 0));
     this.setData({ activeTab: 0 });
     if (initialTab) wx.nextTick(() => (runtime.navigation || require('../../utils/main-navigation')).openMainTab(initialTab));
     return app.globalData.readyPromise.then(async () => {
-      const accounts = app.globalData.accounts;
-      const current = app.globalData.service.peekCurrent();
-      const activeTimer = !!(current.ok && (current.data.sessionId || current.data.activeSession)) || !!restStore.read();
-      const action = require('../../sync/login-entry').entryAction({
-        account: accounts.getCurrent(), status:accounts.getStatus().state,
-        guestSession:app.globalData.guestSession,
-        activeTimer,
-      });
-      if (action === 'login') {
-        await this.loginWechat(true);
-      }
       this.setData({ ready: true });
       if (this.visible && this.data.activeTab === 0) { this.restoreRest(); return this.refresh(); }
     });
   },
 
+  onResize(event) { this.updateTabletLayout(event); },
+
+  updateTabletLayout(event) {
+    let info;
+    try { info = wx.getWindowInfo ? wx.getWindowInfo() : wx.getSystemInfoSync(); } catch (e) {}
+    if (event && event.size) info = Object.assign({}, info, event.size);
+    const layout = require('../../utils/focus-layout').focusLayout(info, this.data.focusNavHeight, this.data, this.landscapeDeviceOrientation);
+    const tablet = layout.tabletLayout;
+    const minuteIndicatorStyle = tablet ? 'height:30px' : 'height:50rpx';
+    const patch = { minuteIndicatorStyle, ...layout };
+    Object.keys(patch).forEach(key => { if (this.data[key] === patch[key]) delete patch[key]; });
+    if (Object.keys(patch).length) this.setData(patch);
+  },
+
   onShow() {
+    this.updateTabletLayout();
     let refreshed;
     this.openingShell = false;
     this.visible=true;
@@ -123,7 +134,13 @@ const definition = {
   },
 
   onIdentityVisibility(e) { this.setData({ identityOpen:!!e.detail.opened }); },
-  async loginWechat(initial = false) {
+  dismissGuestHint() { this.setData({ guestHintDismissed:true }, () => this.updateTabletLayout()); },
+  async onGuestLogin() {
+    if (!this.data.cur || this.data.cur.state !== 'IDLE' || this.data.restState || this.data.restPrompt) return;
+    await this.loginWechat();
+    if (this.visible) await this.refresh();
+  },
+  async loginWechat() {
     if (this.loggingIn) return;
     this.loggingIn = true;
     try {
@@ -146,8 +163,7 @@ const definition = {
     } catch (error) {
       if (!app.globalData.accounts.getCurrent()) app.globalData.guestSession = true;
       wx.hideLoading();
-      if (initial && !error.loggedIn) wx.showToast({ title:'暂时使用游客模式，记录保存在本机', icon:'none' });
-        else wx.showModal({ title:error.loggedIn ? '游客记录尚未迁移' : '微信登录未完成',
+      wx.showModal({ title:error.loggedIn ? '游客记录尚未迁移' : '微信登录未完成',
         content:(error.message || '请稍后重试') + '。本机原记录仍保留。', showCancel:false });
     } finally {
       wx.hideLoading();
@@ -270,7 +286,7 @@ const definition = {
       this.setData({ blocked: env.error });
       return;
     }
-    this.setData({ blocked: null });
+    this.setData({ blocked: null, isGuest:!!app.globalData.accounts && !app.globalData.accounts.getCurrent(),otherDeviceFocus:!!app.globalData.accounts?.getStatus?.().otherDeviceFocus });
     if (prefs && env.data.state === 'IDLE') this.applyIdlePrefs(prefs);
     this.applyCur(env.data);
     await Promise.all([this.updatePath(env.data.projectId), this.consumeNotices(), this.updateToday()]);
@@ -370,6 +386,7 @@ const definition = {
       elapsedText: format.clockText(cur.elapsedSeconds || 0)
     }, patch));
     this.setData({progress:cur.state==='IDLE'?patch.progress:cur.mode==='countdown'?cur.remainingSeconds/cur.targetSeconds:(cur.elapsedSeconds%3600)/3600});
+    this.updateTabletLayout();
     if (this.visible) sound.stop();
     wx.setKeepScreenOn({keepScreenOn:!!(this.visible&&(this.data.immersive||(this.data.keepScreenOn&&cur.state==='STUDYING'&&this.data.activeTab===0)))});
     if(cur.state==='IDLE'&&(this.data.immersive||this.data.screenLocked)){this.setData({immersive:false,screenLocked:false});this.updateTabVisibility();wx.setKeepScreenOn({keepScreenOn:false});}
@@ -424,14 +441,14 @@ const definition = {
 
   onFocusNavHeight(e) {
     const height = Number(e.detail.height);
-    if (height > 0 && height !== this.data.focusNavHeight) this.setData({ focusNavHeight: height });
+    if (height > 0 && height !== this.data.focusNavHeight) this.setData({ focusNavHeight: height }, () => this.updateTabletLayout());
   },
 
   onSegMode(e) {
     if(this.data.cur && this.data.cur.state !== 'IDLE')return;
     const mode = e.detail.key;
     if (this.data.mode === mode) return;
-    this.setData({ mode: mode }, () => this.setData(this.idleDial()));
+    this.setData({ mode: mode }, () => { this.setData(this.idleDial()); this.updateTabletLayout(); });
   },
 
   // ---------------- 模式与时长 ----------------
@@ -440,6 +457,7 @@ const definition = {
     if (this.data.cur && this.data.cur.state !== 'IDLE') return;
     this.setData({ mode: mode }, () => {
       this.setData(this.idleDial());
+      this.updateTabletLayout();
     });
   },
 
@@ -450,7 +468,7 @@ const definition = {
     this.setData({
       activePresetKey: key,
       targetSeconds: key
-    }, () => this.setData(this.idleDial()));
+    }, () => { this.setData(this.idleDial()); this.updateTabletLayout(); });
   },
 
   askCustom(){this.setData({customOpen:true,customMinutes:String(this.data.targetSeconds/60),minuteOptions:Array.from({length:1440},(_,i)=>(i+1)+' 分钟'),minuteIndex:this.data.targetSeconds/60-1,minuteWheelValue:[this.data.targetSeconds/60-1]});this.updateTabVisibility();},
@@ -462,7 +480,7 @@ const definition = {
   async openToday(){this.setData({todayOpen:true,todayDate:view.today()});this.updateTabVisibility();},
   closeToday(){this.setData({todayOpen:false});this.updateTabVisibility();},
   async onRecordDeleted(){await this.updateToday();},
-  async updateToday(){const e=await app.globalData.service.getStatistics({preset:'today',mode:'realtime'});const prefs=await app.globalData.service.getPrefs();if(prefs)this.setData({goalEnabled:!!prefs.dailyGoalEnabled,goalMinutes:prefs.dailyGoalMinutes||120});if(e.ok){const current=app.globalData.service.peekCurrent();this.todayBase={date:view.today(),seconds:e.data.totalSeconds,elapsed:current.ok?current.data.elapsedSeconds:0};const progress=this.data.goalEnabled?Math.round(Math.min(100,e.data.totalSeconds/(this.data.goalMinutes*60)*100)):0;this.setData({todayText:format.durationText(e.data.totalSeconds),goalProgress:progress,goalProgressStyle:'width:'+progress+'%;'});}},
+  async updateToday(){const e=await app.globalData.service.getStatistics({preset:'today',mode:'realtime'});const prefs=await app.globalData.service.getPrefs();if(prefs)this.setData({goalEnabled:!!prefs.dailyGoalEnabled,goalMinutes:prefs.dailyGoalMinutes||120});if(e.ok){const current=app.globalData.service.peekCurrent();this.todayBase={date:view.today(),seconds:e.data.totalSeconds,elapsed:current.ok?current.data.elapsedSeconds:0};const progress=this.data.goalEnabled?Math.round(Math.min(100,e.data.totalSeconds/(this.data.goalMinutes*60)*100)):0;this.setData({todayText:format.durationText(e.data.totalSeconds),goalProgress:progress,goalProgressStyle:'width:'+progress+'%;'});this.updateTabletLayout();}},
   // ---------------- 页内项目选择 ----------------
   goPicker() {
     if (this.data.pickerOpen || this.openingPicker) return;
@@ -597,6 +615,11 @@ const definition = {
   },
 
   async startFocus() {
+    if(this.startChecking)return;
+    this.startChecking=true;
+    try { await this.startFocusChecked(); } finally {this.startChecking=false;}
+  },
+  async startFocusChecked() {
     const service = app.globalData.service;
     const cur = this.data.cur;
     if (!cur || cur.state !== 'IDLE') return;
@@ -607,6 +630,8 @@ const definition = {
       return;
     }
     const targetSeconds = this.data.mode === 'countdown' ? this.data.targetSeconds : null;
+    try {if(!(await require('../../utils/focus-device-check').confirmOtherFocus(app.globalData.accounts)))return;}
+    catch(error){wx.showToast({title:error.message||'暂时无法开始',icon:'none'});return;}
     const env = await service.start({
       operationId: uuid(),
       projectId: projectId,
@@ -623,6 +648,9 @@ const definition = {
     const prefEnv = await service.savePrefs({ lastStartMode: this.data.mode });
     if (!prefEnv.ok) wx.showToast({ title: '本轮已开始，但启动习惯未能保存', icon: 'none' });
     this.applyCur(env.data);
+    app.globalData.accounts?.publishPresence?.().then(result=>{
+      if(result?.otherDevices?.length)wx.showToast({title:'其他设备也在计时',icon:'none'});
+    }).catch(()=>{});
   },
 
   startRest() {
@@ -699,5 +727,5 @@ const definition = {
     this.runtimeApp = app;
     if (load) return load.call(this, options || {});
   };
-  return definition;
+  return require('../../utils/window-layout').withLandscapeLayout(definition);
 };

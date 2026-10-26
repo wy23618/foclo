@@ -1,0 +1,16 @@
+<view class="card summary-card">
+    <view class="summary-head"><text class="summary-head-title">全部项目</text><text class="summary-date">{{loading ? '正在更新…' : rangeText}}</text></view>
+    <view class="summary-well"><view class="summary-kicker">累计专注</view><view class="summary-time num"><block wx:if="{{sumZero}}"><text class="summary-time-number">0</text><text class="summary-time-unit">秒</text></block><block wx:else><text wx:if="{{sumH}}" class="summary-time-number">{{sumH}}</text><text wx:if="{{sumH}}" class="summary-time-unit">小时</text><text wx:if="{{sumM}}" class="summary-time-number">{{sumM}}</text><text wx:if="{{sumM}}" class="summary-time-unit">分钟</text><text wx:if="{{!sumH && sumS}}" class="summary-time-number">{{sumS}}</text><text wx:if="{{!sumH && sumS}}" class="summary-time-unit">秒</text></block></view><view class="summary-stripe"><view wx:for="{{stackSegs}}" wx:key="projectId" class="summary-stripe-segment" style="background:{{item.color}};width:{{item.width}}%"></view></view></view>
+    <view class="summary-metrics">
+      <block wx:if="{{preset === 'today'}}">
+        <view class="summary-metric"><view class="summary-metric-label">专注次数</view><view class="summary-metric-value">{{focusCount}}<text class="summary-metric-unit">次</text></view></view>
+        <view class="summary-metric"><view class="summary-metric-label">暂停次数</view><view class="summary-metric-value">{{pauseCount}}<text class="summary-metric-unit">次</text></view></view>
+        <view class="summary-metric"><view class="summary-metric-label">平均单次</view><view class="summary-metric-value summary-metric-value-average">{{avgSessionText}}</view></view>
+      </block>
+      <block wx:else>
+        <view class="summary-metric"><view class="summary-metric-label">专注次数</view><view class="summary-metric-value">{{focusCount}}<text class="summary-metric-unit">次</text></view></view>
+        <view class="summary-metric"><view class="summary-metric-label">暂停次数</view><view class="summary-metric-value">{{pauseCount}}<text class="summary-metric-unit">次</text></view></view>
+        <view class="summary-metric"><view class="summary-metric-label">日均专注</view><view class="summary-metric-value summary-metric-value-average">{{avgDisplay}}</view></view>
+      </block>
+    </view>
+  </view>

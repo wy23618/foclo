@@ -1,0 +1,20 @@
+<view class="settings-group-title">{{item.title}}</view>
+    <view class="settings-card">
+      <block wx:for="{{item.items}}" wx:for-item="entry" wx:key="key">
+      <button wx:if="{{entry.key === 'feedback'}}" class="settings-entry settings-feedback" open-type="feedback" hover-class="settings-feedback-pressed">
+        <view class="settings-copy">
+          <text class="settings-name">{{entry.title}}</text>
+          <text class="settings-hint">{{entry.hint}}</text>
+        </view>
+        <view class="settings-arrow"></view>
+      </button>
+      <view wx:else class="settings-entry" data-key="{{entry.key}}" bindtap="openSection">
+        <view class="settings-copy">
+          <text class="settings-name">{{entry.title}}</text>
+          <text class="settings-hint">{{entry.hint}}</text>
+        </view>
+        <text wx:if="{{entry.value}}" class="settings-value">{{entry.value}}</text>
+        <view class="settings-arrow"></view>
+      </view>
+      </block>
+    </view>

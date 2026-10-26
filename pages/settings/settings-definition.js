@@ -15,15 +15,8 @@ const definition = {
     settingsAccountName: '游客模式', settingsAccountHint: '项目和专注记录仅保存在本机 · 登录后可跨设备使用',
     settingsAccountStatus: '本机模式', settingsAccountAction: '登录开启同步', settingsAvatar: ''
   },
-  onLoad() {
-    if (getCurrentPages().length === 1) {
-      this.redirectingToFocus = true;
-      navigation.reLaunch({ url: '/pages/focus/focus', success: () => setTimeout(() => navigation.navigateTo({ url: '/pages/settings/settings' }), 0) });
-    }
-  },
   async onShow() {
-    if (this.redirectingToFocus) return;
-        if (!app.globalData.ready) await app.globalData.readyPromise;
+    if (!app.globalData.ready) await app.globalData.readyPromise;
     const prefs = await app.globalData.service.getPrefs();
     const themeClass = resolveTheme(prefs && prefs.theme || 'system', prefs && prefs.lightTheme);
     const groups = buildSettingsGroups(prefs), patch = require('../../utils/theme').pageThemeData(themeClass);
@@ -52,7 +45,7 @@ const definition = {
     if (Object.keys(patch).length) this.setData(patch);
     try { wx.setNavigationBarColor(require('../../utils/theme').navigationBarOptions(themeClass)); } catch (e) {}
   },
-  goBack() { wx.navigateBack({ fail: () => (runtime.navigation || require('../../utils/main-navigation')).openMainTab(0) }); },
+  goBack() { (runtime.navigation || require('../../utils/main-navigation')).openMainTab(0); },
   openAccount() {
     if (this.demoSession) {
       wx.showModal({ title:'示例账号', content:'此处使用固定演示数据，不连接真实账号。返回日常设置页后可登录并开启同步。', showCancel:false });
@@ -77,5 +70,5 @@ const definition = {
     this.runtimeApp = app;
     if (load) return load.call(this, options || {});
   };
-  return definition;
+  return require('../../utils/window-layout').withLandscapeLayout(definition);
 };

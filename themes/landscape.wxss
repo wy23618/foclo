@@ -1,0 +1,30 @@
+/* New workspace elements stay out of the existing phone and portrait layouts. */
+.landscape-only { display:none; }
+
+/* Match isTabletLandscape in utils/window-layout.js. */
+@media (min-width:680px) and (min-device-width:520px) and (min-device-height:520px) and (orientation:landscape) {
+  page .container.landscape-shell.with-tabbar {
+    width:calc(100% - 128px);
+    max-width:1440px;
+    margin-left:112px;
+    margin-right:16px;
+    padding:16px 24px calc(24px + env(safe-area-inset-bottom));
+    box-sizing:border-box;
+  }
+  .landscape-shell .landscape-only { display:block; }
+  page .container.landscape-shell.landscape-detail {
+    width:calc(100% - 64px);
+    max-width:1280px;
+    margin-left:auto;
+    margin-right:auto;
+    padding:24px 0 calc(32px + env(safe-area-inset-bottom));
+  }
+  .landscape-heading { min-width:0; margin-bottom:4px; }
+  .landscape-title { font-size:24px; line-height:1.3; font-weight:650; letter-spacing:-.5px; color:var(--text-primary); }
+  .landscape-subtitle { margin-top:5px; font-size:13px; line-height:1.5; color:var(--text-secondary); }
+  page .landscape-shell .card { border-radius:22px; }
+}
+@media (min-width:680px) and (min-device-width:520px) and (min-device-height:520px) and (orientation:landscape) {
+  page .container.landscape-shell.with-tabbar { width:calc(100% - 108px); max-width:1120px; margin-left:88px; margin-right:20px; padding:12px 16px 24px; }
+  .landscape-heading { display:none!important; }
+}

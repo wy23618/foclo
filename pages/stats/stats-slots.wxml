@@ -1,0 +1,11 @@
+<view class="card time-slot-card" wx:if="{{preset !== 'today'}}">
+    <view class="row-between"><view class="title-sm">专注时段分布</view><picker range="{{slotScaleOptions}}" value="{{slotScaleIndex}}" bindchange="selectSlotScale"><view class="slot-scale-picker">满格 {{slotScaleFixed ? slotScaleText : '自动'}} ▾</view></picker></view>
+    <view class="chart-hint">每柱代表 1 小时 · 按所选范围内自然日平均</view>
+    <view class="time-slot-chart">
+      <view wx:for="{{timeSlots}}" wx:key="startHour" class="time-slot-column" data-index="{{index}}" bindtap="selectTimeSlot">
+        <view class="time-slot-plot"><view class="time-slot-fill {{selectedTimeSlot === index ? 'time-slot-selected' : ''}} {{item.overScale ? 'time-slot-over' : ''}}" style="height:{{item.height}}%"></view></view>
+        <view class="time-slot-axis">{{item.axisLabel}}</view>
+      </view>
+    </view>
+    <view class="time-slot-detail" wx:if="{{selectedSlot}}">{{selectedSlot.label}} · 日均 {{selectedSlot.averageText}}{{selectedSlot.overScale ? ' · 超出满格' : ''}}</view>
+  </view>

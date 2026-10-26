@@ -1,0 +1,1 @@
+<project-list wx:if="{{chartTree.length}}" id="projectList" tree="{{chartTree}}" selected-id="{{selectedProjectId}}" range-key="{{preset}}:{{startDate}}:{{endDate}}" bindselect="goProject" bindfocuschange="onListFocusChange" bindclearfocus="clearProjectFocus"/>

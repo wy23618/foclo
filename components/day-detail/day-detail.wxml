@@ -10,5 +10,6 @@
     <view class="records-head"><view class="section-title">{{date === today ? '今日学习记录' : '当天学习记录'}}</view></view>
     <view class="empty">正在读取当天记录…</view>
   </view>
-  <study-timeline id="recordTimeline" wx:else records="{{timelineRecords}}" color-map="{{projectColors}}" heading="{{date === today ? '今日学习记录' : '当天学习记录'}}" managing="{{recordManaging}}" bindmanagementchange="onRecordManagementChange" binddeleterecord="deleteRecord" />
+  <study-timeline id="recordTimeline" wx:else records="{{timelineRecords}}" color-map="{{projectColors}}" heading="{{date === today ? '今日学习记录' : '当天学习记录'}}" managing="{{recordManaging}}" bindmanagementchange="onRecordManagementChange" binddeleterecord="deleteRecord" bindreducerecord="openRecordReduction" />
 </view>
+<record-reduction wx:if="{{reductionOpen}}" theme="{{theme}}" opened="{{reductionOpen}}" duration-seconds="{{reductionDuration}}" project-name="{{reductionProject}}" record-time="{{reductionTime}}" busy="{{recordReducing}}" error="{{reductionError}}" bindclose="closeRecordReduction" bindconfirm="confirmRecordReduction"/>

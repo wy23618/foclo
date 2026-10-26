@@ -1,0 +1,12 @@
+/* Inline geometry retains native phone rpx; overrides activate only on tablets. */
+@media (min-width:500px) and (min-device-width:520px) and (min-device-height:520px) {
+  .tablet-inline {
+    --tablet-length-bottom: var(--tablet-value-bottom);
+    --tablet-length-height: var(--tablet-value-height);
+    --tablet-length-left: var(--tablet-value-left);
+    --tablet-length-margin-left: var(--tablet-value-margin-left);
+    --tablet-length-min-width: var(--tablet-value-min-width);
+    --tablet-length-padding-left: var(--tablet-value-padding-left);
+    --tablet-length-width: var(--tablet-value-width);
+  }
+}

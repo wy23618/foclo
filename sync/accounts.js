@@ -37,6 +37,56 @@ function createAccounts(
     status = { state: "guest" },
     listeners = new Set();
   let legacyFallback = false;
+  let presenceQueue = Promise.resolve();
+  async function checkOtherFocus() {
+    if (!current) return { available:false, guest:true, otherDevices:[] };
+    if (!request) return { available:false, reason:'auth', otherDevices:[] };
+    const captured=epoch, ref=current, req=request;
+    try {
+      const deviceId=await raw.get(GLOBAL+'deviceId');
+      if(epoch!==captured)throw Object.assign(new Error('账号已切换'),{code:'CANCELLED'});
+      const result=await req('POST','/focus/presence',{state:'check',deviceId,generation:ref.generation});
+      if(epoch!==captured)throw Object.assign(new Error('账号已切换'),{code:'CANCELLED'});
+      return result;
+    } catch(error) {
+      if(error.code==='CANCELLED')throw error;
+      return {available:false,reason:error.code==='AUTH_REQUIRED'?'auth':error.code==='NETWORK_ERROR'?'network':'service',otherDevices:[]};
+    }
+  }
+  function publishPresence() {
+    const captured=epoch, req=request, ref=current, adapter=app.globalData.adapter, service=app.globalData.service;
+    if(!ref||!req)return Promise.resolve();
+    const work=presenceQueue.catch(()=>{}).then(async()=>{
+      if(epoch!==captured)return;
+      const cur=service.peekCurrent();
+      if(!cur.ok)return;
+      const active=cur.data.sessionId, key='yotick/sync/presence-session';
+      const old=await adapter.get(key), deviceId=await raw.get(GLOBAL+'deviceId');
+      if(epoch!==captured)return;
+      if(!active&&!old)return;
+      const result=await req('POST','/focus/presence',{state:active?'active':'stopped',deviceId,generation:ref.generation,sessionId:active||old,
+        ...(active?{startedAtSec:cur.data.startedAtSec}:{})});
+      if(epoch!==captured)return;
+      if(active)await adapter.set(key,active);else await adapter.remove(key);
+      update({otherDeviceFocus:!!result.otherDevices?.length});
+      return result;
+    });
+    presenceQueue=work.catch(()=>{});return work;
+  }
+  async function refreshRecords() {
+    if(!current)return {localOnly:true};
+    const captured=epoch;
+    await worker?.trigger();
+    if(epoch!==captured)throw Object.assign(new Error('账号已切换，请刷新当前账号'),{code:'CANCELLED'});
+    if(status.state!=='synced')throw new Error(({
+      conflict:'有未解决的修改冲突，请到账号与同步查看。本机修改仍保留',
+      'auth-required':'登录已失效，请重新登录当前账号后刷新。本机记录仍保留',
+      offline:'本次未连接到服务器，请联网后重试。本机记录仍保留',
+      quarantined:'账号数据已进入新的版本，旧本机资料已隔离保留，请到账号与同步处理',
+      pending:'还有本机修改等待上传，请稍后再刷新',
+    })[status.state]||'服务器暂未完成本次同步，请稍后重试。本机记录仍保留');
+    return {localOnly:false};
+  }
   const update = (s) => {
     // A new worker state replaces the previous failure, while pending-only
     // local updates keep the current connection status and its explanation.
@@ -121,6 +171,7 @@ function createAccounts(
       current = ref || null;
       app.globalData.adapter = adapter;
       app.globalData.service = service;
+      status = {state:ref?'syncing':'guest',pending:0,otherDeviceFocus:false};
     };
     if (previousService) await previousService.syncTransaction(install);
     else await install();
@@ -156,6 +207,11 @@ function createAccounts(
       isCurrent: () => captured === epoch,
       onStatus: update,
       onChanged: () => {
+        publishPresence().then(()=>{
+          if(captured!==epoch||typeof getCurrentPages!=='function')return;
+          const page=getCurrentPages().slice(-1)[0];
+          if(page&&typeof page.refresh==='function')Promise.resolve(page.refresh()).catch(()=>{});
+        }).catch(()=>{});
         require("../utils/color")
           .initProjectColors(adapter)
           .catch(() => {});
@@ -251,6 +307,8 @@ function createAccounts(
     await raw.set(GLOBAL + "auto-login", true);
     await loginStep("打开账号空间失败", () => activate(ref));
     app.globalData.guestSession = false;
+    // Do not finish login while the first account download is still running.
+    if(worker)await worker.trigger();
     return ref;
   }
   async function logout() {
@@ -404,9 +462,24 @@ function createAccounts(
             );
           }
         if (!cloud) throw new Error("请先获取云端版本");
+        const sessionTask = cloud.entityType === "session" ? tasks.find(
+          task => affected.has(task.operationId) && task.kind === "session.reduceDuration",
+        ) : null;
+        let reducedPayload = null;
+        if (cloud.entityType === "session") {
+          if (!sessionTask) throw new Error("请保留云端记录，或导出恢复副本后重新处理");
+          const fact = await ctx.adapter.get(repo.sessionKey(cloud.entityId));
+          if (!fact) throw new Error("本地记录已不存在，请保留云端版本");
+          if (fact.durationSeconds >= cloud.data.durationSeconds)
+            throw new Error("云端时长已更短或相同，请保留云端版本");
+          const reduced = require("../core/session-reduction").reduceSession(cloud.data, fact.durationSeconds);
+          reduced.updatedAtSec = Math.max(fact.updatedAtSec, cloud.data.updatedAtSec);
+          reducedPayload = local.sessionPayload(reduced);
+        }
         const payload =
           cloud.entityType === "prefs"
             ? local.pickPrefs(ctx.prefs)
+            : reducedPayload ? reducedPayload
             : local.projectPayload(
                 ctx.projects[cloud.entityId] || c.local?.payload || c.local,
               );
@@ -437,6 +510,10 @@ function createAccounts(
           kind = groupTask.kind;
           newPayload = local.clone(groupTask.payload);
           related = groupTask.related || [];
+        }
+        if (reducedPayload) {
+          kind = "session.reduceDuration";
+          newPayload = reducedPayload;
         }
         const task = {
           operationId: uuid(),
@@ -670,16 +747,23 @@ function createAccounts(
   async function migrateGuest() {
     await canSwitch();
     if (!current || !request) throw new Error("请先登录账号");
+    const captured = epoch, adapter = app.globalData.adapter, activeWorker = worker,
+      accountRequest = request, generation = current.generation;
+    const guard = () => {
+      if (epoch !== captured) throw Object.assign(new Error("账号已切换，请重新确认导入目标"), { code:"CANCELLED" });
+    };
     // Finish account edits (especially deletions) before comparing the guest copy.
-    await worker.trigger();
-    if ((await local.pending(app.globalData.adapter)).length || (await conflicts()).length)
+    await activeWorker.trigger();
+    guard();
+    if ((await local.pending(adapter)).length || (await conflicts()).length)
       throw new Error('账号还有更改未保存，请联网完成保存后再试。登录前的记录会保留');
+    guard();
     return require("./migration").upload(
       raw,
-      app.globalData.adapter,
-      request,
-      current.generation,
-      (progress) => update({ migration: progress }),
+      adapter,
+      (...args) => { guard(); return accountRequest(...args); },
+      generation,
+      (progress) => { if (epoch === captured) update({ migration: progress }); },
     );
   }
   async function getGuestSummary() {
@@ -699,6 +783,7 @@ function createAccounts(
     return {
       ...summary,
       imported: alreadyImported,
+      ...(current ? { accountSuffix: current.userId.slice(-4) } : {}),
       shouldAsk: summary.checked && summary.hasData && !(decision && decision.signature === summary.signature) &&
         !alreadyImported,
     };
@@ -710,15 +795,22 @@ function createAccounts(
   async function commitGuestMigration(mapping, sessionMapping, options) {
     await canSwitch();
     if (!request) throw new Error("请先登录");
+    const captured = epoch, adapter = app.globalData.adapter, accountRequest = request, activeWorker = worker;
+    const deviceId = await raw.get(GLOBAL + "deviceId");
+    if (epoch !== captured) throw Object.assign(new Error("账号已切换，请重新确认导入目标"), { code:"CANCELLED" });
     const result = await require("./migration").commit(
-      app.globalData.adapter,
-      request,
-      await raw.get(GLOBAL + "deviceId"),
+      adapter,
+      (...args) => {
+        if (epoch !== captured) throw Object.assign(new Error("账号已切换，请重新确认导入目标"), { code:"CANCELLED" });
+        return accountRequest(...args);
+      },
+      deviceId,
       mapping,
       sessionMapping,
       options,
     );
-    await worker.trigger();
+    if (epoch !== captured) throw Object.assign(new Error("账号已切换，导入回执保留在原账号"), { code:"CANCELLED" });
+    await activeWorker.trigger();
     return result;
   }
   async function exportAccount() {
@@ -863,12 +955,16 @@ function createAccounts(
     if (!current) throw new Error("游客资料是唯一原副本，不能清缓存");
     if (!worker) throw new Error("请登录并同步后清除缓存");
     await worker.trigger();
+    if (status.state !== "synced")
+      throw new Error("尚未连上账号云端，请先完成同步；原本机缓存仍保留");
     if (
       (await local.pending(app.globalData.adapter)).length ||
       (await conflicts()).length
     )
       throw new Error("有未上传资料或冲突，请先同步或导出保全");
-    await activate({ ...current, localEpoch: uuid() });
+    await worker.refreshFromCloud();
+    if (status.state !== "synced")
+      throw new Error("重新下载尚未完成，原缓存与恢复副本仍保留，请联网后重试");
   }
   async function deleteAccount() {
     await canSwitch();
@@ -899,6 +995,7 @@ function createAccounts(
   }
   return {
     init,
+    refreshRecords, checkOtherFocus, publishPresence,
     login,
     getDisplayProfile,
     saveDisplayProfile,
@@ -922,6 +1019,8 @@ function createAccounts(
     getDeletionRequest,
     createMigrationTarget,
     trigger: () => (worker ? worker.trigger() : Promise.resolve()),
+    suspendSync: () => { if (worker) worker.suspend(); },
+    resumeSync: () => (worker ? worker.resume() : Promise.resolve()),
     getStatus: () => status,
     getCurrent: () => current,
     getRequest: () => request,

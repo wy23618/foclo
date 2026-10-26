@@ -4,6 +4,7 @@ import type { ServerConfig } from "./config.js";
 import { authenticate, AuthFailure } from "./auth.js";
 import { push, pull, snapshot, readSnapshot, clear } from "./sync.js";
 import { registerImports } from "./imports.js";
+import { registerFocusPresence } from './focus-presence.js';
 import { ProtocolError, requireValue } from "./protocol.js";
 import { randomUUID } from "node:crypto";
 export function registerRoutes(
@@ -107,4 +108,5 @@ export function registerRoutes(
     return { id: row.id, status: row.status, requestedAt: row.requested_at };
   });
   registerImports(app, pool, config);
+  registerFocusPresence(app, pool, config);
 }

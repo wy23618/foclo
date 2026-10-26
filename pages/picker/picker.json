@@ -1,1 +1,7 @@
-{"navigationBarTitleText":"选择项目","usingComponents":{"project-sheet":"/components/project-sheet/project-sheet"}}
+{
+  "navigationBarTitleText": "选择项目",
+  "usingComponents": {
+    "project-sheet": "/components/project-sheet/project-sheet"
+  },
+  "pageOrientation": "auto"
+}

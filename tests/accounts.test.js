@@ -6,6 +6,47 @@ const { uuid } = require("../core/ids");
 const local = require("../sync/local");
 const { FOCLO_API_BASE_URL } = require("../sync/environment");
 
+test('cloud-authoritative cache refresh keeps the original view on network failure and switches atomically on success', async () => {
+  const raw=createMemoryAdapter(),app={globalData:{}},ref={userId:uuid(),spaceId:uuid(),generation:'1'};
+  const p={id:uuid(),name:'云端旧名称',parentId:null,archived:false,color:'#123456',shortName:'',creationOrder:1,createdAtSec:1800000000,updatedAtSec:1800000000};
+  let offline=false, failSnapshot=false, firstPull=true;
+  const accounts=createAccounts(raw,app,{baseUrl:'https://test.invalid/api/v1',transport:async(method,url)=>{
+    if(offline)throw Object.assign(new Error('offline'),{code:'NETWORK_ERROR'});
+    const route=new URL(url).pathname;
+    if(route.endsWith('/sync/pull')){
+      const changes=firstPull?[{entityType:'project',entityId:p.id,serverVersion:'1',deleted:false,data:p}]:[];
+      firstPull=false;return{changes,cursor:'current',hasMore:false};
+    }
+    if(route.endsWith('/sync/snapshots')){
+      if(failSnapshot)throw Object.assign(new Error('snapshot unavailable'),{code:'NETWORK_ERROR'});
+      return{id:'snapshot',upperSeq:'2'};
+    }
+    if(route.endsWith('/sync/snapshots/snapshot'))return{
+      changes:[{entityType:'project',entityId:p.id,serverVersion:'2',deleted:false,data:{...p,name:'云端新名称'}}],
+      cursor:'snapshot-current',nextOffset:1,hasMore:false,
+    };
+    throw new Error('Unexpected route '+route);
+  }});
+  try{
+    await accounts.init();await raw.set('yotick-global/credentials/'+ref.userId,{accessToken:'synthetic-access'});
+    await accounts.activate(ref);await accounts.trigger();
+    const namespace=app.globalData.adapter.namespace;
+    assert.equal((await app.globalData.adapter.get('yotick/projects'))[p.id].name,'云端旧名称');
+    offline=true;await assert.rejects(()=>accounts.clearCache(),/尚未连上/);
+    assert.equal(app.globalData.adapter.namespace,namespace);
+    assert.equal((await app.globalData.adapter.get('yotick/projects'))[p.id].name,'云端旧名称');
+    offline=false;failSnapshot=true;await assert.rejects(()=>accounts.clearCache(),/重新下载尚未完成/);
+    assert.equal(await app.globalData.adapter.get('yotick/fact-view'),undefined);
+    assert.equal((await app.globalData.adapter.get('yotick/projects'))[p.id].name,'云端旧名称');
+    failSnapshot=false;await accounts.clearCache();
+    assert.equal(app.globalData.adapter.namespace,namespace);
+    assert.ok(await app.globalData.adapter.get('yotick/fact-view'));
+    assert.equal((await app.globalData.adapter.get('yotick/projects'))[p.id].name,'云端新名称');
+    assert.equal((await app.globalData.adapter.forView(null).get('yotick/projects'))[p.id].name,'云端旧名称');
+    assert.equal(accounts.getStatus().state,'synced');
+  }finally{await accounts.activate(null);}
+});
+
 test('DevTools cloud switch preserves old test cache and requires fresh cloud login', async () => {
   const previousWx=global.wx;
   const raw=createMemoryAdapter(),app={globalData:{}},ref={userId:uuid(),spaceId:uuid(),generation:'1'};

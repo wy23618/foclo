@@ -12,5 +12,6 @@
     "subject-picker": "/components/subject-picker/subject-picker",
     "main-nav": "/components/main-nav/main-nav"
   },
-  "navigationStyle": "custom"
+  "navigationStyle": "custom",
+  "pageOrientation": "auto"
 }

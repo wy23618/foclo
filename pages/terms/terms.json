@@ -1,4 +1,5 @@
 {
   "navigationBarTitleText": "用户服务协议",
-  "enablePullDownRefresh": false
+  "enablePullDownRefresh": false,
+  "pageOrientation": "auto"
 }

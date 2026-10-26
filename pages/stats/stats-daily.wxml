@@ -1,0 +1,1 @@
+<view wx:if="{{preset !== 'today'}}" class="card daily-chart-card"><view class="title-sm">每日专注时长</view><view class="chart-hint">向左滑动查看更早日期 · 点击查看当天统计</view><daily-bars landscape-layout="{{landscapeLayout && !sumZero}}" id="dailyBars" series="{{dailySeries}}" bindselect="selectDay" /></view>

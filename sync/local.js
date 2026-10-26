@@ -177,6 +177,9 @@ async function prepareOutbox(adapter, ops, oldProjects, oldPrefs) {
         (!old || old.status !== "COMPLETED")
       )
         add("session.createCompleted", id, sessionPayload(op.v));
+      else if (op.t === "set" && op.v.status === "COMPLETED" && old &&
+        old.status === "COMPLETED" && op.v.durationSeconds < old.durationSeconds)
+        add("session.reduceDuration", id, sessionPayload(op.v));
       else if (
         op.t === "remove" &&
         old &&

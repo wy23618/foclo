@@ -1,0 +1,86 @@
+<view class="focus-stage {{ready && isGuest && !demoSession && !guestHintDismissed && cur.state==='IDLE' && !restState && !restPrompt?'focus-stage-with-hint':''}}">
+    <!-- 状态 + 项目 -->
+    <view class="proj-head">
+      <view class="project-chip" bindtap="goPicker" hover-class="project-chip-pressed">
+        <view wx:if="{{cur.projectId}}" class="project-chip-dot" style="background:{{projectSelectColor}}"></view>
+        <view class="project-chip-copy">
+          <text class="project-chip-name">{{cur.projectId ? (projectLeafName || cur.projectName) : '选择项目'}}</text>
+          <text wx:if="{{cur.state==='IDLE' && cur.projectId && canStartSelected===false}}" class="project-chip-path">请选择下级学习内容</text>
+        </view>
+        <view wx:if="{{cur.state==='IDLE'}}" class="project-chip-action"><view class="project-chip-chevron"></view></view>
+        <view wx:else class="project-chip-action project-chip-lock"><view class="runtime-icon runtime-icon-lock"></view></view>
+      </view>
+    </view>
+
+    <!-- 圆形表盘 -->
+    <view class="dial {{pausedLook?'dial-paused':''}}"><focus-ring id="focusRing" theme="{{themeClass}}" layout-key="{{focusLayoutStyle}}" obscured="{{pickerOpen||todayOpen||welcomeOpen||identityOpen}}" wx:if="{{!immersive&&!screenLocked&&!identityOpen}}" progress="{{progress}}" paused="{{pausedLook}}" running="{{cur.state==='STUDYING'}}" duration-seconds="{{cur.state==='IDLE'?targetSeconds:cur.targetSeconds}}" countdown="{{(cur.state==='IDLE'?mode:cur.mode)==='countdown'}}"/>
+
+      <view class="dial-nub"></view>
+      <view class="dial-inner">
+        <view class="dial-num num {{bigText.length>8?'dial-num-extra-long':(bigText.length>5?'dial-num-long':'')}} {{(cur.state==='IDLE'?mode:cur.mode)==='stopwatch'?'dial-num-stopwatch':''}} {{bigText.length>10?'dial-num-wide':''}} {{pausedLook ? 'dial-num-paused' : ''}}">{{bigText}}</view>
+        <view class="dial-cap">{{captionText}}</view>
+
+      </view>
+    </view>
+
+    <view wx:if="{{cur.state!=='IDLE'}}" class="run-footer"><view class="focus-run-footer-total">今日累计 {{todayText}}</view></view>
+    </view>
+    <view class="focus-dock">
+    <view class="landscape-only landscape-session-heading"><text>本次专注</text><text class="landscape-session-state">{{cur.state==='IDLE'?'准备开始':(cur.state==='STUDYING'?'进行中':'已暂停')}}</text></view>
+    <!-- 倒计时将时长与模式合为一个控制区；正计时只显示模式 -->
+    <view wx:if="{{cur.state === 'IDLE'}}" class="focus-controls-slot">
+    <view class="focus-controls">
+      <view wx:if="{{mode === 'countdown'}}" class="presets">
+        <view
+          wx:for="{{presets}}"
+          wx:key="key"
+          class="preset {{activePresetKey === item.key ? 'preset-on' : ''}}"
+          data-key="{{item.key}}"
+          bindtap="onPresetTap"
+          hover-class="preset-pressed"
+        ><view wx:if="{{item.key==='custom'}}" class="preset-edit-icon"></view><text wx:else>{{item.key / 60}}</text></view>
+      </view>
+      <view class="focus-modes">
+        <view wx:for="{{modeItems}}" wx:key="key" class="focus-mode {{mode===item.key?'focus-mode-on':''}}" data-mode="{{item.key}}" bindtap="onModeTap" hover-class="focus-mode-pressed">{{item.label}}</view>
+      </view>
+    </view>
+    </view>
+
+<view wx:if="{{cur.state!=='IDLE'}}" class="runtime-tools">
+  <button class="runtime-tool" hover-class="runtime-tool-pressed" bindtap="openImmersive"><text>极简显示</text></button>
+  <button class="runtime-tool" hover-class="runtime-tool-pressed" bindtap="lockScreen"><text>防误触</text></button>
+</view>
+    <!-- 操作 -->
+    <view class="actions">
+      <block wx:if="{{cur.state === 'IDLE'}}">
+        <button class="btn btn-primary btn-lg btn-block" bindtap="onStart"><view class="action-icon action-icon-play"></view>开始专注</button>
+      </block>
+      <block wx:elif="{{cur.state === 'STUDYING'}}">
+        <view class="two-col">
+          <button class="btn btn-ghost" bindtap="onPause"><view class="action-icon action-icon-pause"></view>暂停</button>
+          <button class="btn btn-danger" bindtap="confirmStop">结束</button>
+        </view>
+      </block>
+      <block wx:else>
+        <view class="two-col">
+          <button class="btn btn-primary" bindtap="onResume"><view class="action-icon action-icon-play"></view>继续</button>
+          <button class="btn btn-danger" bindtap="confirmStop">结束</button>
+        </view>
+      </block>
+    </view>
+
+<view class="landscape-only landscape-session-summary"><view class="landscape-today-copy"><text class="landscape-today-label">今日累计</text><text class="landscape-today-value num">{{todayText}}</text></view><button class="landscape-today-link" bindtap="openToday">查看明细 ›</button></view>
+<view wx:if="{{goalEnabled}}" class="goal-progress"><view class="goal-progress-top"><text class="goal-progress-title">今日目标</text><text class="goal-progress-value">{{todayText}} / {{goalMinutes}} 分钟</text></view><view class="goal-track"><view class="goal-fill" style="{{goalProgressStyle}}"></view></view></view>
+    <view wx:if="{{ready && isGuest && !demoSession && !guestHintDismissed && cur.state==='IDLE' && !restState && !restPrompt}}" class="guest-hint">
+      <view class="guest-hint-copy"><text class="guest-hint-title">{{tabletLayout?'游客记录仅存本机':'先安心专注，随时都能登录'}}</text><text wx:if="{{!tabletLayout}}" class="guest-hint-description">游客记录仅在本机。以后可在「设置 · 账号与登录」开启同步。</text></view>
+      <view class="guest-hint-actions"><button class="guest-hint-login" bindtap="onGuestLogin">{{tabletLayout?'登录':'微信登录'}} <text>›</text></button><button class="guest-hint-close" bindtap="dismissGuestHint" aria-label="关闭登录提示">×</button></view>
+    </view>
+    <view wx:if="{{cur.clockAnomaly}}" class="card anomaly">
+      <view class="small">
+        <text>检测到设备时间</text>
+        <text wx:if="{{cur.clockAnomaly.type === 'backward'}}">回退</text>
+        <text wx:else>大幅跳变</text>
+        <text>，已按时间戳保留真实数据。</text>
+      </view>
+    </view>
+    </view>

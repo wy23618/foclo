@@ -72,16 +72,19 @@ test('navigation height updates occur after component mounting and coalesce repe
   assert.equal(updates.length, 1);
 });
 
-test('main navigation preserves the previous page and reuses existing screens', () => {
+test('main navigation switches tabs without stacking main screens', () => {
   const { openMainTab } = require('../utils/main-navigation');
+  assert.deepEqual(require('../app.json').tabBar.list.map(item => item.pagePath), [
+    'pages/focus/focus', 'pages/stats/stats', 'pages/settings/settings'
+  ]);
   const calls = [];
   global.getCurrentPages = () => [{ route: 'pages/focus/focus' }, { route: 'pages/stats/stats' }];
-  global.wx = { navigateTo: o => calls.push(['push', o.url]), navigateBack: o => calls.push(['back', o.delta]) };
+  global.wx = { switchTab: o => calls.push(['tab', o.url]) };
   openMainTab(2);
-  assert.deepEqual(calls.pop(), ['push', '/pages/settings/settings']);
+  assert.deepEqual(calls.pop(), ['tab', '/pages/settings/settings']);
   global.getCurrentPages = () => [{ route: 'pages/focus/focus' }, { route: 'pages/stats/stats' }, { route: 'pages/settings/settings' }];
-  openMainTab(1); assert.deepEqual(calls.pop(), ['back', 1]);
-  openMainTab(0); assert.deepEqual(calls.pop(), ['back', 2]);
+  openMainTab(1); assert.deepEqual(calls.pop(), ['tab', '/pages/stats/stats']);
+  openMainTab(0); assert.deepEqual(calls.pop(), ['tab', '/pages/focus/focus']);
   openMainTab(2); openMainTab(99); assert.equal(calls.length, 0);
 });
 

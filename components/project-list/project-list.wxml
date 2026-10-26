@@ -11,10 +11,10 @@
   <view wx:if="{{opened}}" class="project-list-body">
     <view class="project-list-columns"><text class="project-list-name-column">项目名称</text><text class="project-list-time">时长</text><text class="project-list-percent">占全部</text><view class="project-list-go"></view></view>
     <view wx:for="{{visibleRows}}" wx:key="projectId" class="project-list-row {{item.depth ? 'project-list-child' : 'project-list-parent'}} {{item.expanded ? 'project-list-expanded' : ''}} {{item.selected || item.focusedRoot ? 'project-list-selected' : ''}} {{item.focusPulse ? 'project-list-focus-pulse' : ''}}" style="{{item.expanded || item.selected || item.focusedRoot ? 'background:' + item.tint + ';' : ''}}transform:translateY({{moves[item.projectId] || 0}}px);{{moves[item.projectId] ? 'transition:none;' : ''}}" data-id="{{item.projectId}}" bindtap="toggleRow">
-      <view class="project-list-divider" style="left:{{item.depth ? item.dividerLeft : 8}}rpx"></view>
-      <block wx:for="{{item.rails}}" wx:for-item="rail" wx:key="level"><view wx:if="{{rail.visible}}" class="project-list-rail {{rail.end ? 'project-list-rail-end' : ''}}" style="left:{{rail.left}}rpx"></view></block>
-      <view wx:if="{{item.depth}}" class="project-list-branch" style="left:{{item.branchLeft}}rpx;width:{{item.branchWidth}}rpx"></view>
-      <view class="project-list-name-column" style="padding-left:{{item.indent}}rpx">
+      <view class="tablet-inline project-list-divider" style="--tablet-value-left:calc({{item.depth ? item.dividerLeft : 8}} * .6px);left:var(--tablet-length-left, {{item.depth ? item.dividerLeft : 8}}rpx)"></view>
+      <block wx:for="{{item.rails}}" wx:for-item="rail" wx:key="level"><view wx:if="{{rail.visible}}" class="tablet-inline project-list-rail {{rail.end ? 'project-list-rail-end' : ''}}" style="--tablet-value-left:calc({{rail.left}} * .6px);left:var(--tablet-length-left, {{rail.left}}rpx)"></view></block>
+      <view wx:if="{{item.depth}}" class="tablet-inline project-list-branch" style="--tablet-value-left:calc({{item.branchLeft}} * .6px);left:var(--tablet-length-left, {{item.branchLeft}}rpx);--tablet-value-width:calc({{item.branchWidth}} * .6px);width:var(--tablet-length-width, {{item.branchWidth}}rpx)"></view>
+      <view class="tablet-inline project-list-name-column" style="--tablet-value-padding-left:calc({{item.indent}} * .6px);padding-left:var(--tablet-length-padding-left, {{item.indent}}rpx)">
         <view wx:if="{{item.hasChildren}}" class="project-list-toggle" data-id="{{item.projectId}}" catchtap="toggleChild" aria-role="button" aria-label="{{item.expanded ? '收起' : '展开'}}{{item.name}}的下级项目"><view class="project-list-chevron {{item.expanded ? 'project-list-chevron-down' : ''}}"></view></view>
         <view wx:else class="project-list-toggle-placeholder"></view>
         <view class="project-list-dot" style="background:{{item.color}}"></view>

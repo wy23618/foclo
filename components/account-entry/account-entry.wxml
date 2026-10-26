@@ -6,7 +6,11 @@
     <view class="entry-description">先选一个项目，再开始计时。记录默认留在本机。</view>
   </view>
   <view class="entry-actions">
-    <button class="entry-login" bindtap="login">微信登录并开启同步</button>
+    <view class="entry-agreement" bindtap="toggleAgreement" role="checkbox" aria-checked="{{agreementAccepted}}" aria-label="同意用户服务协议和隐私政策">
+      <view class="entry-check {{agreementAccepted ? 'entry-check-accepted' : ''}}"><text wx:if="{{agreementAccepted}}">✓</text></view>
+      <view class="entry-agreement-copy">我已阅读并同意<text class="entry-legal-link" catchtap="openTerms">《用户服务协议》</text>和<text class="entry-legal-link" catchtap="openPrivacy">《隐私政策》</text></view>
+    </view>
+    <button class="entry-login" disabled="{{!agreementAccepted}}" bindtap="login">微信登录并开启同步</button>
     <view class="entry-hint">用于换设备继续使用；新记录会自动保存</view>
     <button class="entry-guest" bindtap="experience">先以游客身份体验</button>
     <view class="entry-note">游客记录只在本机。之后登录时，旧记录会先征求你的同意。</view>

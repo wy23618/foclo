@@ -63,6 +63,9 @@ const definition = {
     this.load(true);
   },
   onUnload() { this.race.next(); },
+  refresh() {return this.load(true);},
+  onRefreshRecords() {return require('../../utils/refresh-records').refreshRecords(this,app,()=>this.load(true));},
+  onPullDownRefresh() {return this.onRefreshRecords();},
 
   prevDay() {
     const idx = timeMod.parseDayKey(this.data.date);

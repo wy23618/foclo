@@ -8,11 +8,11 @@
         <view class="hint">展开项目查看内容，点「统计」查看汇总</view>
         <scroll-view scroll-y scroll-top="{{listScrollTop}}" class="options" style="height:{{bodyHeight}}px" enhanced="{{true}}" show-scrollbar="{{false}}">
           <view class="all-option" data-id="" catchtap="select" hover-class="row-pressed" aria-role="button" aria-label="查看全部项目统计"><view class="all-copy"><text class="all-title">全部项目</text><text class="all-sub">查看整体专注情况</text></view><view wx:if="{{!selected}}" class="check"></view></view>
-          <view wx:for="{{visibleRows}}" wx:key="_id" class="project-option {{item._depth?'project-child':''}} {{item.archived?'is-archived':''}} {{selected===item._id?'project-selected':''}}" style="margin-left:{{item._indent}}rpx" data-id="{{item._id}}" data-has-children="{{item._hasChildren?1:0}}" bindtap="toggleExpand" hover-class="row-pressed" aria-role="button" aria-label="{{item._hasChildren?(item._expanded?'收起':'展开'):'查看统计'}}{{item.name}}">
+          <view wx:for="{{visibleRows}}" wx:key="_id" class="tablet-inline project-option {{item._depth?'project-child':''}} {{item.archived?'is-archived':''}} {{selected===item._id?'project-selected':''}}" style="--tablet-value-margin-left:calc({{item._indent}} * .6px);margin-left:var(--tablet-length-margin-left, {{item._indent}}rpx)" data-id="{{item._id}}" data-has-children="{{item._hasChildren?1:0}}" bindtap="toggleExpand" hover-class="row-pressed" aria-role="button" aria-label="{{item._hasChildren?(item._expanded?'收起':'展开'):'查看统计'}}{{item.name}}">
             <block wx:if="{{item._depth}}">
-              <view wx:for="{{item._guideRails}}" wx:for-item="rail" wx:key="left" class="guide-rail" style="left:{{rail.left}}rpx"></view>
-              <view class="guide-stem {{item._hasNextSibling?'guide-full':'guide-end'}}" style="left:{{item._guideLeft}}rpx"></view>
-              <view class="guide-branch" style="left:{{item._guideLeft}}rpx"></view>
+              <view wx:for="{{item._guideRails}}" wx:for-item="rail" wx:key="left" class="tablet-inline guide-rail" style="--tablet-value-left:calc({{rail.left}} * .6px);left:var(--tablet-length-left, {{rail.left}}rpx)"></view>
+              <view class="tablet-inline guide-stem {{item._hasNextSibling?'guide-full':'guide-end'}}" style="--tablet-value-left:calc({{item._guideLeft}} * .6px);left:var(--tablet-length-left, {{item._guideLeft}}rpx)"></view>
+              <view class="tablet-inline guide-branch" style="--tablet-value-left:calc({{item._guideLeft}} * .6px);left:var(--tablet-length-left, {{item._guideLeft}}rpx)"></view>
             </block>
             <view class="project-expand"><view wx:if="{{item._hasChildren}}" class="chevron {{item._expanded?'is-expanded':''}}"></view></view>
             <view class="project-main"><view class="tree-mark" style="background:{{item._color}}"></view><view class="project-copy"><text class="project-label">{{item.name}}</text><text wx:if="{{item.archived}}" class="archived">已归档</text></view><view wx:if="{{selected===item._id}}" class="check"></view></view>

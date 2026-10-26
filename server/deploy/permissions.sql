@@ -8,6 +8,7 @@ DO $$ BEGIN
 END $$;
 REVOKE CREATE ON SCHEMA public FROM yotick_app;
 GRANT USAGE ON SCHEMA public TO yotick_app;
+GRANT SELECT, INSERT, UPDATE, DELETE ON TABLE focus_presence TO yotick_app;
 REVOKE ALL ON TABLE schema_migrations FROM yotick_app;
 GRANT SELECT ON TABLE schema_migrations TO yotick_app;
 GRANT SELECT, INSERT, UPDATE, DELETE ON TABLE users,auth_identities,auth_sessions,auth_session_refresh_history,spaces,projects,study_sessions,pauses,account_preferences,sync_operations,sync_changes,sync_snapshots,snapshot_items,import_jobs,import_items,account_deletion_requests TO yotick_app;

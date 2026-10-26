@@ -36,8 +36,10 @@ Component({
     onRecordMenu(e) {
       const row = this.data.managementRows.find(item => item.id === e.currentTarget.dataset.id);
       if (!row || !row.canDelete) return;
-      wx.showActionSheet({ itemList: ['删除这条记录'], success: result => {
-        if (result.tapIndex === 0) this.triggerEvent('deleterecord', { sessionId: row.id });
+      const actions = row.canReduce ? ['调整专注时长', '删除这条记录'] : ['删除这条记录'];
+      wx.showActionSheet({ itemList: actions, success: result => {
+        if (result.tapIndex < 0 || result.tapIndex >= actions.length) return;
+        this.triggerEvent(row.canReduce && result.tapIndex === 0 ? 'reducerecord' : 'deleterecord', { sessionId: row.id });
       }});
     },
     onPick(e) {

@@ -6,6 +6,24 @@ const { createAccounts } = require('../sync/accounts');
 const { loginAndImport, importGuestWithConfirmation, confirmGuestImport } = require('../sync/login-flow');
 const { uuid } = require('../core/ids');
 
+test('consent for account A cannot upload guest data to account B after a switch', async () => {
+  let current={userId:'A',spaceId:'space-A',generation:'1'},uploads=0,commits=0;
+  const accounts={getCurrent:()=>current,getGuestSummary:async()=>({hasData:true,shouldAsk:true}),
+    migrateGuest:async()=>{uploads++;},commitGuestMigration:async()=>{commits++;}};
+  await assert.rejects(()=>importGuestWithConfirmation(accounts,async()=>{
+    current={userId:'B',spaceId:'space-B',generation:'1'};return true;
+  }),{code:'ACCOUNT_CHANGED'});
+  assert.equal(uploads,0);assert.equal(commits,0);
+});
+
+test('switching accounts during guest staging prevents committing to the new account', async () => {
+  let current={userId:'A',spaceId:'space-A',generation:'1'},commits=0;
+  const accounts={getCurrent:()=>current,getGuestSummary:async()=>({hasData:true,shouldAsk:true}),
+    migrateGuest:async()=>{current={userId:'B',spaceId:'space-B',generation:'1'};},commitGuestMigration:async()=>{commits++;}};
+  await assert.rejects(()=>importGuestWithConfirmation(accounts,async()=>true),{code:'ACCOUNT_CHANGED'});
+  assert.equal(commits,0);
+});
+
 test('guest import confirmation fits native WeChat button limits and awaits consent before upload', async () => {
   const oldWx = global.wx;
   let modal;

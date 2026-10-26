@@ -1,6 +1,7 @@
 {
   "component": true,
   "usingComponents": {
-    "study-timeline": "../study-timeline/index"
+    "study-timeline": "../study-timeline/index",
+    "record-reduction": "../record-reduction/record-reduction"
   }
 }

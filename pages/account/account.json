@@ -1,4 +1,8 @@
 {
   "navigationBarTitleText": "账号与同步",
-  "usingComponents": { "account-identity": "/components/account-identity/account-identity" }
+  "enablePullDownRefresh": true,
+  "usingComponents": {
+    "account-identity": "/components/account-identity/account-identity"
+  },
+  "pageOrientation": "auto"
 }

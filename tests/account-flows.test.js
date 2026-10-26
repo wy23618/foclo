@@ -532,3 +532,27 @@ test("expired guest import job is rebuilt with a new job ID while reusing immuta
   );
   assert.deepEqual(chunkBodies, sourceChunks);
 });
+
+
+test("a record reduction conflict requeues only a smaller duration and rejects a cloud increase", async () => {
+  const f=await accountFixture();
+  const project=(await f.service.createProject({operationId:uuid(),name:'减少时长冲突'})).data.project;
+  await clearOutbox(f.adapter);
+  const sid=uuid(),start=1800000000;
+  const original={id:sid,spaceId:'test',projectId:project.id,status:'COMPLETED',startedAtSec:start,
+    endedAtSec:start+180,durationSeconds:180,targetSeconds:null,createdAtSec:start,updatedAtSec:start+180,revision:1,pauses:[]};
+  const reduced=require('../core/session-reduction').reduceSession(original,60);
+  await f.adapter.set('yotick/s/'+sid,reduced);
+  const task={operationId:uuid(),kind:'session.reduceDuration',entityId:sid,payload:local.sessionPayload(reduced),
+    related:[],order:1,status:'conflict',generation:'1',bases:{['session/'+sid]:'1'},dependencies:{}};
+  const cloud={entityType:'session',entityId:sid,serverVersion:'2',data:require('../core/session-reduction').reduceSession(original,90)};
+  await f.adapter.set(local.itemKey(task.operationId),task);
+  const conflict=uuid();await addConflict(f.adapter,conflict,cloud,task);
+  await f.accounts.resolveConflict(conflict,'local');
+  const queued=(await local.pending(f.adapter))[0];
+  assert.equal(queued.kind,'session.reduceDuration');assert.equal(queued.payload.durationSeconds,60);
+  assert.equal(queued.bases['session/'+sid],'2');
+  const conflict2=uuid();await addConflict(f.adapter,conflict2,{...cloud,serverVersion:'3',data:require('../core/session-reduction').reduceSession(original,30)},queued);
+  await assert.rejects(f.accounts.resolveConflict(conflict2,'local'),/云端时长已更短/);
+  assert.equal((await local.pending(f.adapter))[0].operationId,queued.operationId);
+});

@@ -9,11 +9,22 @@ function createWorker({
   isCurrent = () => true,
   onStatus = () => {},
   onChanged = () => {},
+  pollIntervalMs = 30000,
 }) {
   let running = null,
     stopped = false,
     timer = null,
-    failures = 0;
+    failures = 0,
+    projectionChecked = false,
+    suspended = false;
+  function schedule(delay) {
+    if (timer) clearTimeout(timer);
+    timer = null;
+    if (stopped || suspended || !(delay > 0)) return;
+    timer = setTimeout(() => trigger(), delay);
+    // Node acceptance tests should not stay alive for a mobile foreground poll.
+    if (timer && typeof timer.unref === "function") timer.unref();
+  }
   function valid() {
     if (stopped || !isCurrent()) {
       const e = new Error("账号已切换");
@@ -59,13 +70,22 @@ function createWorker({
         indexes = {},
         projects = { ...ctx.projects };
       let prefs = { ...ctx.prefs };
+      // Later changes in this transaction must see earlier staged writes.
+      // Otherwise create+delete resurrects a fact, and repeated updates leave
+      // the previous project's/day's indexes behind before the journal commits.
+      const readPending = async (key) => {
+        for (let i = ops.length - 1; i >= 0; i--)
+          if (ops[i].k === key)
+            return ops[i].t === "set" ? ops[i].v : undefined;
+        return ctx.adapter.get(key);
+      };
       let changedProjects = false;
       let changedPrefs = false;
       const acknowledged = new Set((acks || []).map((a) => a.operationId));
       for (const c of changes) {
         const shadow = { ...c },
           key = local.shadowKey(c.entityType, c.entityId),
-          previous = await ctx.adapter.get(key);
+          previous = await readPending(key);
         if (
           !c.restoring &&
           previous &&
@@ -113,7 +133,7 @@ function createWorker({
                       ? projects[c.entityId]
                       : c.entityType === "prefs"
                         ? prefs
-                        : await ctx.adapter.get(repo.sessionKey(c.entityId)),
+                        : await readPending(repo.sessionKey(c.entityId)),
                   operationIds: dirty.map((t) => t.operationId),
                   createdAt: Date.now(),
                 },
@@ -186,7 +206,7 @@ function createWorker({
           }
           changedProjects = true;
         } else if (c.entityType === "session") {
-          const old = await ctx.adapter.get(repo.sessionKey(c.entityId));
+          const old = await readPending(repo.sessionKey(c.entityId));
           if (c.deleted) {
             if (old && old.status === "COMPLETED")
               await indexSession(ctx, old, true, ops, indexes);
@@ -204,7 +224,11 @@ function createWorker({
                   operationIds: [],
                 },
               });
-            } else await indexSession(ctx, c.data, false, ops, indexes);
+            } else {
+              if (old && old.status === "COMPLETED")
+                await indexSession(ctx, old, true, ops, indexes);
+              await indexSession(ctx, c.data, false, ops, indexes);
+            }
           } else {
             const id = uuid();
             ops.push({
@@ -524,10 +548,34 @@ function createWorker({
       return frozen;
     });
   }
-  async function run() {
+  async function reconcileDeletedFacts() {
+    if (projectionChecked) return;
+    const changes = await tx(async (ctx) => {
+      const changes = [];
+      for (const key of await ctx.adapter.keys()) {
+        if (!key.startsWith("yotick/shadow/session/")) continue;
+        const shadow = await ctx.adapter.get(key);
+        if (!shadow?.deleted) continue;
+        const fact = await ctx.adapter.get(repo.sessionKey(shadow.entityId));
+        if (fact?.status === "COMPLETED")
+          changes.push({ ...shadow, restoredMissing: true });
+      }
+      return changes;
+    });
+    // Apply through the normal journal and conflict path: never discard an
+    // unsent local edit just because an older client left a deleted shadow.
+    if (changes.length) await apply(changes);
+    projectionChecked = true;
+  }
+  async function run(fullSnapshot = false) {
     try {
       const queued = await tx((ctx) => local.pending(ctx.adapter));
       onStatus({ state: "syncing", pending: queued.length });
+      await reconcileDeletedFacts();
+      if (fullSnapshot) {
+        const state = await tx(ctx => ctx.adapter.get(local.STATE));
+        await restoreSnapshot(state);
+      }
       await pullAll();
       for (let i = 0; i < 50; i++) {
         const task = await next();
@@ -586,10 +634,9 @@ function createWorker({
         lastSyncedAt: Date.now(),
       });
       onChanged();
-      if (p.length && p[0].status !== "conflict")
-        timer = setTimeout(() => trigger(), 1000);
+      schedule(p.length && p[0].status !== "conflict" ? 1000 : pollIntervalMs);
     } catch (e) {
-      if (e.code === "CANCELLED") return;
+      if (e.code === "CANCELLED" || stopped || !isCurrent()) return;
       if (e.code === "GENERATION_MISMATCH")
         await tx(async (ctx) => {
           const s = await ctx.adapter.get(local.STATE);
@@ -616,16 +663,19 @@ function createWorker({
         const delay =
           Math.min(60000, 1000 * 2 ** Math.min(++failures, 6)) *
           (0.75 + Math.random() * 0.5);
-        timer = setTimeout(() => trigger(), delay);
+        schedule(delay);
       }
     }
   }
   function trigger() {
-    if (stopped) return Promise.resolve();
-    if (!running)
+    if (stopped || suspended) return Promise.resolve();
+    if (!running) {
+      if (timer) clearTimeout(timer);
+      timer = null;
       running = run().finally(() => {
         running = null;
       });
+    }
     return running;
   }
   function stop() {
@@ -633,6 +683,18 @@ function createWorker({
     if (timer) clearTimeout(timer);
     if (request && request.cancel) request.cancel();
   }
-  return { trigger, stop, apply };
+  async function refreshFromCloud() {
+    while (running) await running;
+    valid();
+    if (suspended) throw Object.assign(new Error("请返回小程序后重新下载"), { code:"CANCELLED" });
+    if (timer) clearTimeout(timer);
+    timer = null;
+    running = run(true).finally(() => { running = null; });
+    return running;
+  }
+  return { trigger, stop, apply, refreshFromCloud,
+    suspend() { suspended = true; if (timer) clearTimeout(timer); timer = null; },
+    resume() { suspended = false; return trigger(); },
+  };
 }
 module.exports = { createWorker };

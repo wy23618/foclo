@@ -1,1 +1,1 @@
-Page(require('./stats-definition')(getApp()));
+Page(require('../../utils/share').withShare(require('./stats-definition')(getApp())));

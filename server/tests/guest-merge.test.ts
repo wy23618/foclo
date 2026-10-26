@@ -44,3 +44,12 @@ test('duplicate source facts are skipped while invalid parent graphs fail withou
   assert.deepEqual(plan.sessionMapping, { b:'skip' });
   assert.throws(() => planGuestMerge({ projects:[project('p','环','p')], sessions:[] }, [], [], '1'));
 });
+
+test('independent overlapping device records are retained while an exact copy is skipped', () => {
+  const existing=session('account');
+  const overlapping={...session('other-device'),startedAtSec:120,endedAtSec:140,durationSeconds:20};
+  const plan=planGuestMerge({projects:[project('p','数学')],sessions:[{...existing,id:'copy'},overlapping]},
+    [row(project('p','数学'))],[row(existing)],'1');
+  assert.equal(plan.sessionMapping.copy,'skip');
+  assert.equal(plan.sessionMapping['other-device'],undefined);
+});

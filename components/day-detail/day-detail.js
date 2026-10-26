@@ -4,8 +4,8 @@ const view=require('../../utils/view-data');const time=require('../../core/time'
 const { uuid } = require('../../core/ids');
 const { managementRows, deletionMessage } = require('../../utils/record-management');
 Component({
-  properties: { demoSession: { type: String, value: '' }, date:String,scope:{type:String,value:''},mode:{type:String,value:'realtime'},controls:{type:Boolean,value:true},summary:{type:Boolean,value:true},distribution:{type:Boolean,value:true},start:{type:String,value:''},end:{type:String,value:''}},
-  data:{distRows:[],timelineRecords:[],projectColors:{},totalText:'0秒',count:0,loading:true,error:'',today:'',canPrev:true,canNext:false,recordManaging:false},
+  properties: { theme:{type:String,value:'light'}, demoSession: { type: String, value: '' }, date:String,scope:{type:String,value:''},mode:{type:String,value:'realtime'},controls:{type:Boolean,value:true},summary:{type:Boolean,value:true},distribution:{type:Boolean,value:true},start:{type:String,value:''},end:{type:String,value:''}},
+  data:{distRows:[],timelineRecords:[],projectColors:{},totalText:'0秒',count:0,loading:true,error:'',today:'',canPrev:true,canNext:false,recordManaging:false,reductionOpen:false,reductionDuration:0,reductionProject:'',reductionTime:'',recordReducing:false,reductionError:''},
   observers:{'date, scope, mode':function(){if(this.attachedFlag)this.load(true);}},
   lifetimes:{attached(){this.attachedFlag=true;this.load(true);},detached(){this.attachedFlag=false;this.token=(this.token||0)+1;}},
   methods:{
@@ -22,8 +22,51 @@ Component({
       this.setData(patch);this.triggerEvent('loaded',{date:spec.date,totalCount:records.data.totalCount});
     },
     onRecordManagementChange(e){this.setData({recordManaging:!!e.detail.managing});},
+    openRecordReduction(e) {
+      if(this.deletingRecord || this.data.recordReducing || this.reductionContext)return;
+      const row=managementRows(this.data.timelineRecords).find(item=>item.id===e.detail.sessionId);
+      if(!row || !row.canReduce)return;
+      const service=demoContext.appFor(this).globalData.service;
+      this.reductionContext={row,service,revision:service.peekCurrent().dataRevision,date:this.properties.date};
+      this.setData({reductionOpen:true,reductionDuration:row.durationSeconds,reductionProject:row.project,reductionTime:row.timeText,reductionError:''});
+    },
+    closeRecordReduction() {
+      if(this.data.recordReducing)return;
+      this.reductionContext=null;
+      this.setData({reductionOpen:false,reductionError:''});
+    },
+    async confirmRecordReduction(e) {
+      const context=this.reductionContext;
+      if(!context || this.data.recordReducing || !this.attachedFlag)return;
+      const durationSeconds=e.detail.durationSeconds;
+      if(!Number.isSafeInteger(durationSeconds) || durationSeconds<0 || durationSeconds>=context.row.durationSeconds)return;
+      this.setData({recordReducing:true,reductionError:''});
+      let result;
+      try {
+        result=await context.service.reduceSessionDuration({sessionId:context.row.id,
+          durationSeconds,operationId:uuid(),expectedDataRevision:context.revision});
+      } catch(error) {
+        if(this.attachedFlag)this.setData({reductionError:error.message || '未能保存，请重试'});
+        return;
+      } finally { if(this.attachedFlag)this.setData({recordReducing:false}); }
+      if(!this.attachedFlag)return;
+      if(!result.ok) {
+        if(['STALE_COMMAND','SESSION_NOT_FOUND','SPACE_CHANGED'].includes(result.error.code)) {
+          this.closeRecordReduction();
+          wx.showModal({title:'记录已变化',content:result.error.message,showCancel:false});
+          await this.load(false);
+        } else this.setData({reductionError:result.error.message});
+        return;
+      }
+      this.closeRecordReduction();
+      try { await this.load(false); } catch(error) {
+        if(this.attachedFlag)this.setData({loading:false,error:'时长已保存，请重新读取记录'});
+      }
+      if(this.attachedFlag)this.triggerEvent('recordchanged',{sessionId:context.row.id,date:context.date});
+      wx.showToast({title:'专注时长已减少',icon:'success'});
+    },
     async deleteRecord(e) {
-      if(this.deletingRecord)return;
+      if(this.deletingRecord || this.data.recordReducing || this.reductionContext)return;
       const row=managementRows(this.data.timelineRecords).find(item=>item.id===e.detail.sessionId);
       if(!row||!row.canDelete)return;
       this.deletingRecord=true;
