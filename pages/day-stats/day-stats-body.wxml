@@ -1,4 +1,4 @@
-<safe-nav theme="{{themeClass}}" title="当天统计" back-text="‹ 返回" refresh="{{true}}" hidden="{{chartFull}}" bindback="back" bindrefresh="load"/>
+<safe-nav theme="{{themeClass}}" title="当天统计" back-text="‹ 返回" refresh="{{true}}" refreshing="{{syncRefreshing}}" hidden="{{chartFull}}" bindback="back" bindrefresh="onRefreshRecords"/>
 <view class="container {{landscapeLayout?'landscape-shell':''}} landscape-detail {{showDistributionChart?'':'landscape-no-distribution'}} {{landscapeLayout?'stats-layout':''}} theme-{{themeClass}}">
   <view class="landscape-only landscape-heading"><view class="landscape-title">当天统计</view><view class="landscape-subtitle">{{dateTitle}}</view></view>
   <view wx:if="{{error}}" class="card error-card" bindtap="load">{{error}} · 点击重试</view>
@@ -32,5 +32,6 @@
   </view>
   <project-list id="projectList" tree="{{chartTree}}" selected-id="{{selectedProjectId}}" range-key="{{date}}:{{scope}}" bindselect="goProject" bindfocuschange="onListFocusChange" bindclearfocus="clearProjectFocus"/>
 
-  <view class="day-records"><day-detail theme="{{themeClass}}" demo-session="{{demoSession}}" id="dayDetail" summary="{{false}}" distribution="{{false}}" date="{{date}}" scope="{{scope}}" controls="{{false}}" bindrecorddeleted="load" bindrecordchanged="load"/></view>
+  <view class="day-records"><day-detail theme="{{themeClass}}" demo-session="{{demoSession}}" id="dayDetail" summary="{{false}}" distribution="{{false}}" date="{{date}}" scope="{{scope}}" controls="{{false}}" bindrecorddeleted="load" bindrecordchanged="load" bindeditorchange="onRecordEditorChange"/></view>
 </view>
+<page-container show="{{recordHistoryEnabled && recordEditorOpen}}" overlay="{{false}}" position="center" duration="0" custom-style="width:1px;height:1px;opacity:0;background:transparent" bindafterenter="onRecordHistoryEnter" bindafterleave="onRecordHistoryLeave"><view/></page-container>

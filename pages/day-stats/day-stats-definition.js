@@ -10,10 +10,15 @@ const view=(runtime.view || require('../../utils/view-data')),time=require('../.
 const {buildDashboard,selectedDetail,detailExpansion}=require('../../utils/stats-dashboard');
 function durationParts(seconds){const text=format.durationText(seconds),parts=[],pattern=/(\d+)(小时|分钟|秒)/g;let match;while((match=pattern.exec(text)))parts.push({value:match[1],unit:match[2]});return parts;}
 const definition = {
-  data:{date:'',dateTitle:'',scope:'',scopeName:'全部项目',scopeShortName:'',singleExpand:false,rows:[],chartGroups:[],chartTree:[],showDistributionChart:false,chartFull:false,chartExpandable:false,chartAllExpanded:false,totalText:'0秒',totalParts:[{value:'0',unit:'秒'}],stackSegs:[],shortTotal:'—',countText:'',error:'',today:view.today(),selectedProjectId:'',selectedDetail:null,expandedDetailChildIds:[],avgSessionText:'0秒'},
+  data:{recordEditorOpen:false,recordHistoryEnabled:true,date:'',dateTitle:'',scope:'',scopeName:'全部项目',scopeShortName:'',singleExpand:false,rows:[],chartGroups:[],chartTree:[],showDistributionChart:false,chartFull:false,chartExpandable:false,chartAllExpanded:false,totalText:'0秒',totalParts:[{value:'0',unit:'秒'}],stackSegs:[],shortTotal:'—',countText:'',error:'',today:view.today(),selectedProjectId:'',selectedDetail:null,expandedDetailChildIds:[],avgSessionText:'0秒'},
   onLoad(q){this.seq=0;this.dashboard=buildDashboard([],[]);this.setData({date:q.date||view.today(),scope:q.scope||''});},
   onShow(){require('../../utils/theme').applyPageTheme(this);return this.load();},
   onUnload(){this.seq++;},
+  onPullDownRefresh(){return this.onRefreshRecords();},
+  onRecordEditorChange(e){require('../../utils/modal-history').recordEditorChanged(this,e);},
+  onRecordHistoryEnter(){require('../../utils/modal-history').layerEntered(this,'recordHistoryEnabled');},
+  onRecordHistoryLeave(){if(require('../../utils/modal-history').isRearming(this,'recordHistoryEnabled'))return;if(!this.data.recordEditorOpen||!this.data.recordHistoryEnabled)return;const detail=this.selectComponent('#dayDetail');if(detail&&detail.dismissEditor)detail.dismissEditor();if(this.data.recordEditorOpen)require('../../utils/modal-history').restoreLayer(this,'recordHistoryEnabled',()=>this.data.recordEditorOpen);},
+  onRefreshRecords(){return require('../../utils/refresh-records').refreshRecords(this,app,()=>this.load());},
   async load(){
     const seq=++this.seq;await app.globalData.readyPromise;
     const args={startDate:this.data.date,endDate:this.data.date,mode:'realtime'};if(this.data.scope)args.projectId=this.data.scope;
@@ -48,10 +53,10 @@ const definition = {
   prev(){this.move(-1);},next(){this.move(1);},
   onDateTouchStart(e){const p=e.touches&&e.touches[0];if(p)this.dateGesture={x:p.clientX,y:p.clientY};},
   onDateTouchEnd(e){const p=e.changedTouches&&e.changedTouches[0],s=this.dateGesture;this.dateGesture=null;if(!p||!s)return;const dx=p.clientX-s.x,dy=p.clientY-s.y;if(Math.abs(dx)>55&&Math.abs(dx)>Math.abs(dy)*1.5)this.move(dx<0?1:-1);},
-  back(){wx.navigateBack({fail:()=>navigation.reLaunch({url:'/pages/stats/stats'})});},
+  back(){const detail=this.selectComponent&&this.selectComponent('#dayDetail');if(detail&&detail.dismissEditor&&detail.dismissEditor())return;wx.navigateBack({fail:()=>navigation.reLaunch({url:'/pages/stats/stats'})});},
   goHierarchy(){const chart=this.selectComponent('#distributionChart');if(chart)chart.openFullView();},
   onChartFullChange(e){this.setData({chartFull:!!e.detail.open});},
-  goProject(e){const id=(e.detail&&e.detail.projectId)||(e.currentTarget&&e.currentTarget.dataset.id);if(!id||id===this.data.scope)return;navigation.navigateTo({url:'/pages/project-stats/project-stats?id='+encodeURIComponent(id)+'&preset=custom&startDate='+this.data.date+'&endDate='+this.data.date});}
+  goProject(e){const id=(e.detail&&e.detail.projectId)||(e.currentTarget&&e.currentTarget.dataset.id);if(!id||id===this.data.scope)return;require('../../utils/detail-navigation').openDetail(this,navigation,'/pages/project-stats/project-stats?id='+encodeURIComponent(id)+'&preset=custom&startDate='+this.data.date+'&endDate='+this.data.date);}
 };
 
   definition.data.demoSession = '';

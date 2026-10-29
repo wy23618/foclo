@@ -43,7 +43,18 @@ const definition = {
     mixRed: 66, mixGreen: 91, mixBlue: 66, mixHue: 120, mixSaturation: 0.27, mixBrightness: 0.36, mixX: 27, mixY: 64, mixHueX: 33, mixHueColor: '#00FF00',
     visiblePalette: FIRST_COLORS, loading: true, mixerTrack: themeColors('light').mixerTrack
   },
-  onLoad(q) { this.projectId = decodeURIComponent((q && q.id) || ''); return this.load(); },
+  onLoad(q) {
+    q = q || {};
+    this.projectId = decodeURIComponent(q.id || '');
+    this.draftOnly = q.draft === '1';
+    return this.load().then(() => {
+      if (!this.draftOnly) return;
+      const color = decodeURIComponent(q.color || '');
+      const shortName = decodeURIComponent(q.shortName || '');
+      if (!color || /^#[0-9a-fA-F]{6}$/.test(color)) this.applyAppearanceColor(color);
+      this.setData({ appearanceShortName: shortName });
+    });
+  },
   onShow() { return applyPageTheme(this).then(() => this.setData({ mixerTrack: themeColors(this.data.themeClass).mixerTrack })); },
   async load() {
     await app.globalData.readyPromise;
@@ -121,6 +132,12 @@ const definition = {
     if (this.appearanceSaving) return;
     const hex = String(this.data.appearanceHexInput || '').trim().replace(/^#/, '');
     if (hex && !/^[0-9a-fA-F]{6}$/.test(hex)) { this.setData({ appearanceHexError: '请输入 6 位有效色码' }); return; }
+    if (this.draftOnly) {
+      const channel = this.getOpenerEventChannel();
+      channel.emit('appearanceSelected', { color: this.data.appearanceColor || null, shortName: this.data.appearanceShortName });
+      this.closeAppearance();
+      return;
+    }
     this.appearanceSaving = true;
     const env = await app.globalData.service.setProjectAppearance({ operationId: uuid(), projectId: this.data.appearanceProjectId, color: this.data.appearanceColor || null, shortName: this.data.appearanceShortName });
     this.appearanceSaving = false;

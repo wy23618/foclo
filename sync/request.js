@@ -1,4 +1,4 @@
-function createRequest({ baseUrl, credentials, saveCredentials, transport }) {
+function createRequest({ baseUrl, credentials, saveCredentials, transport, recoverCredentials }) {
   const environment = require("./environment"),
     localDevelopment =
       typeof wx === "undefined" || environment.isDevToolsDevelopment(),
@@ -46,7 +46,27 @@ function createRequest({ baseUrl, credentials, saveCredentials, transport }) {
       await preparePhoneDebug();
       if (cancelled) throw Object.assign(new Error("请求取消"), { code: "CANCELLED" });
       return new Promise((resolve, reject) => {
-        let task = wx.request({
+        let task, settled = false;
+        const finish = (error, value) => {
+          if (settled) return;
+          settled = true;
+          clearTimeout(timer);
+          active.delete(pending);
+          if (error) reject(error); else resolve(value);
+        };
+        const abort = () => { try { if (task && task.abort) task.abort(); } catch (e) {} };
+        const pending = { abort() {
+          finish(Object.assign(new Error("请求取消"), { code: "CANCELLED" }));
+          abort();
+        } };
+        // Some platform failures never deliver success/fail, including after
+        // abort. Keep the sync queue and refresh spinner from waiting forever.
+        const timer = setTimeout(() => {
+          finish(Object.assign(new Error("网络未连接或请求超时"), { code: "NETWORK_ERROR" }));
+          abort();
+        }, 15000);
+        active.add(pending);
+        try { task = wx.request({
           method,
           url,
           data,
@@ -56,10 +76,9 @@ function createRequest({ baseUrl, credentials, saveCredentials, transport }) {
             ...(token ? { Authorization: "Bearer " + token } : {}),
           },
           success: (r) => {
-            active.delete(task);
-            if (r.statusCode >= 200 && r.statusCode < 300) resolve(r.data);
+            if (r.statusCode >= 200 && r.statusCode < 300) finish(null, r.data);
             else
-              reject(
+              finish(
                 Object.assign(
                   new Error(r.data?.error?.message || "服务请求失败"),
                   {
@@ -70,7 +89,6 @@ function createRequest({ baseUrl, credentials, saveCredentials, transport }) {
               );
           },
           fail: (e) => {
-            active.delete(task);
             const detail = String(e?.errMsg || "未知网络错误")
               .replace(/https?:\/\/\S+/gi, "[请求地址]")
               .replace(/[\r\n]+/g, " ")
@@ -78,29 +96,27 @@ function createRequest({ baseUrl, credentials, saveCredentials, transport }) {
             const message = phoneDevelopment && lanDebugUrl
               ? "测试请求失败：" + detail + "（电脑地址 " + environment.LAN_DEBUG_API_HOST + "）"
               : "网络未连接或请求超时";
-            reject(
+            finish(
               Object.assign(new Error(message), {
                 code: "NETWORK_ERROR",
               }),
             );
           },
-        });
-        active.add(task);
+        }); } catch (error) { finish(error); }
       });
     });
   async function refresh() {
     if (!refreshing)
       refreshing = (async () => {
-        if (!tokens?.refreshToken)
-          throw Object.assign(new Error("请重新登录"), {
-            code: "AUTH_REQUIRED",
-          });
-        const next = await send(
-          "POST",
-          baseUrl + "/auth/refresh",
-          { refreshToken: tokens.refreshToken },
-          null,
-        );
+        let next;
+        try {
+          if (!tokens?.refreshToken) throw Object.assign(new Error("请重新登录"), { code: "AUTH_REQUIRED" });
+          next = await send("POST", baseUrl + "/auth/refresh", { refreshToken: tokens.refreshToken }, null);
+        } catch (error) {
+          if (cancelled) throw Object.assign(new Error("请求取消"), { code: "CANCELLED" });
+          if (!(error.status === 401 || error.code === "AUTH_REQUIRED") || !recoverCredentials) throw error;
+          next = await recoverCredentials();
+        }
         if (cancelled)
           throw Object.assign(new Error("请求取消"), { code: "CANCELLED" });
         await saveCredentials(next);
@@ -123,14 +139,16 @@ function createRequest({ baseUrl, credentials, saveCredentials, transport }) {
       url += q ? "?" + q : "";
       payload = undefined;
     }
+    const sentToken = tokens?.accessToken;
     try {
-      const result = await send(method, url, payload, tokens?.accessToken);
+      const result = await send(method, url, payload, sentToken);
       if (cancelled) throw Object.assign(new Error("请求取消"), { code: "CANCELLED" });
       return result;
     } catch (e) {
       if (cancelled) throw Object.assign(new Error("请求取消"), { code: "CANCELLED" });
       if (e.status === 401 || e.code === "AUTH_REQUIRED") {
-        await refresh();
+        // A late 401 from the old token can reuse a concurrent request's renewal.
+        if (!tokens?.accessToken || tokens.accessToken === sentToken) await refresh();
         if (cancelled)
           throw Object.assign(new Error("请求取消"), { code: "CANCELLED" });
         const result = await send(method, url, payload, tokens.accessToken);

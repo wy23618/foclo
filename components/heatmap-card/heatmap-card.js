@@ -11,12 +11,14 @@ Component({
     theme: { type: String, value: 'light', observer: 'onThemeChange' },
     scopeId: { type: String, value: '' },
     topInset: { type: Number, value: 0 },
+    nativeOverlay: { type: Boolean, value: false },
     standalone: { type: Boolean, value: false }
   },
   data: { tabletLayout:false,landscapeLayout:false,monthKey:'',currentMonth:'',monthTitle:'',scopeName:'全部项目',scopeOptions:[],scopeIndex:0,
     grid:[],weekHead:[],monthTotalText:'0秒',activeDays:0,canGoNext:false,loading:true,error:'',
     scopePickerOpen:false,scopeLoading:false,scopeError:'',scopeQuery:'',scopeTreeRows:[],scopePickerRows:[],expandedScopeIds:[],recentScopes:[],selectedScopeId:'',
     transitionFrom:null,incomingClass:'',outgoingClass:'',dragPreview:null,dragPreviewOffset:0,dragOffset:0,dragAnimating:false,dragPreviewLoading:false },
+  observers: { scopePickerOpen(open) { this.triggerEvent('scopepickerchange', { open: !!open }); } },
   lifetimes: { attached(){this.seq=0;this.attachedReady=true;if(this.properties.opened)this.open();},
     detached(){this.seq++;this.attachedReady=false;} },
   pageLifetimes: { show(){if(this.properties.opened&&this.returningFromDay){this.returningFromDay=false;this.load();}},
@@ -231,6 +233,6 @@ Component({
     onCellTap(e){if(this.suppressTap)return;const c=e.currentTarget.dataset.cell;if(this.data.loading||!c||c.outside||c.isFuture||c.date>demoContext.todayFor(this))return;
       this.returningFromDay=true;demoContext.navigateFor(this, {url:'/pages/day-stats/day-stats?date='+c.date+'&scope='+encodeURIComponent(this.scope||''),
         fail:()=>{this.returningFromDay=false;}});},
-    close(){this.triggerEvent('close');},noop(){}
+    close(){if(this.data.scopePickerOpen){this.closeScopePicker();return;}this.triggerEvent('close');},noop(){}
   }
 });

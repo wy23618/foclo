@@ -35,14 +35,6 @@
     "backgroundTextStyle": "dark"
   },
   "style": "v2",
-  "tabBar": {
-    "custom": true,
-    "list": [
-      { "pagePath": "pages/focus/focus", "text": "专注" },
-      { "pagePath": "pages/stats/stats", "text": "统计" },
-      { "pagePath": "pages/settings/settings", "text": "设置" }
-    ]
-  },
   "resizable": true,
   "sitemapLocation": "sitemap.json",
   "lazyCodeLoading": "requiredComponents"

@@ -739,6 +739,12 @@ function createService(adapter, options) {
         return failEnvelope("RECOVERY_REQUIRED", "记录删除尚未完成");
       return okEnvelope({ deletedSessionId: input.sessionId, recovered: true });
     }
+    if (kind === "updateProjectDetails") {
+      const project = state.projects[input.projectId];
+      return project
+        ? okEnvelope({ project, recovered: true })
+        : failEnvelope("RECOVERY_REQUIRED", "未找到恢复的项目");
+    }
     if (kind === "createProject") {
       const name = (input.name || "").trim();
       const ids = Object.keys(state.projects);
@@ -904,6 +910,35 @@ function createService(adapter, options) {
       if (color || old.color)
         require("../utils/color").setProjectColor(id, color);
       return { project: projects[id], asOfSec: now };
+    });
+  }
+
+  // Save the editor's fields in one durable operation; failed validation must
+  // never leave only the name or only the appearance changed.
+  async function updateProjectDetails(input) {
+    return command("updateProjectDetails", input, async () => {
+      await settleInternal();
+      const old = state.projects[input.projectId];
+      if (!old) throw coded("PROJECT_NOT_FOUND", "项目不存在");
+      const name = String(input.name || "").trim();
+      const shortName = String(input.shortName || "").trim();
+      const color = input.color == null || input.color === "" ? null : String(input.color).toUpperCase();
+      if (!name || Array.from(name).length > 120) throw coded("INVALID_NAME", "项目名称须为 1 至 120 个字符");
+      if (Object.values(state.projects).some(p => p.id !== old.id && p.name === name)) throw coded("NAME_EXISTS", "已存在同名项目（含已归档项目）");
+      if (Array.from(shortName).length > 8) throw coded("INVALID_SHORT_NAME", "简称最多 8 个字");
+      if (color && !/^#[0-9A-F]{6}$/.test(color)) throw coded("INVALID_COLOR", "请选择有效颜色");
+      const now = nowSnapshot();
+      const project = Object.assign({}, old, { name, shortName, color, updatedAtSec: now, revision: (old.revision || 1) + 1 });
+      const projects = Object.assign({}, state.projects, { [old.id]: project });
+      const meta = bumpedMeta(now);
+      await persist(input.operationId, [
+        { t: "set", k: repo.PROJECTS, v: projects },
+        { t: "set", k: repo.META, v: meta },
+      ]);
+      state.projects = projects;
+      applyMeta(meta);
+      require("../utils/color").setProjectColor(old.id, color);
+      return { project, asOfSec: now };
     });
   }
 
@@ -2278,6 +2313,7 @@ function createService(adapter, options) {
     createProject,
     renameProject,
     setProjectAppearance,
+    updateProjectDetails,
     moveProjectOrder,
     createBackup,
     previewBackup,

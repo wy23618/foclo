@@ -18,6 +18,7 @@
   <button class="guide-return" bindtap="startFocus" hover-class="guide-action-pressed">返回专注使用</button>
 </view>
 
+<page-container show="{{previewHistoryOpen}}" overlay="{{false}}" position="center" duration="0" custom-style="width:1px;height:1px;opacity:0;background:transparent" bindafterenter="onPreviewHistoryEnter" bindafterleave="onPreviewHistoryLeave"><view/></page-container>
 <view wx:if="{{previewOpen}}" class="preview-overlay theme-{{themeClass}}" catchtouchmove="noop">
   <view class="preview-mask" bindtap="closePreview"></view>
   <view class="preview-card" catchtap="noop">

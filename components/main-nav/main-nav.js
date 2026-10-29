@@ -14,11 +14,10 @@ Component({
       if (tab < 0 || tab === this.properties.selected) return;
       if (this.properties.inline) { this.triggerEvent('change', { tab }); return; }
       this.navigating = true;
-      if (this.properties.demoSession) {
-        demoContext.openMainTab(this.properties.demoSession, tab, () => { this.navigating = false; });
-        return;
-      }
-      require('../../utils/main-navigation').openMainTab(tab, () => { this.navigating = false; });
+      const navigation = this.properties.demoSession
+        ? { openMainTab: (tab, complete) => demoContext.openMainTab(this.properties.demoSession, tab, complete) }
+        : require('../../utils/main-navigation');
+      navigation.openMainTab(tab, () => { this.navigating = false; });
     }
   }
 });

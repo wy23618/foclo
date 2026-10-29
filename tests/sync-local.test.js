@@ -104,6 +104,37 @@ test('foreground polling receives other-device changes, suspends in background, 
   } finally { f.worker.stop(); }
 });
 
+test('manual refresh downloads a remote record published after the active cycle final pull', async () => {
+  let published = false, manual, sameManual, pulls = 0, f;
+  f = await cleanCloudFixture({
+    request: async () => { pulls++; return { changes: published ? [f.change] : [], cursor: published ? 'new' : 'old', hasMore: false }; },
+    onStatus(status) {
+      if (status.state === 'synced' && !published) {
+        published = true;
+        manual = f.worker.refresh();
+        sameManual = f.worker.refresh();
+      }
+    }
+  });
+  try {
+    await f.worker.trigger();
+    assert.equal(manual, sameManual, 'concurrent refresh requests share one new cycle');
+    await manual;
+    assert.ok(pulls >= 4, 'refresh performs its own pulls after the in-flight cycle');
+    assert.equal((await f.adapter.get('yotick/s/' + f.s.id)).durationSeconds, 60);
+    assert.equal((await f.adapter.get(local.STATE)).cursor, 'new');
+  } finally { f.worker.stop(); }
+});
+
+test('a manual refresh cannot report stale success while background synchronization is suspended', async () => {
+  const f = await cleanCloudFixture();
+  try {
+    await f.worker.trigger();
+    f.worker.suspend();
+    await assert.rejects(f.worker.refresh(), /回到小程序/);
+  } finally { f.worker.stop(); }
+});
+
 test('a late failure from an old account does not overwrite the new account status', async () => {
   let reject, current = true;
   const delayed = new Promise((_, no) => { reject = no; });
@@ -133,6 +164,37 @@ test('two devices converge on identical facts and an offline device applies a re
     assert.equal(await b.adapter.get('yotick/s/' + a.s.id), undefined);
     assert.deepEqual(await a.adapter.get(local.shadowKey('session', a.s.id)), await b.adapter.get(local.shadowKey('session', a.s.id)));
   } finally { a.worker.stop(); b.worker.stop(); }
+});
+
+test('a completed tablet session uploads once and phone refresh downloads the same recorded duration', async () => {
+  const tablet = await fixture(), phone = await fixture(), changes = [], receipts = new Map();
+  const request = async (method, route, data) => {
+    if (route === '/sync/pull') return { changes: changes.slice(Number(data.cursor || 0)), cursor: String(changes.length), hasMore: false };
+    assert.equal(method, 'POST'); assert.equal(route, '/sync/push');
+    return { results: data.operations.map(operation => {
+      if (receipts.has(operation.operationId)) return receipts.get(operation.operationId);
+      const change = { entityType: operation.kind.split('.')[0], entityId: operation.entityId, serverVersion: '1', deleted: false, data: operation.payload };
+      changes.push(change);
+      const result = { operationId: operation.operationId, status: 'applied', changes: [change] };
+      receipts.set(operation.operationId, result); return result;
+    }) };
+  };
+  const a = createWorker({ service: tablet.service, deviceId: uuid(), request });
+  const b = createWorker({ service: phone.service, deviceId: uuid(), request });
+  try {
+    const project = await tablet.service.createProject({ operationId: uuid(), name: '跨设备复现' });
+    await a.refresh(); await b.refresh();
+    const start = await tablet.service.start({ operationId: uuid(), projectId: project.data.project.id, targetSeconds: 60 });
+    tablet.clock.now += 60; phone.clock.now = tablet.clock.now;
+    await tablet.service.getCurrent();
+    await a.refresh(); await b.refresh(); await b.refresh();
+    const sessionKey = 'yotick/s/' + start.data.sessionId;
+    assert.equal((await phone.adapter.get(sessionKey)).durationSeconds, 60);
+    assert.deepEqual(local.sessionPayload(await phone.adapter.get(sessionKey)), local.sessionPayload(await tablet.adapter.get(sessionKey)));
+    assert.equal(changes.filter(change => change.entityType === 'session').length, 1);
+    assert.equal((await phone.service.getStatistics({ preset: 'today' })).data.totalSeconds, 60);
+    assert.equal((await local.pending(tablet.adapter)).length, 0);
+  } finally { a.stop(); b.stop(); }
 });
 test("frozen rejected uploads refresh conflict cloud versions without losing proposals or a saved resolution", async () => {
   const f = await fixture();

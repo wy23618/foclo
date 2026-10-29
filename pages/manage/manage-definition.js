@@ -9,7 +9,9 @@ module.exports = function createPage(app, runtime) {
 const { THEME_COLORS } = require('../../utils/theme');
 // pages/manage/manage.js
 const { uuid } = require('../../core/ids.js');
-const { colorOf } = require('../../utils/color.js');
+const { colorOf, defaultColorOf, PALETTE } = require('../../utils/color.js');
+const motion = require('../../utils/overlay-motion');
+const EDITOR_FIELDS = ['editorKind', 'editorId', 'editorName', 'editorShortName', 'editorColor', 'editorPreviewColor', 'editorDefaultColor', 'editorHex', 'editorColorError', 'editorArchived', 'editorPath', 'editorPaletteExpanded', 'editorPalette', 'parentOptions', 'parentIndex', 'parentLabel', 'editorNested', 'editorParentName'];
 
 const definition = {
   data: {
@@ -18,7 +20,10 @@ const definition = {
     visibleRows: [],
     expandedIds: [],
     draggingId: '', dragOffset: 0, dropTargetId: '', dropAfter: false, sortSettling: false,
-    renameOpen:false, renameId:'', renameValue:'', renameOriginal:'', renameFocus:false, renameCanSave:false, renameSaving:false,
+    sorting: false,
+    editorOpen: false, editorOpenMounted: false, editorOpenLeaving: false, editorKind: 'edit', editorId: '', editorName: '', editorShortName: '', editorColor: '', editorPreviewColor: '', editorDefaultColor: '', editorHex: '', editorColorError: '', editorSaving: false, editorArchived: false, editorPath: '', editorPaletteExpanded: false,
+    editorPalette: PALETTE.slice(0, 8), parentOptions: [], parentIndex: 0, parentLabel: '',
+    editorNested: false, editorParentName: '', editorScrollTop: 0, editorHistoryOpen: false,
     searchOpen: false, searchFocus: false, searchQuery: '',
     loading: true,
     tab: 'active',
@@ -36,6 +41,8 @@ const definition = {
   onHide() {
     if (this.data.draggingId) this.finishSort(null, false);
   },
+  onUnload() { this.editorDisposed = true; motion.dispose(this); },
+  setEditorPresence(patch) { motion.present(this, 'editorOpen', patch.editorOpen, patch); },
 
   onPageScroll(e) {
     const top = Number(e && e.scrollTop) || 0;
@@ -83,8 +90,9 @@ const definition = {
   },
 
   switchTab(e) {
+    if (this.data.draggingId || this.sortSaving) return;
     const tab = e.detail.key;
-    this.setData({ tab, visibleRows: this.filterRows(tab, this.data.searchQuery) });
+    this.setData({ tab, sorting: false, visibleRows: this.filterRows(tab, this.data.searchQuery) });
   },
 
   filterRows(tab, query, active = this.data.active, archived = this.data.archived, expandedIds = this.data.expandedIds) {
@@ -100,7 +108,7 @@ const definition = {
         parentId = byId.get(parentId).parentId;
         if (++depth > rows.length) { show = false; break; }
       }
-      if (show) visible.push(Object.assign({}, row, {indent:Math.min(depth, 4)*24, expanded:expanded.has(row.projectId), searchResult:false, metaText:(row.childCount ? '包含 '+row.childCount+' 个项目 · ' : '')+row.subtreeSessionCount+' 条记录'}));
+      if (show) visible.push(Object.assign({}, row, {indent:Math.min(depth, 4)*32, expanded:expanded.has(row.projectId), searchResult:false, metaText:(row.childCount ? row.childCount+' 个子项目 · ' : '')+row.subtreeSessionCount+' 条记录'}));
       return visible;
     }, []);
   },
@@ -112,8 +120,9 @@ const definition = {
     this.setData({ expandedIds }, () => this.setData({ visibleRows: this.filterRows(this.data.tab, '') }));
   },
   toggleSearch() {
+    if (this.data.draggingId || this.sortSaving) return;
     const searchOpen = !this.data.searchOpen;
-    this.setData({ searchOpen, searchFocus: searchOpen, searchQuery: searchOpen ? this.data.searchQuery : '', visibleRows: this.filterRows(this.data.tab, searchOpen ? this.data.searchQuery : '') });
+    this.setData({ searchOpen, sorting: false, searchFocus: searchOpen, searchQuery: searchOpen ? this.data.searchQuery : '', visibleRows: this.filterRows(this.data.tab, searchOpen ? this.data.searchQuery : '') });
   },
   inputSearch(e) {
     const searchQuery = e.detail.value || '';
@@ -121,27 +130,137 @@ const definition = {
   },
   clearSearch() { this.setData({ searchQuery: '', visibleRows: this.filterRows(this.data.tab, '') }); },
 
+  toggleSorting() {
+    if (this.data.draggingId || this.sortSaving || this.data.loading) return;
+    this.setData({ sorting: !this.data.sorting, searchOpen: false, searchQuery: '', visibleRows: this.filterRows(this.data.tab, '') });
+  },
+
+  openEditor(e) {
+    if (this.data.draggingId || this.sortSaving || this.data.editorSaving || Date.now() < (this.sortSuppressTapUntil || 0)) return;
+    if (this.data.sorting) { this.toggleGroup(e); return; }
+    const row = this.findRow(e.currentTarget.dataset.id);
+    if (!row) return;
+    const editorColor = row.color || '';
+    const editorDefaultColor = row.color ? defaultColorOf(row.projectId) : row.displayColor;
+    this.editorReturnStack = [];
+    this.editorLastScrollTop = 0;
+    this.setEditorPresence({ editorOpen: true, editorHistoryOpen: true, editorNested: false, editorParentName: '', editorScrollTop: 0, editorKind: 'edit', editorId: row.projectId, editorName: row.name, editorShortName: row.shortName || '', editorColor, editorPreviewColor: editorColor || editorDefaultColor, editorDefaultColor, editorHex: editorColor, editorColorError: '', editorArchived: row.archived, editorPath: row.parentPathText, editorPaletteExpanded: false, editorPalette: PALETTE.slice(0, 8) });
+  },
+  newProject(e, nested) {
+    if (this.data.loading || this.sortSaving || this.data.draggingId || this.data.editorSaving) return;
+    const id = e && e.currentTarget.dataset.id || '';
+    const parentOptions = [{ projectId: '', label: '无上级 · 独立项目' }].concat(this.data.active.map(row => ({ projectId: row.projectId, label: row.pathText })));
+    const parentIndex = Math.max(0, parentOptions.findIndex(row => row.projectId === id));
+    if (!nested) this.editorReturnStack = [];
+    this.editorLastScrollTop = 0;
+    this.setEditorPresence({ editorOpen: true, editorHistoryOpen: true, editorNested: !!nested, editorParentName: nested ? this.data.editorName : '', editorScrollTop: 0, editorKind: 'create', editorId: '', editorName: '', editorShortName: '', editorColor: '', editorColorError: '', parentOptions, parentIndex, parentLabel: parentOptions[parentIndex].label });
+  },
+  editorScrolled(e) { this.editorLastScrollTop = e.detail.scrollTop; },
+  returnToEditor() {
+    const context = this.editorReturnStack && this.editorReturnStack.pop();
+    if (!context) return false;
+    this.editorLastScrollTop = context.scrollTop;
+    this.setEditorPresence(Object.assign({}, context.fields, { editorOpen: true, editorScrollTop: context.scrollTop }));
+    return true;
+  },
+  closeEditor() {
+    if (this.data.editorSaving) return;
+    if (!this.returnToEditor()) this.setEditorPresence({ editorOpen: false, editorHistoryOpen: false });
+  },
+  onEditorHistoryLeave() {
+    if (require('../../utils/modal-history').isRearming(this, 'editorHistoryOpen')) return;
+    if (!this.data.editorOpen || !this.data.editorHistoryOpen) return;
+    if (this.data.editorSaving) { require('../../utils/modal-history').restoreLayer(this, 'editorHistoryOpen', () => !this.editorDisposed && this.data.editorOpen); return; }
+    this.closeEditor();
+    if (this.data.editorOpen) require('../../utils/modal-history').restoreLayer(this, 'editorHistoryOpen', () => !this.editorDisposed && this.data.editorOpen);
+  },
+  onEditorHistoryEnter() { require('../../utils/modal-history').layerEntered(this, 'editorHistoryOpen'); },
+  inputEditorName(e) { if (!this.data.editorSaving) this.setData({ editorName: e.detail.value }); },
+  inputEditorShortName(e) { if (!this.data.editorSaving) this.setData({ editorShortName: e.detail.value }); },
+  chooseParent(e) {
+    if (this.data.editorSaving) return;
+    const parentIndex = Number(e.detail.value), parent = this.data.parentOptions[parentIndex];
+    if (parent) this.setData({ parentIndex, parentLabel: parent.label });
+  },
+  chooseEditorColor(e) {
+    if (this.data.editorSaving) return;
+    const editorColor = e.currentTarget.dataset.color || '';
+    this.setData({ editorColor, editorHex: editorColor, editorPreviewColor: editorColor || this.data.editorDefaultColor, editorColorError: '' });
+  },
+  toggleEditorPalette() { if (!this.data.editorSaving) this.setData({ editorPaletteExpanded: !this.data.editorPaletteExpanded, editorPalette: this.data.editorPaletteExpanded ? PALETTE.slice(0, 8) : PALETTE }); },
+  inputEditorHex(e) {
+    if (this.data.editorSaving) return;
+    const editorHex = String(e.detail.value || '').trim(), digits = editorHex.replace(/^#/, '');
+    if (!digits) { this.chooseEditorColor({ currentTarget: { dataset: {} } }); return; }
+    if (/^[0-9a-fA-F]{6}$/.test(digits)) {
+      const editorColor = '#' + digits.toUpperCase();
+      this.setData({ editorHex, editorColor, editorPreviewColor: editorColor, editorColorError: '' });
+    } else this.setData({ editorHex, editorColorError: '请输入 6 位有效色码' });
+  },
+  async saveEditor() {
+    if (this.data.editorSaving || !this.data.editorOpen) return;
+    const name = String(this.data.editorName || '').trim();
+    if (!name) { wx.showToast({ title: '请输入项目名称', icon: 'none' }); return; }
+    if (this.data.editorColorError) return;
+    this.setData({ editorSaving: true });
+    try {
+      const creating = this.data.editorKind === 'create';
+      const parent = creating && this.data.parentOptions[this.data.parentIndex];
+      const result = creating
+        ? await app.globalData.service.createProject({ operationId: uuid(), name, parentId: parent && parent.projectId || null })
+        : await app.globalData.service.updateProjectDetails({ operationId: uuid(), projectId: this.data.editorId, name, color: this.data.editorColor, shortName: this.data.editorShortName });
+      if (!result.ok) { wx.showToast({ title: result.error.message, icon: 'none' }); return; }
+      const expandedIds = this.data.expandedIds.slice();
+      let ancestor = parent && this.findRow(parent.projectId);
+      const seen = new Set();
+      while (ancestor && !seen.has(ancestor.projectId)) { seen.add(ancestor.projectId); if (!expandedIds.includes(ancestor.projectId)) expandedIds.push(ancestor.projectId); ancestor = this.findRow(ancestor.parentId); }
+      const returnToParent = creating && this.editorReturnStack && this.editorReturnStack.length;
+      if (returnToParent) this.returnToEditor();
+      else {
+        this.setEditorPresence({ editorOpen: false, editorHistoryOpen: false });
+        if (creating) this.setData({ tab: 'active', searchQuery: '', searchOpen: false });
+      }
+      await this.load({ silent: true, expandedIds });
+      wx.showToast({ title: creating ? '已添加' : '已保存', icon: 'success' });
+    } finally { this.setData({ editorSaving: false }); }
+  },
+  editorAddChild() {
+    if (!this.data.editorOpen || this.data.loading || this.sortSaving || this.data.draggingId || this.data.editorSaving || this.data.editorKind !== 'edit') return;
+    const fields = {};
+    EDITOR_FIELDS.forEach(key => { fields[key] = this.data[key]; });
+    (this.editorReturnStack || (this.editorReturnStack = [])).push({ fields, scrollTop: this.editorLastScrollTop || 0 });
+    this.newProject({ currentTarget: { dataset: { id: this.data.editorId } } }, true);
+  },
+  editorStats() { if (!this.data.editorSaving) this.goProject({ currentTarget: { dataset: { id: this.data.editorId } } }); },
+  editorAdvancedColor() {
+    if (this.data.editorSaving) return;
+    const id = this.data.editorId;
+    navigation.navigateTo({
+      url: '/pages/project-appearance/project-appearance?id=' + encodeURIComponent(id) + '&draft=1&color=' + encodeURIComponent(this.data.editorColor) + '&shortName=' + encodeURIComponent(this.data.editorShortName),
+      events: { appearanceSelected: result => {
+        if (!this.data.editorOpen || this.data.editorId !== id) return;
+        const editorColor = result.color || '';
+        this.setData({ editorColor, editorHex: editorColor, editorShortName: result.shortName || '', editorPreviewColor: editorColor || this.data.editorDefaultColor, editorColorError: '' });
+      } }
+    });
+  },
+  async editorArchive() {
+    if (this.data.editorSaving) return;
+    this.setData({ editorSaving: true });
+    try {
+      const result = await app.globalData.service[this.data.editorArchived ? 'restoreProject' : 'archiveProject']({ operationId: uuid(), projectId: this.data.editorId });
+      if (!result.ok) { wx.showToast({ title: result.error.message, icon: 'none' }); return; }
+      this.editorReturnStack = [];
+      this.setEditorPresence({ editorOpen: false, editorHistoryOpen: false });
+      await this.load({ silent: true });
+    } finally { this.setData({ editorSaving: false }); }
+  },
+  editorDelete() { if (!this.data.editorSaving) this.onDelete(this.data.editorId); },
+
   openAppearanceById(e) {
     if (this.data.draggingId || Date.now() < (this.sortSuppressTapUntil || 0)) return;
     const row = this.findRow(e.currentTarget.dataset.id);
     if (row) navigation.navigateTo({ url: '/pages/project-appearance/project-appearance?id=' + encodeURIComponent(row.projectId) });
-  },
-
-  openActions(e) {
-    if (this.sortSaving || this.data.draggingId || Date.now() < (this.sortSuppressTapUntil || 0)) return;
-    const row = this.findRow(e.currentTarget.dataset.id);
-    if (!row) return;
-    const labels = row.archived
-      ? ['恢复项目', '重命名', '颜色与简称', '永久删除']
-      : ['重命名', '颜色与简称', '归档项目', '永久删除'];
-    wx.showActionSheet({ itemList: labels, success: result => {
-      const action = labels[result.tapIndex];
-      if (action === '重命名') this.onRename(row);
-      else if (action === '颜色与简称') this.openAppearanceById(e);
-      else if (action === '归档项目') this.onArchive(row.projectId);
-      else if (action === '恢复项目') this.onRestore(row.projectId);
-      else if (action === '永久删除') this.onDelete(row.projectId);
-    } });
   },
 
   sortTouchStart(e) {
@@ -149,6 +268,7 @@ const definition = {
     if (touch) this.sortStartY = this.sortLastY = touch.clientY;
   },
   sortLongPress(e) {
+    if (!this.data.sorting || this.data.editorOpen) return;
     this.sortSuppressTapUntil = Date.now() + 900;
     if (this.data.searchQuery) { wx.showToast({ title: '清除搜索后可调整顺序', icon: 'none' }); return; }
     if (this.data.loading || this.sortSaving || this.data.draggingId) return;
@@ -253,41 +373,6 @@ const definition = {
     else this.setData({expandedIds,draggingId:'',dragOffset:0,dropTargetId:'',dropAfter:false,sortSettling:false},()=>this.setData({visibleRows:this.filterRows(this.data.tab,'')}));
   },
 
-  async onArchive(id) {
-    const env = await app.globalData.service.archiveProject({ operationId: uuid(), projectId: id });
-    if (!env.ok) wx.showToast({ title: env.error.message, icon: 'none' });
-    else this.load();
-  },
-
-  async onRestore(id) {
-    const env = await app.globalData.service.restoreProject({ operationId: uuid(), projectId: id });
-    if (!env.ok) wx.showToast({ title: env.error.message, icon: 'none' });
-    else this.load();
-  },
-
-  onRename(row) {
-    this.setData({renameOpen:true,renameId:row.projectId,renameValue:row.name,renameOriginal:row.name,renameFocus:false,renameCanSave:true,renameSaving:false},()=>this.setData({renameFocus:true}));
-  },
-  inputRename(e) {
-    const renameValue=e.detail.value||'';
-    this.setData({renameValue,renameCanSave:!!renameValue.trim()});
-  },
-  cancelRename() {
-    if(this.data.renameSaving)return;
-    this.setData({renameOpen:false,renameId:'',renameValue:'',renameOriginal:'',renameFocus:false,renameCanSave:false});
-  },
-  async saveRename() {
-    if(this.data.renameSaving)return;
-    const name=String(this.data.renameValue||'').trim();
-    if(!name){wx.showToast({title:'请输入项目名称',icon:'none'});return;}
-    if(name===this.data.renameOriginal){this.cancelRename();return;}
-    this.setData({renameSaving:true,renameFocus:false});
-    const env=await app.globalData.service.renameProject({operationId:uuid(),projectId:this.data.renameId,name});
-    if(!env.ok){this.setData({renameSaving:false,renameFocus:true});wx.showToast({title:env.error.message,icon:'none'});return;}
-    this.setData({renameOpen:false,renameId:'',renameValue:'',renameOriginal:'',renameFocus:false,renameCanSave:false,renameSaving:false});
-    this.load();
-  },
-
   noop() {},
 
   onDelete(id) {
@@ -314,21 +399,27 @@ const definition = {
   },
 
   async doDelete(id) {
-    const scrollTop = Math.max(0, Number(this.lastPageScrollTop) || 0);
-    const env = await app.globalData.service.deleteProject({ operationId: uuid(), projectId: id });
-    if (!env.ok) {
-      wx.showToast({ title: env.error.message, icon: 'none' });
-      return;
-    }
-    wx.showToast({ title: '已删除', icon: 'success' });
-    await this.load({ silent: true });
-    wx.pageScrollTo({ scrollTop, duration: 0 });
+    if (this.data.editorSaving) return;
+    this.setData({ editorSaving: true });
+    try {
+      const scrollTop = Math.max(0, Number(this.lastPageScrollTop) || 0);
+      const env = await app.globalData.service.deleteProject({ operationId: uuid(), projectId: id });
+      if (!env.ok) {
+        wx.showToast({ title: env.error.message, icon: 'none' });
+        return;
+      }
+      wx.showToast({ title: '已删除', icon: 'success' });
+      this.editorReturnStack = [];
+      this.setEditorPresence({ editorOpen: false, editorHistoryOpen: false });
+      await this.load({ silent: true });
+      wx.pageScrollTo({ scrollTop, duration: 0 });
+    } finally { this.setData({ editorSaving: false }); }
   },
 
   goProject(e) {
     if (this.data.draggingId || Date.now() < (this.sortSuppressTapUntil || 0)) return;
     const id = e.currentTarget.dataset.id;
-    navigation.navigateTo({ url: '/pages/project-stats/project-stats?id=' + id });
+    require('../../utils/detail-navigation').openDetail(this, navigation, '/pages/project-stats/project-stats?id=' + encodeURIComponent(id));
   }
 };
 

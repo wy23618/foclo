@@ -4,7 +4,7 @@ const WELCOME_FEATURES = [
   { label: '辅助', title: '找到自己的节奏', hint: '极简显示、防误触与长短休息安排。' }
 ];
 const GUIDE_CARDS = [
-  { id: 'projects', icon: 'tree', label: '分层项目', caption: '把计划拆小', title: '大计划，分层做', text: '在项目菜单里添加下级项目，计时选具体任务。上层项目会汇总下级投入。', path: '选择项目 → 项目菜单', action: '管理项目', target: 'projects' },
+  { id: 'projects', icon: 'tree', label: '分层项目', caption: '把计划拆小', title: '大计划，分层做', text: '点父项展开，选具体任务计时。在选择卡片里点“整理”，即可添加下级或删除项目；上层项目汇总下级投入。', path: '选择项目 → 整理', action: '管理项目', target: 'projects' },
   { id: 'runtime', icon: 'focus', label: '专注辅助', caption: '减少干扰', title: '专心看时间', text: '计时中可切换极简显示，或开启防误触；长按屏幕即可解除防误触。', path: '专注页 → 计时过程中', action: '回到专注', target: 'focus' },
   { id: 'rest', icon: 'rest', label: '长短休息', caption: '找到节奏', title: '专注与休息交替', text: '设置短休息和长休息，每完成指定轮次安排一次长休息。休息时间不计入专注。', path: '设置 → 专注与休息', action: '设置休息', target: 'rest' },
   { id: 'stats', icon: 'chart', label: '图表联动', caption: '点开看明细', title: '从图形看到具体项目', text: '点分布图定位项目列表，继续进入项目统计；日期范围会一起保留。', path: '统计 → 项目分布', action: '查看统计', target: 'stats' },

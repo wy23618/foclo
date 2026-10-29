@@ -29,11 +29,18 @@ Component({
       const service=demoContext.appFor(this).globalData.service;
       this.reductionContext={row,service,revision:service.peekCurrent().dataRevision,date:this.properties.date};
       this.setData({reductionOpen:true,reductionDuration:row.durationSeconds,reductionProject:row.project,reductionTime:row.timeText,reductionError:''});
+      this.triggerEvent('editorchange', { open: true });
     },
     closeRecordReduction() {
       if(this.data.recordReducing)return;
       this.reductionContext=null;
       this.setData({reductionOpen:false,reductionError:''});
+      this.triggerEvent('editorchange', { open: false });
+    },
+    dismissEditor() {
+      if (!this.data.reductionOpen) return false;
+      this.closeRecordReduction();
+      return true;
     },
     async confirmRecordReduction(e) {
       const context=this.reductionContext;

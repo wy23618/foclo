@@ -12,6 +12,7 @@ function createWorker({
   pollIntervalMs = 30000,
 }) {
   let running = null,
+    refreshing = null,
     stopped = false,
     timer = null,
     failures = 0,
@@ -683,6 +684,21 @@ function createWorker({
     if (timer) clearTimeout(timer);
     if (request && request.cancel) request.cancel();
   }
+  function refresh() {
+    if (refreshing) return refreshing;
+    // A manual refresh must pull after the user's request, even when a background
+    // cycle has already made its final pull. Concurrent manual requests share it.
+    refreshing = (async () => {
+      while (running) await running;
+      valid();
+      if (suspended) throw Object.assign(new Error("请回到小程序后重新刷新"), { code: "CANCELLED" });
+      if (timer) clearTimeout(timer);
+      timer = null;
+      running = run().finally(() => { running = null; });
+      return running;
+    })().finally(() => { refreshing = null; });
+    return refreshing;
+  }
   async function refreshFromCloud() {
     while (running) await running;
     valid();
@@ -692,7 +708,7 @@ function createWorker({
     running = run(true).finally(() => { running = null; });
     return running;
   }
-  return { trigger, stop, apply, refreshFromCloud,
+  return { trigger, refresh, stop, apply, refreshFromCloud,
     suspend() { suspended = true; if (timer) clearTimeout(timer); timer = null; },
     resume() { suspended = false; return trigger(); },
   };

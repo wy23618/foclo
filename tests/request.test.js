@@ -3,6 +3,44 @@ const assert=require('node:assert/strict');
 const {createRequest}=require('../sync/request');
 const {LAN_DEBUG_API_HOST,FOCLO_API_BASE_URL}=require('../sync/environment');
 
+test('a missing platform response times out, aborts once, and permits a later retry', async t => {
+  const previousWx = global.wx;
+  t.mock.timers.enable({ apis:['setTimeout'] });
+  let first, aborts=0, calls=0;
+  global.wx={request(options){
+    if(++calls===1)first=options;
+    else queueMicrotask(()=>options.success({statusCode:200,data:{ok:true}}));
+    return {abort(){aborts++;}};
+  }};
+  try {
+    const request=createRequest({baseUrl:'https://test.invalid'});
+    const pending=request('GET','/sync/pull');
+    const rejected=assert.rejects(pending,{code:'NETWORK_ERROR'});
+    await Promise.resolve();
+    t.mock.timers.tick(15000);
+    await rejected;
+    assert.equal(aborts,1);
+    first.success({statusCode:200,data:{late:true}});
+    assert.deepEqual(await request('GET','/sync/pull'),{ok:true});
+    request.cancel();
+    assert.equal(aborts,1,'finished requests must leave the active set');
+  } finally {if(previousWx===undefined)delete global.wx;else global.wx=previousWx;}
+});
+
+test('account cancellation settles a request even when platform abort never calls fail', async () => {
+  const previousWx=global.wx;
+  let aborts=0;
+  global.wx={request(){return {abort(){aborts++;}};}};
+  try {
+    const request=createRequest({baseUrl:'https://test.invalid'});
+    const pending=request('GET','/me');
+    await Promise.resolve();
+    request.cancel();
+    await assert.rejects(pending,{code:'CANCELLED'});
+    assert.equal(aborts,1);
+  } finally {if(previousWx===undefined)delete global.wx;else global.wx=previousWx;}
+});
+
 test('account switch rejects a late successful response from the previous credentials', async () => {
   let finish;
   const response = new Promise(resolve => { finish = resolve; });
@@ -286,3 +324,30 @@ test('HTTP remains blocked on unrelated phones, trial/release and lookalike loop
 });
 test('concurrent 401s coordinate one refresh and persist before retrying business requests',async()=>{let refreshes=0,saved=false;const requests=[];const request=createRequest({baseUrl:'https://test.invalid/api/v1',credentials:{accessToken:'old',refreshToken:'refresh-old'},saveCredentials:async value=>{await new Promise(r=>setTimeout(r,5));saved=true;},transport:async(method,url,data,token)=>{if(url.endsWith('/auth/refresh')){refreshes++;await new Promise(r=>setTimeout(r,5));return {accessToken:'new',refreshToken:'refresh-new'};}if(token==='old')throw Object.assign(new Error('expired'),{status:401,code:'AUTH_REQUIRED'});assert.equal(saved,true);requests.push(url);return {ok:true};}});const responses=await Promise.all([request('GET','/me'),request('GET','/sync/pull',{generation:'1'})]);assert.equal(refreshes,1);assert.equal(responses.length,2);assert.equal(requests.length,2);request.cancel();});
 test('credential persistence failure preserves previous token and retries refresh without deleting queue',async()=>{let saves=0;const seen=[];const request=createRequest({baseUrl:'https://test.invalid/api/v1',credentials:{accessToken:'old',refreshToken:'old-refresh'},saveCredentials:async()=>{if(++saves===1)throw new Error('storage full');},transport:async(method,url,data,token)=>{if(url.endsWith('/auth/refresh')){seen.push(data.refreshToken);return {accessToken:'new',refreshToken:'new-refresh'};}if(token==='old')throw Object.assign(new Error('expired'),{status:401});return {ok:true};}});await assert.rejects(()=>request('GET','/me'),/storage full/);await request('GET','/me');assert.deepEqual(seen,['old-refresh','old-refresh']);request.cancel();});
+
+test('expired refresh credentials recover once and resume all waiting requests after persistence', async () => {
+  let recoveries = 0, persisted = false;
+  const request = createRequest({ baseUrl: 'https://test.invalid', credentials: { accessToken: 'expired', refreshToken: 'expired-refresh' },
+    saveCredentials: async () => { persisted = true; },
+    recoverCredentials: async () => { recoveries++; await new Promise(r => setTimeout(r, 5)); return { accessToken: 'restored', refreshToken: 'restored-refresh' }; },
+    transport: async (method, url, data, token) => {
+      if (url.endsWith('/auth/refresh') || token !== 'restored') throw Object.assign(new Error('expired'), { status: 401, code: 'AUTH_REQUIRED' });
+      assert.equal(persisted, true); return { ok: true };
+    } });
+  const results = await Promise.all([request('GET', '/sync/pull'), request('GET', '/me')]);
+  assert.equal(results.length, 2); assert.equal(recoveries, 1); request.cancel();
+});
+
+test('network failure never starts silent login, and cancellation during login cannot save credentials', async () => {
+  let recoveries = 0, finish;
+  const offline = createRequest({ baseUrl: 'https://test.invalid', credentials: { accessToken: 'old', refreshToken: 'r' },
+    saveCredentials: async () => {}, recoverCredentials: async () => { recoveries++; },
+    transport: async () => { throw Object.assign(new Error('offline'), { code: 'NETWORK_ERROR' }); } });
+  await assert.rejects(offline('GET', '/sync/pull'), { code: 'NETWORK_ERROR' }); assert.equal(recoveries, 0); offline.cancel();
+  const request = createRequest({ baseUrl: 'https://test.invalid', credentials: { accessToken: 'old' },
+    saveCredentials: async () => { throw new Error('cancelled credentials must not be saved'); },
+    recoverCredentials: () => new Promise(resolve => { finish = resolve; }),
+    transport: async () => { throw Object.assign(new Error('expired'), { status: 401 }); } });
+  const pending = request('GET', '/sync/pull'); await new Promise(r => setImmediate(r));
+  request.cancel(); finish({ accessToken: 'new' }); await assert.rejects(pending, { code: 'CANCELLED' });
+});

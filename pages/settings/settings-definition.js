@@ -45,7 +45,7 @@ const definition = {
     if (Object.keys(patch).length) this.setData(patch);
     try { wx.setNavigationBarColor(require('../../utils/theme').navigationBarOptions(themeClass)); } catch (e) {}
   },
-  goBack() { (runtime.navigation || require('../../utils/main-navigation')).openMainTab(0); },
+  goBack() { if (runtime.navigation) runtime.navigation.openMainTab(0); else require('../../utils/main-navigation').backMainTab(); },
   openAccount() {
     if (this.demoSession) {
       wx.showModal({ title:'示例账号', content:'此处使用固定演示数据，不连接真实账号。返回日常设置页后可登录并开启同步。', showCancel:false });

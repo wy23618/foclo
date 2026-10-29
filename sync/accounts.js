@@ -38,6 +38,36 @@ function createAccounts(
     listeners = new Set();
   let legacyFallback = false;
   let presenceQueue = Promise.resolve();
+  async function recoverCredentials(ref, captured) {
+    const valid = () => {
+      if (epoch !== captured || current !== ref)
+        throw Object.assign(new Error('账号已切换'), { code: 'CANCELLED' });
+    };
+    valid();
+    if (await raw.get(GLOBAL + 'auto-login') === false || typeof wx === 'undefined' || typeof wx.login !== 'function')
+      throw Object.assign(new Error('请重新登录当前账号'), { code: 'AUTH_REQUIRED' });
+    valid();
+    // Renew the existing account's session without replacing its service, timer,
+    // namespace, or durable upload queue. This is not an account-switch action.
+    const code = await new Promise((resolve, reject) => wx.login({
+      timeout: 15000,
+      success: result => result.code ? resolve(result.code) : reject(Object.assign(new Error('微信未返回登录凭证'), { code: 'AUTH_REQUIRED' })),
+      fail: () => reject(Object.assign(new Error('微信连接暂未恢复，请联网后重试'), { code: 'NETWORK_ERROR' }))
+    }));
+    valid();
+    const req = createRequest({ baseUrl, transport, credentials: null, saveCredentials: async () => {} });
+    const credentials = await req('POST', '/auth/wechat-mini', { code, deviceId: await raw.get(GLOBAL + 'deviceId') });
+    valid();
+    const candidate = createRequest({ baseUrl, transport, credentials, saveCredentials: async () => {} });
+    const who = await candidate('GET', '/me');
+    valid();
+    const userId = who.userId || who.user?.id, spaceId = who.spaceId || who.space?.id;
+    if (userId !== ref.userId || spaceId !== ref.spaceId)
+      throw Object.assign(new Error('当前微信身份已变化，请到“账号与同步”确认账号。本机原记录仍保留'), { code: 'AUTH_REQUIRED' });
+    if (String(who.generation || who.space?.generation) !== String(ref.generation))
+      throw Object.assign(new Error('账号数据版本已变化，请到“账号与同步”处理。本机原记录仍保留'), { code: 'GENERATION_MISMATCH' });
+    return credentials;
+  }
   async function checkOtherFocus() {
     if (!current) return { available:false, guest:true, otherDevices:[] };
     if (!request) return { available:false, reason:'auth', otherDevices:[] };
@@ -76,7 +106,8 @@ function createAccounts(
   async function refreshRecords() {
     if(!current)return {localOnly:true};
     const captured=epoch;
-    await worker?.trigger();
+    if(!worker)throw new Error('账号尚未连接，请到“账号与同步”重新登录后刷新。本机记录仍保留');
+    await worker.refresh();
     if(epoch!==captured)throw Object.assign(new Error('账号已切换，请刷新当前账号'),{code:'CANCELLED'});
     if(status.state!=='synced')throw new Error(({
       conflict:'有未解决的修改冲突，请到账号与同步查看。本机修改仍保留',
@@ -84,7 +115,10 @@ function createAccounts(
       offline:'本次未连接到服务器，请联网后重试。本机记录仍保留',
       quarantined:'账号数据已进入新的版本，旧本机资料已隔离保留，请到账号与同步处理',
       pending:'还有本机修改等待上传，请稍后再刷新',
-    })[status.state]||'服务器暂未完成本次同步，请稍后重试。本机记录仍保留');
+      failed:status.code==='STORAGE_WRITE_FAILED'||status.code==='RECOVERY_REQUIRED'
+        ?'本机记录写入未完成，请重新打开小程序后再刷新。本机原有记录仍保留'
+        :'同步未完成：'+(status.message||'请检查网络后重试')+'。本机记录仍保留',
+    })[status.state]||'本次同步尚未完成，请稍后重试。本机记录仍保留');
     return {localOnly:false};
   }
   const update = (s) => {
@@ -183,7 +217,7 @@ function createAccounts(
     const captured = epoch,
       tokenKey = GLOBAL + "credentials/" + ref.userId,
       credentials = await raw.get(tokenKey);
-    if (!credentials || !baseUrl) {
+    if (!baseUrl || (!credentials && (typeof wx === 'undefined' || typeof wx.login !== 'function'))) {
       update({
         state: "auth-required",
         pending: (await local.pending(adapter)).length,
@@ -194,12 +228,20 @@ function createAccounts(
       baseUrl,
       credentials,
       transport,
+      recoverCredentials: () => recoverCredentials(ref, captured),
       saveCredentials: async (value) => {
         if (epoch !== captured)
           throw Object.assign(new Error("账号已切换"), { code: "CANCELLED" });
         await raw.set(tokenKey, value);
       },
     });
+    const refreshVisiblePage = () => {
+      if (captured !== epoch || typeof getCurrentPages !== 'function') return;
+      const top = getCurrentPages().slice(-1)[0];
+      if (top?.data?.heatmapOpen) { top.pendingSyncRefresh = true; return; }
+      const reload = top && (top.refresh || top.load);
+      if (typeof reload === 'function') Promise.resolve(reload.call(top)).catch(() => {});
+    };
     worker = createWorker({
       service,
       request,
@@ -207,22 +249,12 @@ function createAccounts(
       isCurrent: () => captured === epoch,
       onStatus: update,
       onChanged: () => {
-        publishPresence().then(()=>{
-          if(captured!==epoch||typeof getCurrentPages!=='function')return;
-          const page=getCurrentPages().slice(-1)[0];
-          if(page&&typeof page.refresh==='function')Promise.resolve(page.refresh()).catch(()=>{});
-        }).catch(()=>{});
+        publishPresence().then(refreshVisiblePage).catch(()=>{});
         require("../utils/color")
           .initProjectColors(adapter)
           .catch(() => {});
         listeners.forEach((fn) => fn(status));
-        if (typeof getCurrentPages === "function") {
-          const pages = getCurrentPages(),
-            top = pages[pages.length - 1];
-          const refresh = top && (top.refresh || top.load);
-          if (typeof refresh === "function")
-            Promise.resolve(refresh.call(top)).catch(() => {});
-        }
+        refreshVisiblePage();
       },
     });
     worker.trigger();

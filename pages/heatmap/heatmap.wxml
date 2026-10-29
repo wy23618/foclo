@@ -1,3 +1,4 @@
 <page-meta page-style="{{themePageStyle}}"/>
 <safe-nav theme="{{themeClass}}" title="专注热力图" back-text="‹ 返回" bindback="back" bindheightchange="onNavHeightChange"/>
-<heatmap-card id="heatmapCard" opened="{{opened}}" scope-id="{{scope}}" theme="{{themeClass}}" top-inset="{{topInset}}" standalone="{{true}}" bindclose="back"/>
+<page-container show="{{scopePickerOpen}}" overlay="{{false}}" position="center" duration="0" custom-style="width:1px;height:1px;opacity:0;background:transparent" bindafterleave="onScopeHistoryLeave"><view/></page-container>
+<heatmap-card id="heatmapCard" opened="{{opened}}" scope-id="{{scope}}" theme="{{themeClass}}" top-inset="{{topInset}}" standalone="{{true}}" bindscopepickerchange="onScopePickerChange" bindclose="back"/>

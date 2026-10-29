@@ -1,4 +1,5 @@
 {
+  "enablePullDownRefresh": true,
   "navigationStyle": "custom",
   "usingComponents": {
     "project-list": "/components/project-list/project-list",

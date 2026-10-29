@@ -1,2 +1,2 @@
-<page-meta page-style="{{draggingId || renameOpen ? 'overflow: hidden; overscroll-behavior: none;' : ''}}" />
+<page-meta page-style="{{draggingId || editorOpen ? 'overflow: hidden; overscroll-behavior: none;' : ''}}" />
 <include src="./manage-body.wxml"/>

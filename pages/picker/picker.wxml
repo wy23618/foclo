@@ -1,2 +1,3 @@
 <page-meta page-style="{{themePageStyle}}"/>
-<view class="container theme-{{themeClass}}"></view><project-sheet id="projectSheet" theme="{{themeClass}}" opened="{{opened}}" selected="{{selected}}" bindclose="close" bindopenappearance="openAppearance" bindopenmanage="openManage" />
+<page-container show="{{editorHistoryEnabled && editorOpen}}" overlay="{{false}}" position="center" duration="0" custom-style="width:1px;height:1px;opacity:0;background:transparent" bindafterenter="onEditorHistoryEnter" bindafterleave="onEditorHistoryLeave"><view/></page-container>
+<view class="container theme-{{themeClass}}"></view><project-sheet id="projectSheet" theme="{{themeClass}}" opened="{{opened}}" selected="{{selected}}" bindselected="selected" bindclose="close" bindeditorchange="onEditorChange" bindopenappearance="openAppearance" bindopenmanage="openManage" />

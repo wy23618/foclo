@@ -2,21 +2,22 @@ const demoContext = require('../../utils/demo-context');
 const { colorOf } = require('../../utils/color');
 const { uuid } = require('../../core/ids');
 const { pickerMetrics } = require('../../utils/window-layout');
+const motion = require('../../utils/overlay-motion');
 
 Component({
-  properties: { demoSession: { type: String, value: '' },  opened: Boolean, selected: String, theme: { type: String, value: 'light' }, topInset: { type: Number, value: 0 }, bottomNav: { type: Boolean, value: false } },
-  data: { selectionName: '', rows: [], recent: [], pickerScale: .5, overlayTop: 0, overlayBottom: 0, cardMaxHeight: 480, bodyMaxHeight: 320, bodyHeight: 85, cardHeight: 240, listScrollTop: 0, loading: false, error: '', newOpen: false, newName: '', editorMode: '', editorId: '', editorLabel: '', menuId: '', deleteText: '', creating: false, createdId: '' },
-  pageLifetimes: { resize() { if (this.properties.opened) { this.measureLayout(); if (this.all) this.renderRows(); } } },
+  properties: { demoSession: { type: String, value: '' }, opened: Boolean, selected: String, theme: { type: String, value: 'light' }, topInset: { type: Number, value: 0 }, bottomNav: { type: Boolean, value: false } },
+  data: { sheetOpen: false, sheetOpenMounted: false, sheetOpenLeaving: false, rows: [], pickerScale: .5, overlayTop: 0, overlayBottom: 0, cardMaxHeight: 480, bodyMaxHeight: 320, bodyHeight: 85, cardHeight: 240, listScrollTop: 0, loading: false, error: '', organizing: false, newOpen: false, newName: '', editorMode: '', editorId: '', editorLabel: '', parentOptions: [], parentIndex: 0, parentLabel: '', deleteText: '', creating: false, createdId: '' },
+  pageLifetimes: { resize() { if (this.properties.opened) { this.measureLayout(); this.renderRows(); } } },
+  lifetimes: { detached() { motion.dispose(this); } },
   observers: {
+    newOpen(open) { this.triggerEvent('editorchange', { open: !!open }); },
     opened(value) {
-      if (value) { this.measureLayout(); this.setData({ listScrollTop: 0 }); this.load(); }
-      else {
-        this.token = (this.token || 0) + 1;
-        this.setData({ newOpen: false, newName: '', editorMode: '', editorId: '', menuId: '', createdId: '' });
-      }
+      motion.present(this, 'sheetOpen', value);
+      if (value) { this.measureLayout(); this.setData({ listScrollTop: 0, organizing: false, newOpen: false, newName: '', editorMode: '', editorId: '', createdId: '' }); this.load(); }
+      else { this.token = (this.token || 0) + 1; }
     },
-    selected() { this.updateSelection(); if (this.all && this.properties.opened) this.renderRows(); },
-    topInset() { if (this.properties.opened) { this.measureLayout(); if (this.all) this.renderRows(); } }
+    selected() { if (this.all && this.properties.opened) this.renderRows(); },
+    topInset() { if (this.properties.opened) { this.measureLayout(); this.renderRows(); } }
   },
   methods: {
     noop() {},
@@ -29,7 +30,7 @@ Component({
       if (this.busy || this.data.creating) return;
       if (this.data.newOpen) { this.cancelNew(); return; }
       this.token = (this.token || 0) + 1;
-      this.setData({ newOpen: false, newName: '', editorMode: '', editorId: '', menuId: '', createdId: '' });
+      this.setData({ organizing: false, newOpen: false, createdId: '' });
       this.triggerEvent('close');
     },
     async load() {
@@ -44,11 +45,8 @@ Component({
       this.byId = {};
       this.childCounts = {};
       this.collapsed = this.collapsed || {};
-      this.all.forEach(row => {
-        this.byId[row.projectId] = row;
-        this.childCounts[row.parentId] = (this.childCounts[row.parentId] || 0) + 1;
-        if (!row.startable && !(row.projectId in this.collapsed)) this.collapsed[row.projectId] = true;
-      });
+      this.all.forEach(row => { this.byId[row.projectId] = row; this.childCounts[row.parentId] = (this.childCounts[row.parentId] || 0) + 1; });
+      this.all.forEach(row => { if (this.childCounts[row.projectId] && !(row.projectId in this.collapsed)) this.collapsed[row.projectId] = true; });
       let selected = this.byId[this.properties.selected];
       const seen = {};
       while (selected && selected.parentId && !seen[selected.projectId]) {
@@ -56,17 +54,8 @@ Component({
         this.collapsed[selected.parentId] = false;
         selected = this.byId[selected.parentId];
       }
-      const recent = (result.data.recent || []).filter(row => this.byId[row.projectId] && this.byId[row.projectId].startable).slice(0, 3).map(row => {
-        const current = this.byId[row.projectId], parent = this.byId[current.parentId];
-        return Object.assign({}, row, { name: current.name, parentLabel: parent ? parent.name : '', color: current.color || colorOf(current.projectId) });
-      });
-      this.setData({ recent, loading: false, error: '' });
+      this.setData({ loading: false, error: '' });
       this.renderRows();
-      this.updateSelection();
-    },
-    updateSelection() {
-      const selected = (this.all || []).find(row => row.projectId === this.properties.selected);
-      this.setData({ selectionName: selected ? selected.name : '' });
     },
     renderRows() {
       const rows = [];
@@ -78,110 +67,35 @@ Component({
           seen[parent.projectId] = true;
           parent = this.byId[parent.parentId];
         }
-        rows.push(Object.assign({}, row, { indent: Math.min(row.depth, 4) * 56, expanded: !this.collapsed[row.projectId], childCount: this.childCounts[row.projectId] || 0, color: row.color || colorOf(row.projectId) }));
+        rows.push(Object.assign({}, row, { indent: Math.min(row.depth, 4) * 32, expanded: !this.collapsed[row.projectId], childCount: this.childCounts[row.projectId] || 0, color: row.color || colorOf(row.projectId) }));
       });
-      const siblingsByParent = {};
-      rows.forEach(row => {
-        const key = row.parentId || '__root__';
-        if (!siblingsByParent[key]) siblingsByParent[key] = [];
-        siblingsByParent[key].push(row);
-      });
-      const siblingIndexById = {};
-      Object.keys(siblingsByParent).forEach(key => {
-        siblingsByParent[key].forEach((row, index) => {
-          siblingIndexById[row.projectId] = { index, count: siblingsByParent[key].length };
-        });
-      });
-      rows.forEach(row => {
-        const sibling = siblingIndexById[row.projectId] || { index: 0, count: 1 };
-        // Start the parent spine at the top edge of its first visible child row,
-        // immediately below the parent, then continue through following siblings.
-        row.guideTop = true;
-        row.guideBottom = sibling.index < sibling.count - 1;
-        row.guideLeft = 20 - 56;
-        row.guideRails = [];
-        let ancestor = this.byId[row.parentId];
-        const seen = {};
-        while (ancestor && !seen[ancestor.projectId]) {
-          seen[ancestor.projectId] = true;
-          const ancestorSibling = siblingIndexById[ancestor.projectId];
-          // Keep an ancestor branch visible through its subtree only when
-          // another sibling follows it (e.g. math's spine beside high math).
-          if (ancestor.depth > 0 && ancestorSibling && ancestorSibling.index < ancestorSibling.count - 1) {
-            const ancestorIndent = Math.min(ancestor.depth - 1, 3) * 56;
-            const left = (ancestorIndent + 20) - row.indent;
-            row.guideRails.push({ left });
-          }
-          ancestor = this.byId[ancestor.parentId];
-        }
-      });
-      const rowHeight = rows.reduce((height, row) => height + (row.depth ? 88 : 96), 0);
-      const bodyContent = rows.length ? 54 + rowHeight : 146;
-      const recentContent = this.data.recent.length ? 168 : 0;
-      const editorContent = this.data.newOpen ? 150 : 0;
-      const desiredBodyHeight = (bodyContent + recentContent + editorContent) * this.data.pickerScale;
-      const bodyHeight = Math.max(1, Math.ceil(Math.min(this.data.bodyMaxHeight, desiredBodyHeight)));
-      const cardHeight = Math.ceil(Math.min(this.data.cardMaxHeight, 330 * this.data.pickerScale + bodyHeight));
+      const listHeight = Math.max(200, rows.reduce((height, row, index) => height + 100 + (!row.depth && index ? 18 : 0), 0));
+      const desiredHeight = Math.max(listHeight, this.data.newOpen ? 360 : 0) * this.data.pickerScale;
+      const bodyHeight = Math.max(1, Math.ceil(Math.min(this.data.bodyMaxHeight, desiredHeight)));
+      const cardHeight = Math.min(this.data.cardMaxHeight, Math.ceil(330 * this.data.pickerScale + bodyHeight));
       this.setData({ rows, bodyHeight, cardHeight });
     },
+    onListScroll(event) { if (!this.data.newOpen) this.lastListScrollTop = event.detail.scrollTop; },
     rowTap(event) {
-      if (this.busy) return;
+      if (this.busy || this.data.loading || this.data.newOpen) return;
       const row = this.byId && this.byId[event.currentTarget.dataset.id];
       if (!row) return;
-      if (!row.startable) {
-        this.collapsed[row.projectId] = !this.collapsed[row.projectId];
-        this.renderRows();
-        return;
-      }
-      this.select(row.projectId);
+      if (this.childCounts[row.projectId]) { this.toggleExpand(event); return; }
+      if (!this.data.organizing) return this.select(row.projectId);
     },
     toggleExpand(event) {
-      if (this.busy) return;
+      if (this.busy || this.data.newOpen) return;
       const id = event.currentTarget.dataset.id;
       if (!this.childCounts[id]) return;
       this.collapsed[id] = !this.collapsed[id];
-      this.setData({ menuId: '', newOpen: false, editorMode: '', newName: '' });
       this.renderRows();
     },
-    toggleMenu(event) {
-      if (this.busy || this.data.loading) return;
-      const id = event.currentTarget.dataset.id;
-      const menuId = this.data.menuId === id ? '' : id;
-      this.setData({ menuId, newOpen: false, editorMode: '', newName: '' }, () => {
-        if (menuId) this.revealMenu(menuId);
-      });
+    toggleOrganize() {
+      if (this.busy || this.data.loading || this.data.newOpen) return;
+      this.setData({ organizing: !this.data.organizing });
     },
-    revealMenu(menuId) {
-      const token = this.token;
-      const isCurrent = () => this.properties.opened && this.token === token && this.data.menuId === menuId;
-      wx.nextTick(() => {
-        if (!isCurrent()) return;
-        const query = this.createSelectorQuery();
-        query.select('.picker-body').boundingClientRect();
-        query.select('.picker-body').scrollOffset();
-        query.select('.picker-row-menu').boundingClientRect();
-        query.exec(result => {
-          if (!isCurrent()) return;
-          const [viewport, offset, menu] = result || [];
-          if (!viewport || !offset || !menu) return;
-          // Reveal only the clipped part; keep the dialog and visible menus stationary.
-          const padding = Math.min(8, Math.max(0, (viewport.height - menu.height) / 2));
-          let delta = 0;
-          if (menu.height > viewport.height) delta = menu.top - viewport.top;
-          else if (menu.bottom > viewport.bottom - padding) delta = menu.bottom - viewport.bottom + padding;
-          else if (menu.top < viewport.top + padding) delta = menu.top - viewport.top - padding;
-          if (Math.abs(delta) < 1) return;
-          const target = Math.max(0, offset.scrollTop + delta);
-          // Sync the binding with manual scrolling before issuing the new position.
-          this.setData({ listScrollTop: offset.scrollTop }, () => {
-            if (isCurrent()) this.setData({ listScrollTop: target });
-          });
-        });
-      });
-    },
-    recentTap(event) { this.select(event.currentTarget.dataset.id); },
     async select(id) {
-      if (this.busy || !this.byId[id] || !this.byId[id].startable) return false;
+      if (this.busy || this.data.organizing || this.childCounts[id] || !this.byId[id] || !this.byId[id].startable) return false;
       this.busy = true;
       try {
         const result = await demoContext.appFor(this).globalData.service.savePrefs({ lastProjectId: id });
@@ -191,28 +105,33 @@ Component({
       } finally { this.busy = false; }
     },
     newProject(event) {
-      if (this.data.loading || this.busy) return;
+      if (this.data.loading || this.busy || this.data.creating) return;
       const id = event && event.currentTarget.dataset.id || '';
-      const parent = this.byId && this.byId[id];
-      this.setData({ newOpen: true, editorMode: 'create', editorId: parent ? id : '', editorLabel: parent ? '放在「' + parent.name + '」中' : '新建项目', newName: '', menuId: '' });
+      const parentOptions = [{ projectId: '', label: '无上级 · 独立项目' }].concat((this.all || []).map(row => ({ projectId: row.projectId, label: this.pathLabel(row) })));
+      const parentIndex = Math.max(0, parentOptions.findIndex(row => row.projectId === id));
+      this.savedListScrollTop = this.lastListScrollTop || 0;
+      this.setData({ newOpen: true, editorMode: 'create', editorId: parentOptions[parentIndex].projectId, parentOptions, parentIndex, parentLabel: parentOptions[parentIndex].label, newName: '', listScrollTop: 0 });
       this.renderRows();
+    },
+    pathLabel(row) {
+      const names = [row.name], seen = { [row.projectId]: true };
+      let parent = this.byId[row.parentId];
+      while (parent && !seen[parent.projectId]) { names.unshift(parent.name); seen[parent.projectId] = true; parent = this.byId[parent.parentId]; }
+      return names.join(' / ');
+    },
+    chooseParent(event) {
+      if (this.busy || this.data.creating) return;
+      const parentIndex = Number(event.detail.value), parent = this.data.parentOptions[parentIndex];
+      if (parent) this.setData({ parentIndex, editorId: parent.projectId, parentLabel: parent.label });
     },
     cancelNew() {
       if (this.busy || this.data.creating) return;
-      this.setData({ newOpen: false, editorMode: '', editorId: '', newName: '' });
-      this.renderRows();
-    },
-    renameProject(event) {
-      if (this.busy) return;
-      const id = event.currentTarget.dataset.id, row = this.byId[id];
-      if (!row) return;
-      this.setData({ newOpen: true, editorMode: 'rename', editorId: id, editorLabel: '修改「' + row.name + '」的名称', newName: row.name, menuId: '' });
+      this.setData({ newOpen: false, editorMode: '', editorId: '', newName: '', listScrollTop: this.savedListScrollTop || 0 });
       this.renderRows();
     },
     async askDelete(event) {
-      if (this.busy) return;
-      const id = event.currentTarget.dataset.id;
-      const token = this.token;
+      if (this.busy || !this.data.organizing) return;
+      const id = event.currentTarget.dataset.id, token = this.token;
       this.busy = true;
       try {
         const result = await demoContext.appFor(this).globalData.service.getManageData();
@@ -220,7 +139,8 @@ Component({
         if (!result.ok) { wx.showToast({ title: result.error.message, icon: 'none' }); return; }
         const row = result.data.active.concat(result.data.archived).find(item => item.projectId === id);
         if (!row) return;
-        this.setData({ newOpen: true, editorMode: 'delete', editorId: id, editorLabel: '删除「' + row.name + '」？', deleteText: '将删除 ' + row.subtreeProjectCount + ' 个项目和 ' + row.subtreeSessionCount + ' 条专注记录，删除后无法恢复。', menuId: '' });
+        this.savedListScrollTop = this.lastListScrollTop || 0;
+        this.setData({ newOpen: true, editorMode: 'delete', editorId: id, editorLabel: '删除「' + row.name + '」？', deleteText: '包含 ' + row.subtreeProjectCount + ' 个项目和 ' + row.subtreeSessionCount + ' 条专注记录。删除后无法恢复。', listScrollTop: 0 });
         this.renderRows();
       } finally { this.busy = false; }
     },
@@ -231,7 +151,7 @@ Component({
       try {
         const result = await demoContext.appFor(this).globalData.service.deleteProject({ operationId: uuid(), projectId: this.data.editorId });
         if (!result.ok) { wx.showToast({ title: result.error.message, icon: 'none' }); return; }
-        this.setData({ newOpen: false, editorMode: '', editorId: '', menuId: '', createdId: '' });
+        this.setData({ newOpen: false, editorMode: '', editorId: '', createdId: '', listScrollTop: this.savedListScrollTop || 0 });
         this.triggerEvent('changed');
         await this.load();
         wx.showToast({ title: '已删除', icon: 'success' });
@@ -239,32 +159,22 @@ Component({
     },
     inputName(event) { this.setData({ newName: event.detail.value }); },
     async create() {
-      if (this.data.creating || this.busy) return;
-      if (!this.data.newOpen || this.data.editorMode === 'delete') return;
+      if (this.data.creating || this.busy || !this.data.newOpen || this.data.editorMode !== 'create') return;
       const name = this.data.newName.trim();
       if (!name) { wx.showToast({ title: '请输入名称', icon: 'none' }); return; }
       const parentId = this.data.editorId;
-      const renaming = this.data.editorMode === 'rename';
       this.busy = true;
       this.setData({ creating: true });
       try {
-        const service = demoContext.appFor(this).globalData.service;
-        const result = renaming
-          ? await service.renameProject({ operationId: uuid(), projectId: parentId, name })
-          : await service.createProject({ operationId: uuid(), name, parentId: parentId || null });
+        const result = await demoContext.appFor(this).globalData.service.createProject({ operationId: uuid(), name, parentId: parentId || null });
         if (!result.ok) { wx.showToast({ title: result.error.message, icon: 'none' }); return; }
         let current = this.byId && this.byId[parentId];
         const seen = {};
-        while (current && !seen[current.projectId]) {
-          seen[current.projectId] = true;
-          this.collapsed[current.projectId] = false;
-          current = this.byId[current.parentId];
-        }
-        const savedId = result.data.project.id;
-        this.setData({ newOpen: false, newName: '', editorMode: '', editorId: '', createdId: renaming ? '' : savedId });
+        while (current && !seen[current.projectId]) { seen[current.projectId] = true; this.collapsed[current.projectId] = false; current = this.byId[current.parentId]; }
+        this.setData({ newOpen: false, newName: '', editorMode: '', editorId: '', createdId: result.data.project.id, listScrollTop: this.savedListScrollTop || 0 });
         this.triggerEvent('changed');
         await this.load();
-        wx.showToast({ title: renaming ? '已改名' : '已创建', icon: 'success' });
+        wx.showToast({ title: '已添加', icon: 'success' });
       } finally { this.busy = false; this.setData({ creating: false }); }
     },
     goManage() { if (!this.busy && !this.data.creating) this.triggerEvent('openmanage'); }

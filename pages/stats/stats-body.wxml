@@ -1,4 +1,4 @@
-<safe-nav id="safeNav" theme="{{themeClass}}" title="专注统计" back-text="‹ 返回" bindback="goBack" hidden="{{rangeOpen || chartFull}}" bindheightchange="onNavHeightChange"/>
+<safe-nav id="safeNav" theme="{{themeClass}}" title="专注统计" back-text="‹ 返回" bindback="goBack" refresh="{{true}}" refreshing="{{syncRefreshing}}" bindrefresh="onRefreshRecords" hidden="{{rangeOpen || chartFull}}" bindheightchange="onNavHeightChange"/>
 <view class="container with-tabbar {{landscapeLayout?'landscape-shell':''}} stats-layout {{landscapeLayout?'landscape-dashboard':''}} {{chartTree.length?'stats-layout-with-projects':''}} theme-{{themeClass}}">
   <view class="landscape-only landscape-heading"><view class="landscape-title">专注统计</view><view class="landscape-subtitle">看见投入，也看见自己的节奏。</view></view>
   <view class="stats-sticky-controls" style="top:{{filterTop}}px">
@@ -24,8 +24,8 @@
   </block>
 </view>
 <date-range theme="{{themeClass}}" id="dateRange" opened="{{rangeOpen}}" start="{{startDate}}" end="{{endDate}}" bindclose="closeRange" bindconfirm="confirmRange" />
-<page-container show="{{heatmapOpen||scopeOpen}}" position="center" duration="0" z-index="600" overlay="{{scopeOpen}}" close-on-slide-down="{{false}}" custom-style="height:100%;width:100%;background:transparent;overflow:visible" overlay-style="background:rgba(24,32,23,.4)" bindclickoverlay="onOverlayClick" bindbeforeleave="onOverlayBeforeLeave" bindafterleave="onOverlayAfterLeave">
+<page-container show="{{overlayHistoryEnabled && (heatmapOpen||scopeOpen||rangeOpen||recordEditorOpen)}}" position="center" duration="0" z-index="600" overlay="{{heatmapOpen||scopeOpen}}" close-on-slide-down="{{false}}" custom-style="{{heatmapOpen||scopeOpen ? 'height:100%;width:100%;background:transparent;overflow:visible' : 'width:1px;height:1px;opacity:0;background:transparent'}}" overlay-style="{{heatmapOpen?'background:rgba(25,35,27,.35)':'background:rgba(24,32,23,.4)'}}" bindclickoverlay="onOverlayClick" bindbeforeleave="onOverlayBeforeLeave" bindafterenter="onOverlayAfterEnter" bindafterleave="onOverlayAfterLeave">
   <subject-picker id="subjectPicker" opened="{{scopeOpen}}" rows="{{subjectOptions}}" theme="{{themeClass}}" bindclose="closeSubjects" bindafterclose="onSubjectsAfterClose" bindselect="chooseSubject"/>
-  <heatmap-card demo-session="{{demoSession}}" opened="{{heatmapOpen}}" theme="{{themeClass}}" top-inset="{{filterTop}}" bindclose="closeHeatmap"/>
+  <heatmap-card id="heatmapCard" native-overlay="{{true}}" demo-session="{{demoSession}}" opened="{{heatmapOpen}}" theme="{{themeClass}}" top-inset="{{filterTop}}" bindclose="closeHeatmap"/>
 </page-container>
-<main-nav landscape-layout="{{landscapeLayout}}" demo-session="{{demoSession}}" selected="{{1}}" theme="{{themeClass}}" hidden="{{rangeOpen||chartFull||heatmapOpen||scopeOpen}}"/>
+<main-nav id="mainNav" landscape-layout="{{landscapeLayout}}" demo-session="{{demoSession}}" selected="{{1}}" theme="{{themeClass}}" hidden="{{chartFull}}"/>

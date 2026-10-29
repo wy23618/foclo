@@ -72,6 +72,10 @@
         "type": "folder"
       },
       {
+        "value": ".runtime",
+        "type": "folder"
+      },
+      {
         "value": "scripts",
         "type": "folder"
       },

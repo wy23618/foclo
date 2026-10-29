@@ -21,7 +21,7 @@ const definition = {
     stackSegs:[],dailySeries:[],sumH:0,sumM:0,sumS:0,sumZero:true,shortTotal:'—',
     totalText:'0秒',countText:'',avgText:'',selectedDate:'',rangeStart:'',rangeEnd:'',
     dailyGoalEnabled:false,dailyGoalMinutes:120,dailyGoalText:'',dailyGoalPercent:0,
-    scopeOpen:false,chartObscured:false,subjectOptions:[],rangeOpen:false,loading:true,error:'',openingPage:'',filterTop:78,
+    scopeOpen:false,chartObscured:false,recordEditorOpen:false,overlayHistoryEnabled:true,subjectOptions:[],rangeOpen:false,loading:true,error:'',openingPage:'',filterTop:78,
     selectedProjectId:'',selectedDetail:null,expandedDetailChildIds:[],timeSlots:[],slotScaleText:'1小时',slotScaleFixed:0,slotScaleIndex:0,slotScaleOptions:SCALE_LABELS,selectedTimeSlot:-1,selectedSlot:null,
     avgSessionText:'0秒',goalPercentText:'0'
   },
@@ -31,33 +31,47 @@ const definition = {
   },
   onNavHeightChange(e){this.setData({filterTop:e.detail.height});},
   async onShow(){
+    const showVersion=this.showVersion=(this.showVersion||0)+1;
     require('../../utils/theme').applyPageTheme(this);
     const returningFromSubpage=!!this.hasShown;
     this.hasShown=true;
     this.returningFromDay=false;
     this.setData({openingPage:''});
     await app.globalData.readyPromise;
+    if(showVersion!==this.showVersion)return;
+    // Let the native slide finish against the retained chart before rebuilding it.
+    await new Promise(resolve=>{this.resumeResolve=resolve;this.resumeTimer=setTimeout(()=>{this.resumeTimer=null;this.resumeResolve=null;resolve();},300);});
+    if(showVersion!==this.showVersion)return;
     if(!returningFromSubpage){
       const prefs=await app.globalData.service.getPrefs();
+      if(showVersion!==this.showVersion)return;
       const preset=prefs&&['today','last7','last30'].includes(prefs.statsPreset)?prefs.statsPreset:'today';
       if(this.data.preset!==preset)this.resetChartSelection();
       this.setData({preset,selectedDate:'',selectedTimeSlot:-1,selectedSlot:null});
     }
     await this.load();
+    if(showVersion!==this.showVersion)return;
     const detail=this.selectComponent('#dayDetail');
     if(detail)await detail.load(false);
   },
-  onUnload(){this.race.next();},
+  onHide(){
+    this.showVersion=(this.showVersion||0)+1;
+    clearTimeout(this.resumeTimer);this.resumeTimer=null;
+    if(this.resumeResolve){this.resumeResolve();this.resumeResolve=null;}
+    this.race.next();
+  },
+  onUnload(){this.onHide();},
   onRangeChange(e){if(e.detail.key==='custom'){this.openRange();return;}this.resetChartSelection();this.setData({preset:e.detail.key,selectedDate:'',selectedTimeSlot:-1,selectedSlot:null});this.load();},
-  openRange(){this.setData({rangeOpen:true});},closeRange(){this.setData({rangeOpen:false});},
+  openRange(){this.pageOverlayKind='range';this.setData({rangeOpen:true});},closeRange(){this.setData({rangeOpen:false});},
   confirmRange(e){this.resetChartSelection();this.setData({preset:'custom',startDate:e.detail.startDate,endDate:e.detail.endDate,rangeOpen:false,selectedDate:'',selectedTimeSlot:-1,selectedSlot:null});this.load();},
   resetChartSelection(){const chart=this.selectComponent('#distributionChart');if(chart)chart.resetView();this.setData({selectedProjectId:'',selectedDetail:null,expandedDetailChildIds:[]});},
 
 
   async load(){
+    if(this.resumeTimer)return;
     const token=this.race.next();await app.globalData.readyPromise;
     if(!this.race.isCurrent(token))return;
-    this.setData({loading:true,error:''});
+    if(this.data.error)this.setData({error:''});
     const env=await app.globalData.service.getStatistics(view.rangeSpec(this.data));
     if(!this.race.isCurrent(token))return;
     if(!env.ok){this.setData({loading:false,error:env.error.message});return;}
@@ -79,7 +93,7 @@ const definition = {
       goalPercentText=String(Math.round(prefs&&prefs.dailyGoalEnabled?Math.min(100,goalSeconds/((prefs.dailyGoalMinutes||120)*60)*100):0));
     }
     const start=time.dayKey(d.range.start),end=time.dayKey(d.range.end-1);
-    this.setData(Object.assign(view.summary(d),{
+    const patch=Object.assign(view.summary(d),{
       loading:false,chartGroups:chart.groups,chartTree:chart.tree,subjectOptions:view.subjectOptions(d),distRows,
       avgSessionText,goalPercentText,
       dailyGoalEnabled:!!(prefs&&prefs.dailyGoalEnabled),dailyGoalMinutes:prefs&&prefs.dailyGoalMinutes||120,dailyGoalPercent:prefs&&prefs.dailyGoalEnabled?Math.round(Math.min(100,goalSeconds/((prefs.dailyGoalMinutes||120)*60)*100)):0,dailyGoalText:require('../../utils/format').durationText(goalSeconds),
@@ -89,7 +103,10 @@ const definition = {
       rangeLabel:this.data.preset==='custom'?this.data.startDate+'–'+this.data.endDate:view.RANGE_ITEMS.find(r=>r.key===this.data.preset).label,
       rangeStart:start,rangeEnd:end>view.today()?view.today():end,
       selectedDate:this.data.selectedDate>=start&&this.data.selectedDate<=end?this.data.selectedDate:(end>view.today()?view.today():end)
-    }));
+    });
+    // Canvas/series observers redraw on assignments, even if the values match.
+    Object.keys(patch).forEach(key=>{if(JSON.stringify(this.data[key])===JSON.stringify(patch[key]))delete patch[key];});
+    if(Object.keys(patch).length)this.setData(patch);
   },
   onChartSelectParent(e){this.applyChartSelection(e.detail);},
   showAllProjects(){require('../../utils/show-all-projects')(this);},
@@ -114,14 +131,17 @@ const definition = {
   openSubjects(){if(this.openingSubjectPicker||this.openingHeatmap||this.data.heatmapOpen||this.data.chartObscured)return;this.openingSubjectPicker=true;const open=()=>{this.pageOverlayKind='subjects';this.setData({scopeOpen:true,chartObscured:!!this.selectComponent('#distributionChart')});};const chart=this.selectComponent('#distributionChart');if(chart)chart.captureSnapshot(ready=>{if(ready)open();else{this.openingSubjectPicker=false;wx.showToast({title:'圆环正在准备，请再试一次',icon:'none'});}});else open();},
   closeSubjects(){this.setData({scopeOpen:false});},
   onSubjectsAfterClose(){this.setData({chartObscured:false},()=>{this.openingSubjectPicker=false;});},
-  onOverlayBeforeLeave(){this.overlayLeaving=this.pageOverlayKind;if(this.overlayLeaving==='subjects'){const picker=this.selectComponent('#subjectPicker');if(picker&&picker.onBeforeLeave)picker.onBeforeLeave();}},
-  onOverlayAfterLeave(){const kind=this.overlayLeaving||this.pageOverlayKind;this.overlayLeaving='';this.pageOverlayKind='';if(kind==='subjects'){if(this.data.scopeOpen)this.setData({scopeOpen:false});const picker=this.selectComponent('#subjectPicker');if(picker&&picker.onAfterLeave)picker.onAfterLeave();}else if(kind==='heatmap')require('../../utils/heatmap-modal').afterHeatmapLeave.call(this);},
+  onOverlayAfterEnter(){require('../../utils/modal-history').layerEntered(this,'overlayHistoryEnabled');},
+  onOverlayBeforeLeave(){require('../../utils/modal-history').beforeStatsLeave(this);},
+  onOverlayAfterLeave(){require('../../utils/modal-history').afterStatsLeave(this);},
+  onRecordEditorChange(e){require('../../utils/modal-history').recordEditorChanged(this,e);},
   onOverlayClick(){if(this.pageOverlayKind==='subjects'){const picker=this.selectComponent('#subjectPicker');if(picker&&picker.close)picker.close();else this.closeSubjects();}},
   chooseSubject(e){if(e.detail.projectId)this.goProject(e);else this.closeSubjects();},
   selectDay(e){this.returningFromDay=true;navigation.navigateTo({url:'/pages/day-stats/day-stats?date='+e.detail.date,fail:()=>{this.returningFromDay=false;}});},
-  goBack(){(runtime.navigation || require('../../utils/main-navigation')).openMainTab(0);},
+  goBack(){if(require('../../utils/modal-history').dismissStatsLayer(this))return;if(runtime.navigation)runtime.navigation.openMainTab(0);else require('../../utils/main-navigation').backMainTab();},
   goFocus(){(runtime.navigation || require('../../utils/main-navigation')).openMainTab(0);},refresh(){return this.load();},
-  onPullDownRefresh(){return require('../../utils/refresh-records').refreshRecords(this,app,()=>this.load());},
+  onRefreshRecords(){return require('../../utils/refresh-records').refreshRecords(this,app,()=>this.load());},
+  onPullDownRefresh(){return this.onRefreshRecords();},
   goProject(e){const id=(e.detail&&e.detail.projectId)||e.currentTarget.dataset.id;if(!id)return;let url='/pages/project-stats/project-stats?id='+encodeURIComponent(id)+'&mode='+this.data.mode+'&preset='+this.data.preset;if(this.data.preset==='custom')url+='&startDate='+this.data.startDate+'&endDate='+this.data.endDate;this.openSubpage('project',url);},
   goHeatmap(){require('../../utils/heatmap-modal').openHeatmap.call(this);},
   closeHeatmap(){require('../../utils/heatmap-modal').closeHeatmap.call(this);},

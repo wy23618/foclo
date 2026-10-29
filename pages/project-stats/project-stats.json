@@ -1,4 +1,5 @@
 {
+  "enablePullDownRefresh": true,
   "navigationBarTitleText": "项目统计",
   "usingComponents": {
     "heatmap-card": "/components/heatmap-card/heatmap-card",

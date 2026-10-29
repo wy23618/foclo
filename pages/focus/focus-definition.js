@@ -61,7 +61,7 @@ const definition = {
     // 非空闲时的副信息
     targetLabel: '30分钟',
     // 页内项目选择
-    pickerOpen: false,
+    pickerOpen: false, focusHistoryEnabled: true,
     pickerRecent: [],
     pickerTreeRows: [],
     pickerNewName: '',
@@ -478,7 +478,7 @@ const definition = {
   openImmersive(){this.setData({immersive:true,clockParts:flipParts(this.data.bigText)});this.updateTabVisibility();wx.setKeepScreenOn({keepScreenOn:true});},closeImmersive(){this.setData({immersive:false});this.updateTabVisibility();wx.setKeepScreenOn({keepScreenOn:!!(this.data.keepScreenOn&&this.data.cur&&this.data.cur.state==='STUDYING')});},
   lockScreen(){this.setData({screenLocked:true});this.updateTabVisibility();},unlockScreen(){this.setData({screenLocked:false});this.updateTabVisibility();},
   async openToday(){this.setData({todayOpen:true,todayDate:view.today()});this.updateTabVisibility();},
-  closeToday(){this.setData({todayOpen:false});this.updateTabVisibility();},
+  closeToday(){const detail=this.selectComponent&&this.selectComponent('#todayDetail');if(detail&&detail.dismissEditor&&detail.dismissEditor())return;this.setData({todayOpen:false});this.updateTabVisibility();},
   async onRecordDeleted(){await this.updateToday();},
   async updateToday(){const e=await app.globalData.service.getStatistics({preset:'today',mode:'realtime'});const prefs=await app.globalData.service.getPrefs();if(prefs)this.setData({goalEnabled:!!prefs.dailyGoalEnabled,goalMinutes:prefs.dailyGoalMinutes||120});if(e.ok){const current=app.globalData.service.peekCurrent();this.todayBase={date:view.today(),seconds:e.data.totalSeconds,elapsed:current.ok?current.data.elapsedSeconds:0};const progress=this.data.goalEnabled?Math.round(Math.min(100,e.data.totalSeconds/(this.data.goalMinutes*60)*100)):0;this.setData({todayText:format.durationText(e.data.totalSeconds),goalProgress:progress,goalProgressStyle:'width:'+progress+'%;'});this.updateTabletLayout();}},
   // ---------------- 页内项目选择 ----------------
@@ -498,8 +498,18 @@ const definition = {
     this.updateTabVisibility();
   },
   onPickerAfterLeave() {
-    if (this.data.pickerOpen) this.closePicker();
+    if(require('../../utils/modal-history').isRearming(this,'focusHistoryEnabled'))return;
+    if (this.data.customOpen) this.closeCustom();
+    else if (this.data.todayOpen) this.closeToday();
+    else if (this.data.immersive) this.closeImmersive();
+    else if (this.data.pickerOpen) {
+      const picker=this.selectComponent&&this.selectComponent('#projectSheet');
+      if(picker&&picker.close)picker.close();else this.closePicker();
+    }
+    const stillOpen=()=>!!(this.data.pickerOpen||this.data.customOpen||this.data.todayOpen||this.data.immersive);
+    if(stillOpen())require('../../utils/modal-history').restoreLayer(this,'focusHistoryEnabled',stillOpen);
   },
+  onFocusHistoryEnter(){require('../../utils/modal-history').layerEntered(this,'focusHistoryEnabled');},
 
   openPickerAppearance(e) {
     this.preservePickerOnHide = true;

@@ -1,5 +1,5 @@
 <view wx:if="{{opened}}" class="overlay {{landscapeLayout?'landscape-heatmap':''}} theme-{{theme}}" style="top:{{topInset}}px;{{standalone ? 'bottom:0;' : ''}}" catchtouchmove="noop">
-  <view class="mask" bindtap="close" catchtouchmove="noop"></view>
+  <view class="mask" style="position:fixed;inset:0;{{nativeOverlay?'background:transparent;':''}}" bindtap="close" catchtouchmove="noop"></view>
   <view class="panel">
     <view class="head"><text class="title">学习热力图</text><view class="close" bindtap="close" hover-class="pressed">关闭</view></view>
     <view wx:if="{{!tabletLayout}}" class="body"><include src="./heatmap-body.wxml"/></view>

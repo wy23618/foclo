@@ -72,22 +72,6 @@ test('navigation height updates occur after component mounting and coalesce repe
   assert.equal(updates.length, 1);
 });
 
-test('main navigation switches tabs without stacking main screens', () => {
-  const { openMainTab } = require('../utils/main-navigation');
-  assert.deepEqual(require('../app.json').tabBar.list.map(item => item.pagePath), [
-    'pages/focus/focus', 'pages/stats/stats', 'pages/settings/settings'
-  ]);
-  const calls = [];
-  global.getCurrentPages = () => [{ route: 'pages/focus/focus' }, { route: 'pages/stats/stats' }];
-  global.wx = { switchTab: o => calls.push(['tab', o.url]) };
-  openMainTab(2);
-  assert.deepEqual(calls.pop(), ['tab', '/pages/settings/settings']);
-  global.getCurrentPages = () => [{ route: 'pages/focus/focus' }, { route: 'pages/stats/stats' }, { route: 'pages/settings/settings' }];
-  openMainTab(1); assert.deepEqual(calls.pop(), ['tab', '/pages/stats/stats']);
-  openMainTab(0); assert.deepEqual(calls.pop(), ['tab', '/pages/focus/focus']);
-  openMainTab(2); openMainTab(99); assert.equal(calls.length, 0);
-});
-
 test('leaving focus stops the rest ticker and invalidates pending refresh', () => {
   const page = loadPage('../pages/focus/focus');
   let stopped = 0;
@@ -143,6 +127,27 @@ test('heatmap opens over the current page and preserves project scope', () => {
   assert.deepEqual(events.pop(), ['navhiddenchange', { hidden: true }]);
   require('../utils/heatmap-modal').afterHeatmapLeave.call(host);
   assert.equal(host.data.heatmapOpen, false);
+});
+
+test('heatmap leaves the daily chart and page geometry intact below its full-screen mask', () => {
+  const chart = { captureSnapshot(done) { done(true); } };
+  const bars = { hideForOverlay() { throw new Error('must not replace bars'); } };
+  let reloads = 0;
+  const host = { data: { heatmapOpen: false, chartObscured: false, selectedDate: '2026-10-27' },
+    setData(patch, done) { Object.assign(this.data, patch); if (done) done(); },
+    selectComponent(id) { return id === '#dailyBars' ? bars : chart; }, refresh() { reloads++; } };
+  const modal = require('../utils/heatmap-modal');
+  modal.openHeatmap.call(host);
+  assert.equal(host.data.heatmapOpen, true);
+  assert.equal(host.data.chartObscured, true, 'the native canvas uses its identical in-place snapshot');
+  assert.equal(host.data.selectedDate, '2026-10-27');
+  host.pendingSyncRefresh = true;
+  modal.closeHeatmap.call(host);
+  assert.equal(reloads, 0, 'background refresh waits until the modal has gone');
+  modal.afterHeatmapLeave.call(host);
+  assert.equal(host.data.heatmapOpen, false);
+  assert.equal(host.data.chartObscured, false);
+  assert.equal(reloads, 1);
 });
 
 test('rapid subject and heatmap taps cannot compete for the same chart snapshot', () => {
@@ -255,4 +260,34 @@ test('repeated heatmap scope opening shares the in-flight project query', async 
   const first = card.loadScopeOptions(); const second = card.loadScopeOptions();
   ready(); await Promise.all([first, second]);
   assert.equal(calls, 1); assert.equal(card.data.scopeLoading, false);
+});
+
+test('unchanged statistics do not resend chart arrays or flash a loading state', async () => {
+  const { createService } = require('../core/service');
+  const { createMemoryAdapter } = require('../storage/adapter');
+  const service = createService(createMemoryAdapter());
+  await service.init();
+  const page = loadPage('../pages/stats/stats', { globalData: { ready: true, readyPromise: Promise.resolve(), service } });
+  global.wx = {};
+  page.onLoad({});
+  await page.load();
+  const patches = [];
+  page.setData = patch => { patches.push(patch); Object.assign(page.data, patch); };
+  await page.load();
+  assert.equal(page.data.loading, false);
+  assert.ok(patches.every(patch => !('chartGroups' in patch) && !('dailySeries' in patch) && !('distRows' in patch)));
+  assert.ok(patches.every(patch => patch.loading !== true));
+});
+
+test('statistics navigation defers rebuilds and cancels them if the page hides again', async () => {
+  const page = loadPage('../pages/stats/stats', { globalData: { ready: true, readyPromise: Promise.resolve(), service: { getPrefs: async () => ({ theme: 'light' }) } } });
+  global.wx = { setNavigationBarColor() {} };
+  page.onLoad({});
+  page.hasShown = true;
+  let loads = 0; page.load = async () => { loads++; };
+  const pending = page.onShow();
+  await new Promise(resolve => setTimeout(resolve, 10));
+  assert.equal(loads, 0, 'retained chart is left alone during the transition');
+  page.onHide(); await pending;
+  assert.equal(loads, 0);
 });

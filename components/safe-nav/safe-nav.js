@@ -3,7 +3,7 @@ const { navigationMetrics } = require('../../utils/window-layout');
 Component({
   properties: {
     theme: { type: String, value: 'light' }, title: String, brand: Boolean,
-    backText: String, shortcut: String, refresh: Boolean, hidden: Boolean
+    backText: String, shortcut: String, refresh: Boolean, refreshing: Boolean, hidden: Boolean
   },
   data: { top: 32, barHeight: 32, navHeight: 78, rightInset: 100, background: navigationColors('light').background, inkColor: navigationColors('light').inkColor },
   observers: { theme(value) { this.applyTheme(value); } },
@@ -36,6 +36,6 @@ Component({
     },
     back() { this.triggerEvent('back'); },
     shortcutTap() { this.triggerEvent('shortcut'); },
-    refreshTap() { this.triggerEvent('refresh'); }
+    refreshTap() { if (!this.properties.refreshing) this.triggerEvent('refresh'); }
   }
 });

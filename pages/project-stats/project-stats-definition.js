@@ -17,7 +17,7 @@ const definition = {
     heatmapOpen:false,
     projectId:'',name:'项目',projectColor:'#425B42',pathText:'',preset:'last30',mode:'realtime',
     rangeItems:view.RANGE_ITEMS,startDate:view.today(),endDate:view.today(),rangeLabel:'近30天',
-    scopeOpen:false,chartObscured:false,subjectOptions:[],rangeOpen:false,filterTop:78,loading:false,error:'',
+    scopeOpen:false,chartObscured:false,recordEditorOpen:false,overlayHistoryEnabled:true,subjectOptions:[],rangeOpen:false,filterTop:78,loading:false,error:'',
     listRows:[],distRows:[],chartGroups:[],chartTree:[],showDistributionChart:false,chartFull:false,chartExpandable:false,chartAllExpanded:false,dailySeries:[],
     selectedProjectId:'',
     timeSlots:[],slotScaleText:'1小时',slotScaleFixed:0,slotScaleIndex:0,slotScaleOptions:SCALE_LABELS,selectedTimeSlot:-1,selectedSlot:null,
@@ -29,6 +29,7 @@ const definition = {
   },
   onShow(){require('../../utils/theme').applyPageTheme(this);return this.load();},
   onUnload(){this.seq++;},
+  onPullDownRefresh(){return this.onRefreshRecords();},
   onNavHeightChange(e){this.setData({filterTop:e.detail.height});},
   async load(){
     const token=++this.seq;
@@ -73,8 +74,10 @@ const definition = {
   openSubjects(){if(this.openingSubjectPicker||this.openingHeatmap||this.data.heatmapOpen||this.data.chartObscured)return;this.openingSubjectPicker=true;const open=()=>{this.pageOverlayKind='subjects';this.setData({scopeOpen:true,chartObscured:!!this.selectComponent('#distributionChart')});};const chart=this.selectComponent('#distributionChart');if(chart)chart.captureSnapshot(ready=>{if(ready)open();else{this.openingSubjectPicker=false;wx.showToast({title:'圆环正在准备，请再试一次',icon:'none'});}});else open();},
   closeSubjects(){this.setData({scopeOpen:false});},
   onSubjectsAfterClose(){this.setData({chartObscured:false},()=>{this.openingSubjectPicker=false;});},
-  onOverlayBeforeLeave(){this.overlayLeaving=this.pageOverlayKind;if(this.overlayLeaving==='subjects'){const picker=this.selectComponent('#subjectPicker');if(picker&&picker.onBeforeLeave)picker.onBeforeLeave();}},
-  onOverlayAfterLeave(){const kind=this.overlayLeaving||this.pageOverlayKind;this.overlayLeaving='';this.pageOverlayKind='';if(kind==='subjects'){if(this.data.scopeOpen)this.setData({scopeOpen:false});const picker=this.selectComponent('#subjectPicker');if(picker&&picker.onAfterLeave)picker.onAfterLeave();}else if(kind==='heatmap')require('../../utils/heatmap-modal').afterHeatmapLeave.call(this);},
+  onOverlayAfterEnter(){require('../../utils/modal-history').layerEntered(this,'overlayHistoryEnabled');},
+  onOverlayBeforeLeave(){require('../../utils/modal-history').beforeStatsLeave(this);},
+  onOverlayAfterLeave(){require('../../utils/modal-history').afterStatsLeave(this);},
+  onRecordEditorChange(e){require('../../utils/modal-history').recordEditorChanged(this,e);},
   onOverlayClick(){if(this.pageOverlayKind==='subjects'){const picker=this.selectComponent('#subjectPicker');if(picker&&picker.close)picker.close();else this.closeSubjects();}},
   chooseSubject(e){
     if(e.detail.projectId){this.drill(e);return;}
@@ -84,19 +87,20 @@ const definition = {
     else navigation.reLaunch({url:'/pages/stats/stats'});
   },
   refresh(){return this.load();},
+  onRefreshRecords(){return require('../../utils/refresh-records').refreshRecords(this,app,()=>this.load());},
   onRangeChange(e){if(e.detail.key==='custom'){this.openRange();return;}this.resetChartSelection();this.setData({preset:e.detail.key,selectedTimeSlot:-1,selectedSlot:null});this.load();},
-  openRange(){this.setData({rangeOpen:true});},
+  openRange(){this.pageOverlayKind='range';this.setData({rangeOpen:true});},
   closeRange(){this.setData({rangeOpen:false});},
   confirmRange(e){this.resetChartSelection();this.setData({preset:'custom',startDate:e.detail.startDate,endDate:e.detail.endDate,rangeOpen:false,selectedTimeSlot:-1,selectedSlot:null});this.load();},
   resetChartSelection(){const chart=this.selectComponent('#distributionChart');if(chart)chart.resetView();this.setData({selectedProjectId:''});},
-  selectDay(e){navigation.navigateTo({url:'/pages/day-stats/day-stats?date='+e.detail.date+'&scope='+encodeURIComponent(this.data.projectId)});},
-  back(){wx.navigateBack({fail:()=>navigation.reLaunch({url:'/pages/stats/stats'})});},
+  selectDay(e){require('../../utils/detail-navigation').openDetail(this,navigation,'/pages/day-stats/day-stats?date='+e.detail.date+'&scope='+encodeURIComponent(this.data.projectId));},
+  back(){if(require('../../utils/modal-history').dismissStatsLayer(this))return;wx.navigateBack({fail:()=>navigation.reLaunch({url:'/pages/stats/stats'})});},
   drill(e){
     const id=(e.detail&&e.detail.projectId)||(e.currentTarget&&e.currentTarget.dataset.id);
     if(!id||id===this.data.projectId)return;
     let url='/pages/project-stats/project-stats?id='+encodeURIComponent(id)+'&preset='+this.data.preset+'&mode='+this.data.mode;
     if(this.data.preset==='custom')url+='&startDate='+this.data.startDate+'&endDate='+this.data.endDate;
-    navigation.navigateTo({url});
+    require('../../utils/detail-navigation').openDetail(this,navigation,url);
   },
   goHeatmap(){require('../../utils/heatmap-modal').openHeatmap.call(this);},
   closeHeatmap(){require('../../utils/heatmap-modal').closeHeatmap.call(this);},

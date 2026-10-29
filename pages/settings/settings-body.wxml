@@ -26,4 +26,4 @@
   </view>
   <block wx:else><view wx:for="{{groups}}" wx:key="title" class="settings-group"><include src="settings-group.wxml"/></view></block>
 </view>
-<main-nav landscape-layout="{{landscapeLayout}}" demo-session="{{demoSession}}" selected="{{2}}" theme="{{themeClass}}"/>
+<main-nav id="mainNav" landscape-layout="{{landscapeLayout}}" demo-session="{{demoSession}}" selected="{{2}}" theme="{{themeClass}}"/>

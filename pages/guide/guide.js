@@ -19,6 +19,7 @@ Page({
     selectedId: '',
     selected: null,
     previewOpen: false,
+    previewHistoryOpen: false,
     demoOpening: false,
     previewHeatmap: PREVIEW_HEATMAP,
     previewBars: PREVIEW_BARS
@@ -35,17 +36,24 @@ Page({
     const id = e && e.currentTarget && e.currentTarget.dataset.id;
     const card = GUIDE_CARDS.find(item => item.id === id);
     if (!card) return;
-    this.setData({ selectedId: card.id, selected: card, previewOpen: true });
+    this.setData({ selectedId: card.id, selected: card, previewOpen: true, previewHistoryOpen: true });
     require('../../utils/demo-context').prepareFeature(card.id).catch(() => {});
   },
-  closePreview() { if (!this.openingDemo) this.setData({ previewOpen: false }); },
+  closePreview() { if (!this.openingDemo) this.setData({ previewOpen: false, previewHistoryOpen: false }); },
+  onPreviewHistoryLeave() {
+    if (require('../../utils/modal-history').isRearming(this, 'previewHistoryOpen')) return;
+    if (!this.data.previewOpen || !this.data.previewHistoryOpen) return;
+    if (this.openingDemo) { require('../../utils/modal-history').restoreLayer(this, 'previewHistoryOpen', () => this.data.previewOpen); return; }
+    this.closePreview();
+  },
+  onPreviewHistoryEnter() { require('../../utils/modal-history').layerEntered(this, 'previewHistoryOpen'); },
   async tryDemo() {
     const card = GUIDE_CARDS.find(item => item.id === this.data.selectedId);
     if (!card || this.openingDemo) return;
     this.openingDemo = true;
     this.setData({ demoOpening: true });
     await require('../../utils/demo-context').openFeature(card.id, {
-      success: () => this.setData({ previewOpen: false }),
+      success: () => this.setData({ previewOpen: false, previewHistoryOpen: false }),
       fail: () => wx.showToast({ title: '暂时无法打开演示，请重试', icon: 'none' }),
       complete: () => { this.openingDemo = false; this.setData({ demoOpening: false }); }
     });

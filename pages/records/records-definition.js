@@ -112,7 +112,7 @@ const definition = {
       scope: this.data.scopeProjectId || null
     };
     const token = this.race.next();
-    this.setData({ loading: true });
+    this.setData({ loading: true, error: '' });
     const env = await service.getRecords({
       date: this.data.date,
       mode: this.data.mode,
@@ -122,9 +122,9 @@ const definition = {
     });
     if (!this.race.isCurrent(token) || !this.ctxMatches(ctx)) return;
     if (!env.ok) {
-      this.setData({ loading: false });
+      this.setData({ loading: false, error: env.error.message });
       wx.showToast({ title: env.error.message, icon: 'none' });
-      return;
+      return env;
     }
     const d = env.data;
     const dayIndex = timeMod.parseDayKey(this.data.date);
@@ -193,11 +193,11 @@ const definition = {
   goProject(e) {
     const id = e.currentTarget.dataset.id;
     // 携带当前查看日期，下钻后仍保持同一时间范围
-    navigation.navigateTo({
-      url: '/pages/project-stats/project-stats?id=' + id +
+    require('../../utils/detail-navigation').openDetail(this, navigation,
+      '/pages/project-stats/project-stats?id=' + encodeURIComponent(id) +
         '&preset=custom&startDate=' + this.data.date + '&endDate=' + this.data.date +
         '&mode=' + this.data.mode
-    });
+    );
   }
 };
 

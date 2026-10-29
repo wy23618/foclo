@@ -1,4 +1,4 @@
-<page-meta page-style="{{draggingId || renameOpen ? 'overflow: hidden; overscroll-behavior: none;' : ''}}" />
+<page-meta page-style="{{draggingId || editorOpen ? 'overflow: hidden; overscroll-behavior: none;' : ''}}" />
 <block wx:if="{{demoReady && !demoError}}">
   <include src="../manage/manage-body.wxml"/>
 </block>
