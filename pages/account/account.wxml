@@ -19,6 +19,7 @@
       </view>
       <text class="status-pill status-{{status}}">{{statusLabel}}</text>
     </view>
+    <text wx:if="{{accountPreparing}}" class="row-hint">正在读取本机账号与记录…</text>
     <text wx:if="{{statusMessage}}" class="status-message">{{statusMessage}}</text>
     <view wx:if="{{hasAccount}}" class="status-metrics">
       <text wx:if="{{pending > 0}}" class="metric-label">{{pending}} 项更改等待保存</text>
@@ -28,7 +29,7 @@
     </view>
     <view wx:if="{{hasAccount}}" class="button-row">
       <button class="primary-button" loading="{{busy || status==='syncing'}}" disabled="{{busy || status==='syncing'}}" bindtap="onSync">刷新账号记录</button>
-      <button wx:if="{{status==='auth-required'}}" class="primary-button" loading="{{busy}}" disabled="{{busy}}" bindtap="onLogin">重新登录</button>
+      <button wx:if="{{status==='auth-required'}}" class="primary-button" loading="{{busy}}" disabled="{{busy || !accountReady}}" bindtap="onLogin">重新登录</button>
       <button wx:if="{{hasAccount && status!=='auth-required' && status!=='synced' && status!=='syncing'}}" class="primary-button" loading="{{busy}}" disabled="{{busy}}" bindtap="onSync">重试保存</button>
       <button class="quiet-button" disabled="{{busy}}" bindtap="onLogout">退出登录</button>
     </view>
@@ -47,7 +48,7 @@
         <text class="agreement-copy">和</text>
         <text class="agreement-link" catchtap="openPrivacy">《隐私政策》</text>
       </view>
-      <button class="method-login login-primary" loading="{{busy}}" disabled="{{busy || !agreementAccepted}}" data-method="wechat" bindtap="onLogin">微信登录并开启同步</button>
+      <button class="method-login login-primary" loading="{{busy}}" disabled="{{busy || !accountReady || !agreementAccepted}}" data-method="wechat" bindtap="onLogin">微信登录并开启同步</button>
       <text class="local-use-link" bindtap="continueLocal">暂不登录，继续本地使用</text>
     </view>
   </view>

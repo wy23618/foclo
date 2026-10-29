@@ -88,9 +88,11 @@ Page({
   data: {
     themeClass: "light",
     status: "guest",
-    statusLabel: STATUS_LABELS.guest,
+    statusLabel: "准备中",
     statusMessage: "",
-    accountLabel: "游客体验",
+    accountLabel: "正在读取账号",
+    accountReady: false,
+    accountPreparing: true,
     accountId: "",
     accountIdText: "",
     avatarUrl: '',
@@ -117,24 +119,41 @@ Page({
   },
 
   onLoad(options) {
+    this.accountDisposed = false;
+    this.accounts = getApp().globalData.accounts;
     const toolsOnly = !!(options && options.tools === '1');
     this.setData({ toolsOnly });
     if (toolsOnly) wx.setNavigationBarTitle({ title:'账号数据与注销' });
   },
 
-  async onShow() {
+  async ensureAccounts() {
     const app = getApp();
-    if (!app.globalData.ready && app.globalData.readyPromise)
-      await app.globalData.readyPromise;
-    this.accounts = app.globalData.accounts;
-    if (!this.accounts)
-      return this.setData({ statusMessage: "账号服务暂不可用" });
+    try {
+      if (!app.globalData.ready && app.globalData.readyPromise)
+        await app.globalData.readyPromise;
+    } catch (error) {
+      throw new Error('本机资料尚未准备完成，请退出小程序后重新进入。本机原记录仍保留。');
+    }
+    if (this.accountDisposed) throw Object.assign(new Error('页面已关闭'), { code:'PAGE_CLOSED' });
+    const accounts = app.globalData.accounts;
+    if (!accounts) throw new Error('账号服务尚未准备完成，请退出小程序后重新进入。本机原记录仍保留。');
+    if (this.accounts !== accounts && this.unsubscribe) { this.unsubscribe(); this.unsubscribe = null; }
+    this.accounts = accounts;
     if (!this.unsubscribe)
-      this.unsubscribe = this.accounts.subscribe((status) =>
-        this.applyStatus(status),
-      );
+      this.unsubscribe = accounts.subscribe((status) => { if (!this.accountDisposed) this.applyStatus(status); });
+    if (!this.data.accountReady || this.data.accountPreparing)
+      this.setData({ accountReady:true, accountPreparing:false });
+    return accounts;
+  },
+
+  async onShow() {
+    try { await this.ensureAccounts(); }
+    catch (error) {
+      if (!this.accountDisposed) this.setData({ accountReady:false, accountPreparing:false, statusLabel:'暂未就绪', accountLabel:'账号准备未完成', statusMessage:error.message });
+      return;
+    }
     await this.refresh();
-    const service = app.globalData.service;
+    const service = getApp().globalData.service;
     try {
       const prefs = service && (await service.getPrefs());
       const themeClass = resolveTheme(
@@ -151,6 +170,7 @@ Page({
   },
 
   onUnload() {
+    this.accountDisposed = true;
     if (this.unsubscribe) this.unsubscribe();
     this.unsubscribe = null;
   },
@@ -183,6 +203,7 @@ Page({
 
   async refresh() {
     try {
+      await this.ensureAccounts();
       const status = this.accounts.getStatus();
       this.applyStatus(status);
       const displayedAccount = this.accounts.getCurrent();
@@ -225,7 +246,7 @@ Page({
         });
       }
     } catch (error) {
-      this.setData({ statusMessage: error.message || "读取账号状态失败" });
+      if (!this.accountDisposed) this.setData({ statusMessage: error.message || "读取账号状态失败" });
     }
   },
 
@@ -233,6 +254,7 @@ Page({
     if (this.data.busy) return;
     this.setData({ busy: true });
     try {
+      await this.ensureAccounts();
       const fn = this.accounts && this.accounts[method];
       if (typeof fn !== "function")
         throw new Error("此功能正在准备中，请稍后再试");
@@ -267,6 +289,7 @@ Page({
     if (!method || method.id !== 'wechat') return;
     this.setData({ busy:true });
     try {
+      await this.ensureAccounts();
       const { loginAndImport, confirmGuestImport } = require('../../sync/login-flow');
       const result = await loginAndImport(this.accounts, async summary => {
         wx.hideLoading();
@@ -281,16 +304,19 @@ Page({
       getApp().globalData.guestSession = false;
       await this.refresh();
     } catch (error) {
+      if (this.accountDisposed) return;
       wx.hideLoading();
       wx.showModal({ title:error.loggedIn ? '游客记录尚未迁移' : '微信登录未完成',
         content:(error.message || '请稍后重试') + '。本机原记录仍保留。', showCancel:false });
       await this.refresh();
-    } finally { wx.hideLoading(); this.setData({ busy:false }); }
+    } finally { wx.hideLoading(); if (!this.accountDisposed) this.setData({ busy:false }); }
   },
   async onEditProfile() {
-    if (this.data.busy || !this.accounts.getCurrent()) return;
+    if (this.data.busy) return;
     this.setData({ busy:true });
     try {
+      await this.ensureAccounts();
+      if (!this.accounts.getCurrent()) return;
       const identity = this.selectComponent('#accountIdentity');
       const value = await identity.request(await this.accounts.getDisplayProfile(), { editing:true });
       if (value) await this.accounts.saveDisplayProfile(value);
