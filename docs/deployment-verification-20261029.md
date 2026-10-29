@@ -18,3 +18,11 @@
 本地结果：小程序 235 项、后端 32 项、Cloudflare Worker 运行测试 1 项通过，后端 TypeScript 构建通过。未通过桌面界面执行操作，未向真实账号写入测试资料。
 
 发布流程仍为：本地验证后提交并推送代码，等待 GitHub Actions 的 `Deploy API` 成功，再核对线上健康与接口；小程序另行通过微信 CLI 上传。最新流水线、提交号和上传回执以各自成功结果为准。
+
+## 本次发布结果
+
+- 完整功能代码已推送为 `9b1d7d1a5fa933e87492d4fda02ab80a277b5e10`。[流水线 40898862653](https://github.com/wy23618/foclo/actions/runs/40898862653) 的前端、后端、Worker 检查及 `Deploy API` 均成功。
+- Cloudflare Worker 发布版本：`09b5da92-f30b-4ea1-830c-98b510a87ba9`。部署后的 `/health/ready` 返回 200，存储为 `durable-object-sqlite`。
+- 微信开发版 `1.0.20261029.1` 已成功上传，包大小 1,159,287 字节，包含本次刷新修复。首次上传因本机代理端口拒绝连接失败，代理恢复后重试成功；未更改系统代理配置。
+- 上传回执 `C:/Users/Wenyang/AppData/Local/YoTick/LocalServer/upload-1.0.20261029.1.json`；两端发布汇总 `C:/Users/Wenyang/AppData/Local/YoTick/LocalServer/release-20261029-refresh.json`，均留在本机运维目录。
+- 本次没有提交微信审核或发布正式版，手机正式版不会仅因服务器部署而自动获得新的刷新入口。
